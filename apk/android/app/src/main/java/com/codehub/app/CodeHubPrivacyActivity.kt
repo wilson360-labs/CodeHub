@@ -41,7 +41,7 @@ class CodeHubPrivacyActivity : Activity() {
         body.addView(panel {
             addView(TextView(this@CodeHubPrivacyActivity).apply { text = "Protección DNS del dispositivo"; textSize = 21f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD })
             addView(TextView(this@CodeHubPrivacyActivity).apply {
-                text = "Usa una VPN local para filtrar consultas DNS con AdGuard DNS y bloquear dominios conocidos de anuncios y rastreadores. La VPN no envía el tráfico web general por CodeHub."
+                text = "CodeHub Shield conserva el tráfico normal de las apps y filtra sus consultas DNS. Descarga adsblock.txt desde Supabase, la guarda en el almacenamiento privado de CodeHub y bloquea localmente los dominios de anuncios y rastreo."
                 textSize = 13f; setTextColor(0xFFA7A9BC.toInt()); setLineSpacing(dp(3).toFloat(), 1f)
             }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         })
@@ -60,7 +60,7 @@ class CodeHubPrivacyActivity : Activity() {
                 text = "Transparencia y límites"; textSize = 14f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
             })
             addView(TextView(this@CodeHubPrivacyActivity).apply {
-                text = "• Android mostrará su aviso y requiere que aceptes la conexión VPN. Solo puede estar activa una VPN por perfil.\n• El filtro se limita a DNS IPv4; DNS privado estricto, ciertas apps con DNS propio y anuncios servidos desde el mismo dominio pueden omitir el filtro.\n• Las consultas se envían cifradas por DNS-over-TLS a AdGuard DNS público. El proveedor DNS puede procesar los dominios consultados.\n• Puedes detener la protección en cualquier momento desde aquí o en los ajustes de VPN de Android."
+                text = "• Android requiere que aceptes el permiso VPN; CodeHub no necesita root. Solo puede estar activa una VPN por perfil.\n• La VPN enruta únicamente DNS IPv4; no funciona como firewall ni detiene conexiones web de las apps.\n• El archivo privado acepta dominios, hosts y reglas `||dominio^`; reglas cosméticas o por ruta no se pueden aplicar en un filtro DNS.\n• DNS privado estricto, apps con DNS propio y anuncios servidos desde el mismo dominio pueden evadir el bloqueo.\n• Primero se usa DNS-over-TLS de AdGuard. Si falla, CodeHub usa DNS de respaldo para mantener la navegación y muestra el modo activo; el respaldo de red puede no filtrar anuncios y puede enviar consultas sin cifrar."
                 textSize = 12f; setTextColor(0xFFA7A9BC.toInt()); setLineSpacing(dp(3).toFloat(), 1f)
             }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -72,7 +72,24 @@ class CodeHubPrivacyActivity : Activity() {
         if (intent.getBooleanExtra(EXTRA_START, false)) startVpnIfNeeded()
     }
 
-    override fun onResume() { super.onResume(); if (::toggle.isInitialized) renderState() }
+    override fun onResume() {
+        super.onResume()
+        if (::toggle.isInitialized) {
+            renderState()
+            handler.postDelayed(refreshRunnable, 1_500)
+        }
+    }
+
+    override fun onPause() { handler.removeCallbacks(refreshRunnable); super.onPause() }
+
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            if (!isFinishing && !isDestroyed) {
+                renderState()
+                handler.postDelayed(this, 1_500)
+            }
+        }
+    }
 
     private fun toggleVpn() {
         if (isVpnActive()) {
@@ -123,7 +140,8 @@ class CodeHubPrivacyActivity : Activity() {
         val active = isVpnActive()
         status.text = if (active) "● PROTECCIÓN CONECTADA" else "○ PROTECCIÓN DESCONECTADA"
         status.setTextColor(if (active) 0xFF4ADE80.toInt() else 0xFFA7A9BC.toInt())
-        blocked.text = "Dominios bloqueados localmente · ${prefs.getInt(CodeHubDnsVpnService.KEY_BLOCKED_COUNT, 0)}\nResolución protegida por AdGuard DNS público"
+        val resolverMode = prefs.getString(CodeHubDnsVpnService.KEY_RESOLVER_MODE, "Esperando consultas DNS")
+        blocked.text = "Bloqueos locales · ${prefs.getInt(CodeHubDnsVpnService.KEY_BLOCKED_COUNT, 0)}\nadsblock.txt privado · ${prefs.getInt(CodeHubDnsVpnService.KEY_RULE_COUNT, 0)} dominios\nResolución: $resolverMode"
         toggle.text = if (active) "Detener protección" else "Activar protección DNS"
         toggle.backgroundTintList = android.content.res.ColorStateList.valueOf(if (active) 0xFF4B2630.toInt() else 0xFF315A55.toInt())
     }

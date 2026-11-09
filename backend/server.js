@@ -1438,6 +1438,48 @@ async function deleteFromTelegram(messageId) {
 // ── SUPABASE STORAGE (se mantiene para archivos pequeños <50 MB) ──
 const STORAGE_BUCKET = 'CodeHub';
 
+// La lista es pública para las apps cliente, pero su lectura a Supabase se
+// sirve desde el backend para no incluir ninguna clave de Storage en el APK.
+let adsBlockCache = null;
+let adsBlockCacheEtag = '';
+let adsBlockCacheAt = 0;
+const adsBlockDownloadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.get('/api/security/adsblock.txt', adsBlockDownloadLimiter, async (req, res) => {
+  try {
+    if (!supabase) return res.status(503).type('text/plain').send('Supabase no está configurado.');
+    if (!adsBlockCache || Date.now() - adsBlockCacheAt > 120_000) {
+      const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download('adsblock.txt');
+      if (error || !data) {
+        console.warn('No se pudo leer CodeHub/adsblock.txt:', error?.message || 'archivo vacío');
+        if (!adsBlockCache) return res.status(404).type('text/plain').send('Falta CodeHub/adsblock.txt en Supabase Storage.');
+        // Sirve la última copia válida mientras Supabase recupera conexión; se reintenta pronto.
+        adsBlockCacheAt = Date.now() - 110_000;
+      } else {
+        const content = Buffer.from(await data.arrayBuffer());
+        if (content.length === 0 || content.length > 15 * 1024 * 1024) {
+          return res.status(422).type('text/plain').send('adsblock.txt está vacío o excede 15 MB.');
+        }
+        adsBlockCache = content;
+        adsBlockCacheEtag = `"${crypto.createHash('sha256').update(content).digest('hex')}"`;
+        adsBlockCacheAt = Date.now();
+      }
+    }
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=120');
+    res.set('ETag', adsBlockCacheEtag);
+    if (req.headers['if-none-match'] === adsBlockCacheEtag) return res.status(304).end();
+    return res.status(200).send(adsBlockCache);
+  } catch (error) {
+    console.error('GET /api/security/adsblock.txt:', error.message);
+    return res.status(502).type('text/plain').send('No se pudo obtener la lista de bloqueo.');
+  }
+});
+
 async function uploadToStorage(buffer, fileName) {
   if (!supabase) throw new Error('Supabase no configurado');
   console.log(`🔵 uploadToStorage START: \${fileName} (\${(buffer.length/1024/1024).toFixed(1)} MB)`);
