@@ -457,6 +457,11 @@ jobs:
             exit 1
           fi
           echo "APK=$APK"
+          APK_SIZE_BYTES=$(stat -c%s "$APK")
+          echo "APK_SIZE_BYTES=$APK_SIZE_BYTES" >> "$GITHUB_ENV"
+          echo "APK size: $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES")"
+          echo "Largest APK entries (compressed bytes):"
+          unzip -lv "$APK" | awk 'NR > 3 && NF >= 8 && $1 ~ /^[0-9]+$/ { print $3 " " $8 }' | sort -nr | head -n 15 || true
           cp "$APK" apk/android/app-release-signed.apk
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
@@ -512,11 +517,21 @@ jobs:
 
       - name: Upload APK to Supabase Storage
         if: env.HAS_RELEASE_SECRETS == 'true' && env.SUPABASE_URL != ''
+        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          curl -s -X POST \
+          set -euo pipefail
+          APK=apk/android/app-release-signed.apk
+          APK_SIZE_BYTES=$(stat -c%s "$APK")
+          SUPABASE_FREE_LIMIT_BYTES=$((50 * 1000 * 1000))
+          if [ "$APK_SIZE_BYTES" -gt "$SUPABASE_FREE_LIMIT_BYTES" ]; then
+            echo "::warning::APK pesa $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES") y supera el límite de 50 MB de Supabase Storage. Se omite esa copia; el release de GitHub sigue siendo la descarga oficial."
+            exit 0
+          fi
+          curl --fail-with-body --show-error --silent --retry 2 --retry-all-errors \
+            --connect-timeout 15 --max-time 240 -X POST \
             -H "apikey: ${SUPABASE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_KEY}" \
             -H "Content-Type: application/vnd.android.package-archive" \

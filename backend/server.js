@@ -3293,12 +3293,47 @@ app.post('/api/requests', publicPostLimiter, async (req, res) => {
 
 // Download APK — link firmado con expiración (Supabase Storage) para no
 // exponer una URL pública permanente del binario.
+let latestCodeHubApkCache = { expiresAt: 0, url: null };
+
+async function resolveLatestCodeHubApkUrl() {
+  const now = Date.now();
+  if (latestCodeHubApkCache.expiresAt > now && latestCodeHubApkCache.url) return latestCodeHubApkCache.url;
+  const response = await fetch('https://api.github.com/repos/wilson360-labs/CodeHub/releases/latest', {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'CodeHub-APK-Redirect' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) return null;
+  const release = await response.json();
+  const asset = (release.assets || []).find(item => item?.name === 'app-release-signed.apk');
+  const url = asset?.browser_download_url || '';
+  if (!url.startsWith('https://')) return null;
+  latestCodeHubApkCache = { expiresAt: now + 10 * 60 * 1000, url };
+  return url;
+}
+
 app.get('/api/download/:fileName', async (req, res) => {
   const { fileName } = req.params;
   if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre inválido' });
   try {
-    if (!supabase) return res.status(503).json({ error: 'Storage no disponible' });
     const key = decodeURIComponent(fileName);
+    // APK releases can exceed Supabase's per-object free-tier limit. GitHub
+    // Releases is the canonical signed distribution and remains available even
+    // when the optional Storage mirror skips an oversized upload.
+    if (key === 'app-release-signed.apk') {
+      try {
+        const githubUrl = await resolveLatestCodeHubApkUrl();
+        if (githubUrl) {
+          broadcast('download', { fileName: key });
+          trackEvent('download', null, { app_name: key });
+          tgAlert('download', () => `⬇️ <b>Descarga</b>: ${key}`, { windowMs: 15000 });
+          res.setHeader('Cache-Control', 'no-store');
+          return res.redirect(302, githubUrl);
+        }
+      } catch (error) {
+        console.warn('GitHub APK redirect unavailable; trying Supabase mirror:', error.message);
+      }
+    }
+    if (!supabase) return res.status(503).json({ error: 'Storage no disponible' });
     let target = null;
     try {
       const { data: signedData, error: signedErr } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(key, 300);
