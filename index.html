@@ -7429,11 +7429,18 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
       <fieldset id="app-apk-abi-selector" style="display:none;margin:0 0 1rem;padding:.7rem;border:1px solid rgba(124,77,255,.25);border-radius:10px;background:rgba(124,77,255,.04);color:var(--text-soft,#aaa)">
         <legend style="padding:0 .35rem;color:#b4a0ff;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Versión para tu Android</legend>
-        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="arm64-v8a" onchange="selectCodeHubApkAbi(this.value)"><span><strong>ARM64 / ARMv8</strong><br><span id="abi-arm64-hint">Android de 64 bits</span></span></label>
-        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="armeabi-v7a" onchange="selectCodeHubApkAbi(this.value)"><span><strong>ARMv7</strong><br><span id="abi-armv7-hint">Android de 32 bits</span></span></label>
-        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="x86_64" onchange="selectCodeHubApkAbi(this.value)"><span><strong>x86_64</strong><br><span id="abi-x86-64-hint">Android/emulador de 64 bits</span></span></label>
-        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="x86" onchange="selectCodeHubApkAbi(this.value)"><span><strong>x86</strong><br><span id="abi-x86-hint">Android/emulador de 32 bits</span></span></label>
-        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="universal" onchange="selectCodeHubApkAbi(this.value)"><span><strong>Universal</strong><br>Incluye ARM y x86; úsala si no estás seguro</span></label>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.72rem;text-align:left">
+            <thead><tr style="color:#b4a0ff"><th style="padding:.4rem" aria-label="Seleccionar"></th><th style="padding:.4rem">Arquitectura</th><th style="padding:.4rem">Dispositivo</th><th style="padding:.4rem">Estado</th></tr></thead>
+            <tbody>
+              <tr><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"><input type="radio" name="codehub-apk-abi" value="arm64-v8a" onchange="selectCodeHubApkAbi(this.value)" aria-label="Elegir ARM64"></td><th scope="row" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">ARM64 / ARMv8</th><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">Android 64 bits</td><td id="abi-arm64-hint" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"></td></tr>
+              <tr><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"><input type="radio" name="codehub-apk-abi" value="armeabi-v7a" onchange="selectCodeHubApkAbi(this.value)" aria-label="Elegir ARMv7"></td><th scope="row" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">ARMv7</th><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">Android 32 bits</td><td id="abi-armv7-hint" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"></td></tr>
+              <tr><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"><input type="radio" name="codehub-apk-abi" value="x86_64" onchange="selectCodeHubApkAbi(this.value)" aria-label="Elegir x86 de 64 bits"></td><th scope="row" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">x86_64</th><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">Android/emulador 64 bits</td><td id="abi-x86-64-hint" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"></td></tr>
+              <tr><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"><input type="radio" name="codehub-apk-abi" value="x86" onchange="selectCodeHubApkAbi(this.value)" aria-label="Elegir x86 de 32 bits"></td><th scope="row" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">x86</th><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">Android/emulador 32 bits</td><td id="abi-x86-hint" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"></td></tr>
+              <tr><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)"><input type="radio" name="codehub-apk-abi" value="universal" onchange="selectCodeHubApkAbi(this.value)" aria-label="Elegir APK universal"></td><th scope="row" style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">Universal</th><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">Todas las ABI incluidas</td><td style="padding:.4rem;border-top:1px solid rgba(255,255,255,.08)">Respaldo</td></tr>
+            </tbody>
+          </table>
+        </div>
       </fieldset>
       <!-- iOS steps (shown on iPhone/iPad) -->
       <div id="app-steps-ios" style="display:none;margin-bottom:1rem;padding:.7rem;border:1px dashed rgba(56,189,248,.25);border-radius:10px;background:rgba(56,189,248,.04)">
@@ -7546,6 +7553,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const recommendedHint = document.getElementById(hints[recommendedCodeHubApkAbi]);
     if (recommendedHint) recommendedHint.textContent = 'Recomendado para este dispositivo';
+    const button = document.getElementById('app-install-btn');
+    const labels = {
+      'arm64-v8a': 'ARM64 / ARMv8', 'armeabi-v7a': 'ARMv7',
+      x86_64: 'x86_64', x86: 'x86', universal: 'Universal'
+    };
+    if (button && _isAndroid && !button.disabled) button.textContent = 'Descargar ' + (labels[selectedCodeHubApkAbi] || 'APK');
   }
 
   function selectCodeHubApkAbi(abi) {
@@ -7627,7 +7640,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof toast === 'function') toast('\uD83D\uDCF1 APK descargado \u2014 abre el archivo para instalar', 'success', 5000);
       } else { showAPKGuide(); }
     } catch (e) { showAPKGuide(); }
-    setTimeout(() => { btn.textContent = _isAndroid ? 'Descargar APK' : 'Entendido'; btn.disabled = false; btn.style.background = ''; }, 3000);
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.style.background = '';
+      if (_isAndroid) renderCodeHubApkAbi();
+      else btn.textContent = 'Entendido';
+    }, 3000);
   }
 
   window.appInstallShow = appInstallShow;

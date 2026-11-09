@@ -513,37 +513,6 @@ jobs:
             apk/android/app-release-x86.apk
           retention-days: 7
 
-      - name: Upload APK to Supabase Storage
-        if: env.HAS_RELEASE_SECRETS == 'true' && env.SUPABASE_URL != ''
-        continue-on-error: true
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: |
-          set -euo pipefail
-          SUPABASE_FREE_LIMIT_BYTES=$((50 * 1000 * 1000))
-          for APK in apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk apk/android/app-release-x86_64.apk apk/android/app-release-x86.apk; do
-            [ -f "$APK" ] || continue
-            APK_SIZE_BYTES=$(stat -c%s "$APK")
-            ASSET=$(basename "$APK")
-            if [ "$APK_SIZE_BYTES" -gt "$SUPABASE_FREE_LIMIT_BYTES" ]; then
-              echo "::warning::$ASSET pesa $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES") y supera 50 MB. Se conserva como descarga en GitHub y se omite el espejo Supabase."
-              continue
-            fi
-            if curl --fail-with-body --show-error --silent --retry 2 --retry-all-errors \
-              --connect-timeout 15 --max-time 240 -X POST \
-              -H "apikey: ${SUPABASE_KEY}" \
-              -H "Authorization: Bearer ${SUPABASE_KEY}" \
-              -H "Content-Type: application/vnd.android.package-archive" \
-              -H "x-upsert: true" \
-              "${SUPABASE_URL}/storage/v1/object/CodeHub/${ASSET}" \
-              --data-binary "@$APK"; then
-              echo "✅ Supabase mirror actualizado: $ASSET"
-            else
-              echo "::warning::No se pudo actualizar el espejo Supabase para $ASSET; la descarga de GitHub sigue disponible."
-            fi
-          done
-
       - name: Create Release
         if: env.HAS_RELEASE_SECRETS == 'true'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3

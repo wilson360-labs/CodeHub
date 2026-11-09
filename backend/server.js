@@ -3309,9 +3309,10 @@ async function resolveLatestCodeHubApkUrl(assetName) {
   const releases = await response.json();
   const release = Array.isArray(releases) && releases.find(item =>
     !item?.draft && String(item?.tag_name || '').startsWith('apk-codehub-') &&
-    (item.assets || []).some(asset => asset?.name === assetName)
+    (item.assets || []).some(asset => asset?.name === assetName || asset?.name === 'app-release-signed.apk')
   );
-  const asset = (release?.assets || []).find(item => item?.name === assetName);
+  const asset = (release?.assets || []).find(item => item?.name === assetName) ||
+    (release?.assets || []).find(item => item?.name === 'app-release-signed.apk');
   const url = asset?.browser_download_url || '';
   if (!url.startsWith('https://')) return null;
   latestCodeHubApkCache.set(assetName, { expiresAt: now + 10 * 60 * 1000, url });
@@ -3323,9 +3324,7 @@ app.get('/api/download/:fileName', async (req, res) => {
   if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre inválido' });
   try {
     const key = decodeURIComponent(fileName);
-    // APK releases can exceed Supabase's per-object free-tier limit. GitHub
-    // Releases is the canonical signed distribution and remains available even
-    // when the optional Storage mirror skips an oversized upload.
+    // GitHub Releases is the only origin for CodeHub APK downloads.
     const codeHubApkAssets = new Set([
       'app-release-signed.apk',
       'app-release-arm64-v8a.apk',
@@ -3344,8 +3343,9 @@ app.get('/api/download/:fileName', async (req, res) => {
           return res.redirect(302, githubUrl);
         }
       } catch (error) {
-        console.warn('GitHub APK redirect unavailable; trying Supabase mirror:', error.message);
+        console.error('GitHub APK resolution failed:', error.message);
       }
+      return res.status(503).json({ error: 'No se encontró esa variante en GitHub Releases.' });
     }
     if (!supabase) return res.status(503).json({ error: 'Storage no disponible' });
     let target = null;
