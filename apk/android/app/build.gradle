@@ -9,6 +9,17 @@ android {
     compileSdk 37
     compileSdkMinor 0
 
+    // Publish one small APK per common Android phone ABI. Keep universal as a
+    // compatibility fallback for older in-app updaters.
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'arm64-v8a', 'armeabi-v7a'
+            universalApk true
+        }
+    }
+
     buildFeatures {
         aidl true
     }

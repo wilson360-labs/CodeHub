@@ -39,8 +39,9 @@ import java.util.List;
  *   solo en la app y mueestra SU PROPIO diálogo (res/layout/
  *   dialog_update.xml), elegante, sin toques del sistema aburridos.
  * - Habla directo con GitHub Releases del repo (tag apk-codehub-vX.Y).
- * - SOLO se acepta la release que trae el asset "app-release-signed.apk"
- *   (igualdad exacta). Con el criterio viejo (cualquier asset *.apk),
+ * - Se selecciona el APK de la ABI del dispositivo; se acepta el asset
+ *   universal firmado como compatibilidad para equipos no ARM.
+ *   Con el criterio viejo (cualquier asset *.apk),
  *   una release de extensión (youtube-music-codebeat.eapk) terminaba en
  *   ".apk" y se hacía pasar por actualización de CodeHub — esto elimina
  *   ese bug de raíz.
@@ -62,6 +63,8 @@ public class AppUpdateChecker {
         "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/releases/latest";
 
     private static final String APK_ASSET_NAME = "app-release-signed.apk";
+    private static final String APK_ARM64_ASSET_NAME = "app-release-arm64-v8a.apk";
+    private static final String APK_ARMV7_ASSET_NAME = "app-release-armeabi-v7a.apk";
 
     private static final String PREFS = "codehub";
     private static final String PREF_LAST_CHECK = "update_last_check_ts";
@@ -117,7 +120,7 @@ public class AppUpdateChecker {
             if (!isCodeHubUpdateRelease(release)) {
                 out.put("ok", false);
                 out.put("reason", "no_asset");
-                out.put("message", "La release " + tag + " no trae " + APK_ASSET_NAME);
+                out.put("message", "La release " + tag + " no contiene un APK compatible con " + preferredAssetName());
                 return out.toString();
             }
             String local = "0";
@@ -129,6 +132,7 @@ public class AppUpdateChecker {
             out.put("ok", true);
             out.put("remote", remote);
             out.put("local", local);
+            out.put("abi", preferredAssetName());
             out.put("hasUpdate", hasUpdate);
             out.put("message", hasUpdate
                     ? ("Actualizacion disponible: v" + remote + " (tienes v" + local + ")")
@@ -213,18 +217,16 @@ public class AppUpdateChecker {
         }
     }
 
-    /**
-     * Devuelve true SOLO si la release trae el APK firmado de CodeHub.
-     * Igualdad exacta de nombre: cualquier otra release (extensiones
-     * ytm-*, etc.) ni siquiera es candidata.
-     */
+    /** Only accept the ABI-specific APK or the exact universal fallback asset. */
     private static boolean isCodeHubUpdateRelease(JSONObject release) {
         JSONArray assets = release.optJSONArray("assets");
         if (assets == null) return false;
+        String preferred = preferredAssetName();
         for (int i = 0; i < assets.length(); i++) {
             JSONObject asset = assets.optJSONObject(i);
             if (asset == null) continue;
-            if (APK_ASSET_NAME.equalsIgnoreCase(asset.optString("name", ""))) return true;
+            String name = asset.optString("name", "");
+            if (preferred.equalsIgnoreCase(name) || APK_ASSET_NAME.equalsIgnoreCase(name)) return true;
         }
         return false;
     }
@@ -232,14 +234,26 @@ public class AppUpdateChecker {
     private static String findApkAssetUrl(JSONObject release) {
         JSONArray assets = release.optJSONArray("assets");
         if (assets == null) return null;
+        String preferred = preferredAssetName();
+        String universalUrl = null;
         for (int i = 0; i < assets.length(); i++) {
             JSONObject asset = assets.optJSONObject(i);
             if (asset == null) continue;
-            if (APK_ASSET_NAME.equalsIgnoreCase(asset.optString("name", ""))) {
+            String name = asset.optString("name", "");
+            if (preferred.equalsIgnoreCase(name)) {
                 return asset.optString("browser_download_url", null);
             }
+            if (APK_ASSET_NAME.equalsIgnoreCase(name)) universalUrl = asset.optString("browser_download_url", null);
         }
-        return null;
+        return universalUrl;
+    }
+
+    private static String preferredAssetName() {
+        for (String abi : Build.SUPPORTED_ABIS) {
+            if ("arm64-v8a".equals(abi)) return APK_ARM64_ASSET_NAME;
+            if ("armeabi-v7a".equals(abi)) return APK_ARMV7_ASSET_NAME;
+        }
+        return APK_ASSET_NAME;
     }
 
     /**

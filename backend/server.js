@@ -3293,21 +3293,28 @@ app.post('/api/requests', publicPostLimiter, async (req, res) => {
 
 // Download APK — link firmado con expiración (Supabase Storage) para no
 // exponer una URL pública permanente del binario.
-let latestCodeHubApkCache = { expiresAt: 0, url: null };
+const latestCodeHubApkCache = new Map();
 
-async function resolveLatestCodeHubApkUrl() {
+async function resolveLatestCodeHubApkUrl(assetName) {
   const now = Date.now();
-  if (latestCodeHubApkCache.expiresAt > now && latestCodeHubApkCache.url) return latestCodeHubApkCache.url;
-  const response = await fetch('https://api.github.com/repos/wilson360-labs/CodeHub/releases/latest', {
+  const cached = latestCodeHubApkCache.get(assetName);
+  if (cached && cached.expiresAt > now) return cached.url;
+  // CodeHub also publishes extension releases. Do not use /releases/latest:
+  // it may point to an extension instead of the APK release.
+  const response = await fetch('https://api.github.com/repos/wilson360-labs/CodeHub/releases?per_page=100', {
     headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'CodeHub-APK-Redirect' },
     signal: AbortSignal.timeout(8000),
   });
   if (!response.ok) return null;
-  const release = await response.json();
-  const asset = (release.assets || []).find(item => item?.name === 'app-release-signed.apk');
+  const releases = await response.json();
+  const release = Array.isArray(releases) && releases.find(item =>
+    !item?.draft && String(item?.tag_name || '').startsWith('apk-codehub-') &&
+    (item.assets || []).some(asset => asset?.name === assetName)
+  );
+  const asset = (release?.assets || []).find(item => item?.name === assetName);
   const url = asset?.browser_download_url || '';
   if (!url.startsWith('https://')) return null;
-  latestCodeHubApkCache = { expiresAt: now + 10 * 60 * 1000, url };
+  latestCodeHubApkCache.set(assetName, { expiresAt: now + 10 * 60 * 1000, url });
   return url;
 }
 
@@ -3319,9 +3326,14 @@ app.get('/api/download/:fileName', async (req, res) => {
     // APK releases can exceed Supabase's per-object free-tier limit. GitHub
     // Releases is the canonical signed distribution and remains available even
     // when the optional Storage mirror skips an oversized upload.
-    if (key === 'app-release-signed.apk') {
+    const codeHubApkAssets = new Set([
+      'app-release-signed.apk',
+      'app-release-arm64-v8a.apk',
+      'app-release-armeabi-v7a.apk',
+    ]);
+    if (codeHubApkAssets.has(key)) {
       try {
-        const githubUrl = await resolveLatestCodeHubApkUrl();
+        const githubUrl = await resolveLatestCodeHubApkUrl(key);
         if (githubUrl) {
           broadcast('download', { fileName: key });
           trackEvent('download', null, { app_name: key });

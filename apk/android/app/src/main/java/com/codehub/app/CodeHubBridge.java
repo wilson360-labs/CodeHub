@@ -236,6 +236,13 @@ public class CodeHubBridge {
     }
 
     @JavascriptInterface
+    public String getSupportedAbis() {
+        return android.os.Build.SUPPORTED_ABIS == null
+            ? ""
+            : android.text.TextUtils.join(",", android.os.Build.SUPPORTED_ABIS);
+    }
+
+    @JavascriptInterface
     public String checkForUpdate() {
         // Deshabilitado: el repo es privado, la API pública de GitHub no
         // sirve sus releases y no debe exponerse el repo. La actualización

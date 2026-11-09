@@ -7427,6 +7427,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <div><span style="color:#b4a0ff;font-weight:700">4.</span> ¡Listo! CodeHub aparece en tu pantalla</div>
         </div>
       </div>
+      <fieldset id="app-apk-abi-selector" style="display:none;margin:0 0 1rem;padding:.7rem;border:1px solid rgba(124,77,255,.25);border-radius:10px;background:rgba(124,77,255,.04);color:var(--text-soft,#aaa)">
+        <legend style="padding:0 .35rem;color:#b4a0ff;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Versión para tu Android</legend>
+        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="arm64-v8a" onchange="selectCodeHubApkAbi(this.value)"><span><strong>ARM64 / ARMv8</strong><br><span id="abi-arm64-hint">Android de 64 bits</span></span></label>
+        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="armeabi-v7a" onchange="selectCodeHubApkAbi(this.value)"><span><strong>ARMv7</strong><br><span id="abi-armv7-hint">Android de 32 bits</span></span></label>
+        <label style="display:flex;gap:.5rem;align-items:flex-start;padding:.3rem;font-size:.74rem"><input type="radio" name="codehub-apk-abi" value="universal" onchange="selectCodeHubApkAbi(this.value)"><span><strong>Universal ARM</strong><br>Incluye ARM64 y ARMv7; úsala si no estás seguro</span></label>
+      </fieldset>
       <!-- iOS steps (shown on iPhone/iPad) -->
       <div id="app-steps-ios" style="display:none;margin-bottom:1rem;padding:.7rem;border:1px dashed rgba(56,189,248,.25);border-radius:10px;background:rgba(56,189,248,.04)">
         <div style="font-size:.68rem;font-weight:700;color:#38bdf8;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Agregar a pantalla de inicio (iOS)</div>
@@ -7478,23 +7484,69 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('appinstalled', () => { window.__deferredPrompt = null; });
 
-  // La APK se resuelve SIEMPRE desde el build de CodeHub (backend → Supabase),
-  // nunca desde /releases/latest del repo.
-  //
-  // Motivo del cambio: /releases/latest apunta a la release más reciente del
-  // repo, y las releases de extensiones (ytm-*) la pisaban. Al pedir
-  // .../latest/download/app-release-signed.apk, GitHub redirigía al tag ytm-N
-  // (cuyo único asset es youtube-music-codebeat.eapk) → 404 y el usuario caía
-  // en la página del repo en vez de descargar.
-  //
-  // /api/download/app-release-signed.apk hace un 302 al objeto que sube
-  // build-apk.yml en cada compilación, o sea que siempre es la última APK, y
-  // además queda trackeada. El 302 lo resuelve el navegador: no hay fetch
-  // previo, así que no se descarga el binario dos veces.
-  const APK_DIRECT_URL = BACKEND_URL + '/api/download/app-release-signed.apk';
+  // El backend entrega el asset exacto de la última release de CodeHub;
+  // la copia opcional a Supabase se usa solo si cabe en su límite.
+  // Los APK por ABI reducen la descarga; universal queda como respaldo.
+  const APK_ASSETS = {
+    'arm64-v8a': 'app-release-arm64-v8a.apk',
+    'armeabi-v7a': 'app-release-armeabi-v7a.apk',
+    universal: 'app-release-signed.apk'
+  };
+  let selectedCodeHubApkAbi = 'universal';
+  let recommendedCodeHubApkAbi = 'universal';
+  let codeHubApkAbiDetected = false;
+  let userSelectedCodeHubApkAbi = false;
+
+  async function detectCodeHubApkAbi() {
+    let abis = '';
+    try {
+      if (typeof CodeHubNative !== 'undefined' && typeof CodeHubNative.getSupportedAbis === 'function') {
+        abis = CodeHubNative.getSupportedAbis() || '';
+      }
+    } catch {}
+    if (!abis && navigator.userAgentData?.getHighEntropyValues) {
+      try {
+        const data = await navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness']);
+        if (data.architecture === 'arm' && data.bitness === '64') abis = 'arm64-v8a';
+        else if (data.architecture === 'arm') abis = 'armeabi-v7a';
+        else if (data.architecture) abis = 'x86';
+      } catch {}
+    }
+    if (!abis) {
+      const ua = (navigator.userAgent || '').toLowerCase();
+      if (/arm64|aarch64|armv8/.test(ua)) abis = 'arm64-v8a';
+      else if (/armv7|armeabi/.test(ua)) abis = 'armeabi-v7a';
+    }
+    recommendedCodeHubApkAbi = /arm64-v8a|aarch64/.test(abis) ? 'arm64-v8a'
+      : /armeabi-v7a|armv7/.test(abis) ? 'armeabi-v7a'
+      : /x86/.test(abis) ? 'universal' : 'arm64-v8a';
+    codeHubApkAbiDetected = true;
+    return recommendedCodeHubApkAbi;
+  }
+
+  function renderCodeHubApkAbi() {
+    document.querySelectorAll('input[name="codehub-apk-abi"]').forEach(input => {
+      input.checked = input.value === selectedCodeHubApkAbi;
+    });
+    const hint = document.getElementById(selectedCodeHubApkAbi === 'arm64-v8a' ? 'abi-arm64-hint' : 'abi-armv7-hint');
+    if (hint && selectedCodeHubApkAbi !== 'universal') hint.textContent = 'Recomendado para este dispositivo';
+  }
+
+  function selectCodeHubApkAbi(abi) {
+    if (Object.prototype.hasOwnProperty.call(APK_ASSETS, abi)) {
+      selectedCodeHubApkAbi = abi;
+      userSelectedCodeHubApkAbi = true;
+    }
+    renderCodeHubApkAbi();
+  }
 
   async function getAPKUrl() {
-    return APK_DIRECT_URL;
+    if (!codeHubApkAbiDetected) {
+      const detectedAbi = await detectCodeHubApkAbi();
+      if (!userSelectedCodeHubApkAbi) selectedCodeHubApkAbi = detectedAbi;
+    }
+    const asset = APK_ASSETS[selectedCodeHubApkAbi] || APK_ASSETS.universal;
+    return BACKEND_URL + '/api/download/' + encodeURIComponent(asset);
   }
 
 
@@ -7510,6 +7562,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = document.getElementById('app-install-overlay');
     if (!overlay) return;
     document.getElementById('app-steps-android').style.display = _isAndroid ? 'block' : 'none';
+    const abiSelector = document.getElementById('app-apk-abi-selector');
+    if (abiSelector) abiSelector.style.display = _isAndroid ? 'block' : 'none';
     document.getElementById('app-steps-ios').style.display = _isIOS ? 'block' : 'none';
     document.getElementById('app-steps-desktop').style.display = _isMobile ? 'none' : 'block';
     const btn = document.getElementById('app-install-btn');
@@ -7522,6 +7576,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('app-install-title').textContent = '\uD83D\uDCF1 Instalar CodeHub';
       document.getElementById('app-install-sub').textContent = 'App nativa Android \u2014 APK firmado';
       btn.textContent = 'Descargar APK';
+      detectCodeHubApkAbi().then(abi => {
+        if (!userSelectedCodeHubApkAbi) selectedCodeHubApkAbi = abi;
+        renderCodeHubApkAbi();
+      });
     } else {
       document.getElementById('app-install-title').textContent = '\uD83D\uDCF1 Instalar CodeHub';
       document.getElementById('app-install-sub').textContent = 'Abre esta p\u00E1gina en tu celular';
@@ -7714,7 +7772,7 @@ document.addEventListener('DOMContentLoaded', () => {
       var major = parts[0] || 0, minor = parts[1] || 0;
       var isOld = !v || major < 7 || (major === 7 && minor < 50);
       if (!isOld) return;
-      var link = 'https://github.com/wilson360-labs/CodeHub/releases/download/apk-codehub-v7.55/app-release-signed.apk';
+      var link = BACKEND_URL + '/api/download/app-release-signed.apk';
       setTimeout(function () {
         var overlay = document.createElement('div');
         overlay.id = 'ch-rescue-overlay';

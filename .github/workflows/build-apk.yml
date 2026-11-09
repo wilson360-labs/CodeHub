@@ -429,10 +429,11 @@ jobs:
         run: |
           # Si el build falló, los pasos de diagnóstico ya lo reportaron.
           if [ ! -f "$RUNNER_TEMP/release-ok" ]; then exit 1; fi
-          # Preferir el APK de release; si no existe, cualquier .apk (debug).
-          RELEASE=$(find . -path "*outputs*" -type f -name "*.apk" 2>/dev/null | grep -i release | head -1)
-          APK="${RELEASE:-$(find . -path "*outputs*" -type f -name '*.apk' 2>/dev/null | head -1)}"
-          if [ -z "$APK" ]; then
+          RELEASE_DIR=apk/android/app/build/outputs/apk/release
+          UNIVERSAL=$(find "$RELEASE_DIR" -type f -name '*universal*.apk' -print -quit 2>/dev/null || true)
+          ARM64=$(find "$RELEASE_DIR" -type f -name '*arm64-v8a*.apk' -print -quit 2>/dev/null || true)
+          ARMV7=$(find "$RELEASE_DIR" -type f -name '*armeabi-v7a*.apk' -print -quit 2>/dev/null || true)
+          if [ -z "$UNIVERSAL" ] || [ -z "$ARM64" ] || [ -z "$ARMV7" ]; then
             echo "No APK found!"
             {
               echo "## No se encontró APK tras \`assembleRelease\` · commit \`$GITHUB_SHA\`";
@@ -456,14 +457,18 @@ jobs:
               --label "bug" 2>/dev/null || true
             exit 1
           fi
-          echo "APK=$APK"
-          APK_SIZE_BYTES=$(stat -c%s "$APK")
-          echo "APK_SIZE_BYTES=$APK_SIZE_BYTES" >> "$GITHUB_ENV"
-          echo "APK size: $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES")"
-          echo "Largest APK entries (compressed bytes):"
-          unzip -lv "$APK" | awk 'NR > 3 && NF >= 8 && $1 ~ /^[0-9]+$/ { print $3 " " $8 }' | sort -nr | head -n 15 || true
-          cp "$APK" apk/android/app-release-signed.apk
+          cp "$UNIVERSAL" apk/android/app-release-signed.apk
+          cp "$ARM64" apk/android/app-release-arm64-v8a.apk
+          cp "$ARMV7" apk/android/app-release-armeabi-v7a.apk
+          for APK in apk/android/app-release-signed.apk apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk; do
+            APK_SIZE_BYTES=$(stat -c%s "$APK")
+            echo "$(basename "$APK"): $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES")"
+            echo "Largest packaged entries in $(basename "$APK") (compressed bytes):"
+            unzip -lv "$APK" | awk 'NR > 3 && NF >= 8 && $1 ~ /^[0-9]+$/ { print $3 " " $8 }' | sort -nr | head -n 8 || true
+          done
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
+          echo "arm64_path=apk/android/app-release-arm64-v8a.apk" >> $GITHUB_OUTPUT
+          echo "armv7_path=apk/android/app-release-armeabi-v7a.apk" >> $GITHUB_OUTPUT
 
       - name: Verificar pin de firma (keystore original)
         if: env.HAS_RELEASE_SECRETS == 'true'
@@ -472,7 +477,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
         run: |
-          APK="${{ steps.find-apk.outputs.path }}"
           PIN="$GITHUB_WORKSPACE/apk/android/keystore-pin.sha256"
           EXPECTED=$(tr -d ' :\r\n' < "$PIN" | tr 'A-F' 'a-f')
           if [ -z "$EXPECTED" ]; then
@@ -481,38 +485,24 @@ jobs:
           fi
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name 'apksigner' -type f | sort -V | tail -1)
           if [ -z "$APKSIGNER" ]; then echo "::error::apksigner no encontrado en el SDK."; exit 1; fi
-          DIGEST=$("$APKSIGNER" verify --print-certs "$APK" | grep -i 'SHA-256 digest' | head -1 | sed -E 's/.*: *//' | tr 'A-F' 'a-f' | tr -d ' :\r\n')
-          if [ -z "$DIGEST" ]; then
-            echo "::error::No se pudo leer el SHA-256 del certificado del APK."
-            exit 1
-          fi
-          echo "Cert digest (firmado): $DIGEST"
-          echo "Pin esperado (v6.96): $EXPECTED"
-          if [ "$DIGEST" != "$EXPECTED" ]; then
-            {
-              echo "## Firma inesperada en \`assembleRelease\` · commit \`$GITHUB_SHA\`";
-              echo "";
-              echo "El APK firmado **NO coincide con el keystore original** (pin en \`apk/android/keystore-pin.sha256\`, extraído del release v6.96).";
-              echo "- **Firma detectada:** \`$DIGEST\`";
-              echo "- **Pin esperado:** \`$EXPECTED\`";
-              echo "";
-              echo "Si el keystore cambió deliberadamente, regenera el pin con el workflow **Generate Cert Pin** (los usuarios instalados tendrán que desinstalar/reinstalar la app).";
-            } > /tmp/pin-error-body.md
-            gh issue create --repo "$GITHUB_REPO" \
-              --title "CI: firma distinta al keystore original ($GITHUB_SHA)" \
-              --body-file /tmp/pin-error-body.md \
-              --label "bug" 2>/dev/null || true
-            echo "::error::La firma del APK no coincide con el keystore original. No se publica el release."
-            exit 1
-          fi
-          echo "✅ Firma verificada contra el keystore original."
+          for APK in apk/android/app-release-signed.apk apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk; do
+            DIGEST=$("$APKSIGNER" verify --print-certs "$APK" | grep -i 'SHA-256 digest' | head -1 | sed -E 's/.*: *//' | tr 'A-F' 'a-f' | tr -d ' :\r\n')
+            if [ -z "$DIGEST" ] || [ "$DIGEST" != "$EXPECTED" ]; then
+              echo "::error::La firma de $(basename "$APK") no coincide con el keystore original."
+              exit 1
+            fi
+            echo "Firma verificada: $(basename "$APK") · $DIGEST"
+          done
 
       - name: Upload APK artifact
         if: always() && hashFiles('apk/android/**/*.apk') != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: codehub-apk-build
-          path: apk/android/**/*.apk
+          path: |
+            apk/android/app-release-signed.apk
+            apk/android/app-release-arm64-v8a.apk
+            apk/android/app-release-armeabi-v7a.apk
           retention-days: 7
 
       - name: Upload APK to Supabase Storage
@@ -523,22 +513,28 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           set -euo pipefail
-          APK=apk/android/app-release-signed.apk
-          APK_SIZE_BYTES=$(stat -c%s "$APK")
           SUPABASE_FREE_LIMIT_BYTES=$((50 * 1000 * 1000))
-          if [ "$APK_SIZE_BYTES" -gt "$SUPABASE_FREE_LIMIT_BYTES" ]; then
-            echo "::warning::APK pesa $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES") y supera el límite de 50 MB de Supabase Storage. Se omite esa copia; el release de GitHub sigue siendo la descarga oficial."
-            exit 0
-          fi
-          curl --fail-with-body --show-error --silent --retry 2 --retry-all-errors \
-            --connect-timeout 15 --max-time 240 -X POST \
-            -H "apikey: ${SUPABASE_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_KEY}" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            -H "x-upsert: true" \
-            "${SUPABASE_URL}/storage/v1/object/CodeHub/app-release-signed.apk" \
-            --data-binary @apk/android/app-release-signed.apk
-          echo "✅ APK uploaded to Supabase Storage"
+          for APK in apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk; do
+            [ -f "$APK" ] || continue
+            APK_SIZE_BYTES=$(stat -c%s "$APK")
+            ASSET=$(basename "$APK")
+            if [ "$APK_SIZE_BYTES" -gt "$SUPABASE_FREE_LIMIT_BYTES" ]; then
+              echo "::warning::$ASSET pesa $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES") y supera 50 MB. Se conserva como descarga en GitHub y se omite el espejo Supabase."
+              continue
+            fi
+            if curl --fail-with-body --show-error --silent --retry 2 --retry-all-errors \
+              --connect-timeout 15 --max-time 240 -X POST \
+              -H "apikey: ${SUPABASE_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_KEY}" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              -H "x-upsert: true" \
+              "${SUPABASE_URL}/storage/v1/object/CodeHub/${ASSET}" \
+              --data-binary "@$APK"; then
+              echo "✅ Supabase mirror actualizado: $ASSET"
+            else
+              echo "::warning::No se pudo actualizar el espejo Supabase para $ASSET; la descarga de GitHub sigue disponible."
+            fi
+          done
 
       - name: Create Release
         if: env.HAS_RELEASE_SECRETS == 'true'
@@ -554,7 +550,10 @@ jobs:
             2. Abre en tu Android
             3. Acepta fuentes desconocidas
             4. ¡Listo!
-          files: ${{ steps.find-apk.outputs.path }}
+          files: |
+            ${{ steps.find-apk.outputs.path }}
+            ${{ steps.find-apk.outputs.arm64_path }}
+            ${{ steps.find-apk.outputs.armv7_path }}
           make_latest: true
           generate_release_notes: true
         env:
