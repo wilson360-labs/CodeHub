@@ -24,6 +24,10 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.animation.AlphaAnimation
+import android.view.animation.AnimationSet
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.TranslateAnimation
 import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
@@ -32,6 +36,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.TextSwitcher
 import android.widget.Toast
 import okhttp3.Call
 import okhttp3.OkHttpClient
@@ -108,6 +113,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private var pendingAttachmentLabel = ""
     private var activeCall: Call? = null
     private var readRepliesAloud = false
+    private var handsFreeEnabled = false
     private val authToken by lazy {
         intent.getStringExtra(EXTRA_AUTH_TOKEN).orEmpty().ifBlank { NativeAuthSessionStore.accessToken(this) }
     }
@@ -131,6 +137,27 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var status: TextView
     private lateinit var attachLabel: TextView
     private lateinit var modeRow: LinearLayout
+    private lateinit var emiVoiceControls: LinearLayout
+    private lateinit var quickActionsContainer: View
+    private lateinit var micButton: ImageView
+    private lateinit var clearChatButton: ImageView
+    private var brandMorphSwitcher: TextSwitcher? = null
+    private var brandMorphIndex = 0
+    private var sendButtonBusy = false
+    private val brandMorphPhrases = listOf(
+        "WIL.E COPILOT · IA personal",
+        "Ideas claras. Respuestas útiles.",
+        "Crea, explora y resuelve.",
+        "Tu espacio para pensar en voz alta."
+    )
+    private val brandMorphTick = object : Runnable {
+        override fun run() {
+            val switcher = brandMorphSwitcher ?: return
+            brandMorphIndex = (brandMorphIndex + 1) % brandMorphPhrases.size
+            switcher.setText(brandMorphPhrases[brandMorphIndex])
+            switcher.postDelayed(this, 4200L)
+        }
+    }
     private lateinit var tts: TextToSpeech
     private var ttsReady = false
 
@@ -150,7 +177,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 chatPreferences.edit().putString(SESSION_KEY, it).apply()
             }
         activeMode = Mode.entries.firstOrNull { it.id == chatPreferences.getString(MODE_KEY, "auto") } ?: Mode.AUTO
-        readRepliesAloud = chatPreferences.getBoolean("read_replies", false)
+        readRepliesAloud = chatPreferences.getBoolean("emi_auto_speak", chatPreferences.getBoolean("read_replies", false))
+        handsFreeEnabled = chatPreferences.getBoolean("emi_e2e_voice", false)
+        if (handsFreeEnabled) readRepliesAloud = true
         loadHistory()
         buildUi()
         renderHistory()
@@ -177,19 +206,46 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             installPressFeedback(this)
         }, LinearLayout.LayoutParams(dp(42), dp(48)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        brand.addView(text("WIL.E COPILOT", 16f, Color.WHITE, true))
-        brand.addView(text("IA de CodeHub · lista para ayudarte", 11f, 0xFF9BA8BD.toInt()))
+        val codeHubTitle = text("CodeHub", 18f, Color.WHITE, true).apply {
+            letterSpacing = .035f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            alpha = 0f
+            scaleX = .96f
+            scaleY = .96f
+        }
+        brand.addView(codeHubTitle)
+        val morphLine = TextSwitcher(this).apply {
+            setFactory {
+                text(brandMorphPhrases.first(), 10.5f, 0xFF98A8BF.toInt()).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }
+            }
+            setCurrentText(brandMorphPhrases.first())
+            setInAnimation(morphAnimation(true))
+            setOutAnimation(morphAnimation(false))
+            contentDescription = "WIL.E COPILOT, inteligencia artificial de CodeHub"
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            brandMorphSwitcher = this
+        }
+        brand.addView(morphLine, LinearLayout.LayoutParams(-1, dp(20)))
+        codeHubTitle.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(480L)
+            .setInterpolator(DecelerateInterpolator()).start()
         top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(ImageView(this).apply {
+        clearChatButton = ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_trash)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = rounded(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFB8C5D8.toInt())
+            scaleType = ImageView.ScaleType.CENTER
+            background = actionIconBackground(0xFF151D2B.toInt(), 0xFF354258.toInt())
             contentDescription = "Borrar conversación"
             isClickable = true
             isFocusable = true
-            setOnClickListener { confirmClearChat() }
+            setOnClickListener {
+                animate().cancel()
+                animate().rotation(-12f).setDuration(90L).withEndAction {
+                    animate().rotation(0f).setDuration(150L).withEndAction { confirmClearChat() }.start()
+                }.start()
+            }
             installPressFeedback(this)
-        }, LinearLayout.LayoutParams(dp(42), dp(48)))
+        }
+        top.addView(clearChatButton, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(4) })
         top.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_more)
             imageTintList = android.content.res.ColorStateList.valueOf(0xFFCAD4E8.toInt())
@@ -216,6 +272,14 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         root.addView(modeScroll, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         renderModes()
 
+        emiVoiceControls = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(11), dp(8), dp(11), dp(8))
+            background = rounded(0xFF101A27.toInt(), dp(16), 0xFF26384A.toInt())
+        }
+        root.addView(emiVoiceControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+        renderEmiVoiceControls()
+
         messageScroll = ScrollView(this).apply {
             clipToPadding = false
             isFillViewport = false
@@ -237,11 +301,12 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 input.requestFocus()
             }, LinearLayout.LayoutParams(-2, dp(36)).apply { marginEnd = dp(7) })
         }
-        root.addView(HorizontalScrollView(this).apply {
+        quickActionsContainer = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             clipToPadding = false
             addView(quick)
-        }, LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin = dp(7) })
+        }
+        root.addView(quickActionsContainer, LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin = dp(7) })
 
         attachLabel = text("", 11f, 0xFF8CCBFF.toInt()).apply {
             visibility = View.GONE
@@ -250,26 +315,24 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         root.addView(attachLabel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
 
         val composer = LinearLayout(this).apply {
-            gravity = Gravity.BOTTOM
-            setPadding(dp(7), dp(7), dp(7), dp(7))
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF1B2537.toInt(), 0xFF111824.toInt())).apply {
-                cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), 0xFF344157.toInt())
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(13), dp(9), dp(9), dp(8))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF182334.toInt(), 0xFF111824.toInt())).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), 0xFF3A4A61.toInt())
             }
         }
-        val attach = smallIconAction(R.drawable.ic_ai_attach, "Adjuntar imagen o PDF") { chooseAttachment() }
-        composer.addView(attach, LinearLayout.LayoutParams(dp(42), dp(46)))
         input = EditText(this).apply {
-            hint = "Pregunta, pega código o escribe /help"
-            setHintTextColor(0xFF77849A.toInt())
+            hint = "Escribe tu pregunta o pega código…"
+            setHintTextColor(0xFF8492A8.toInt())
             setTextColor(Color.WHITE)
-            textSize = 15f
-            setPadding(dp(9), dp(9), dp(6), dp(8))
+            textSize = 16f
+            setPadding(dp(2), dp(5), dp(2), dp(5))
             setBackgroundColor(Color.TRANSPARENT)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
             setHorizontallyScrolling(false)
-            minLines = 1
-            maxLines = 5
+            minLines = 2
+            maxLines = 6
             imeOptions = EditorInfo.IME_ACTION_SEND
             setOnEditorActionListener { _, actionId, event ->
                 if (actionId == EditorInfo.IME_ACTION_SEND || (event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER && !event.isShiftPressed)) {
@@ -277,14 +340,24 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 } else false
             }
         }
-        composer.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
-        composer.addView(smallIconAction(R.drawable.ic_ai_mic, "Dictar mensaje") { startSpeechInput() }, LinearLayout.LayoutParams(dp(42), dp(46)))
+        composer.addView(input, LinearLayout.LayoutParams(-1, -2))
+        val composeActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        composeActions.addView(smallIconAction(R.drawable.ic_ai_attach, "Adjuntar imagen o PDF") { chooseAttachment() }, LinearLayout.LayoutParams(dp(42), dp(42)))
+        micButton = smallIconAction(R.drawable.ic_ai_mic, "Dictar mensaje") {
+            animateMicPulse()
+            startSpeechInput()
+        }
+        composeActions.addView(micButton, LinearLayout.LayoutParams(dp(42), dp(42)))
+        composeActions.addView(text("Enter enviar · Shift+Enter nueva línea", 10f, 0xFF7F8DA3.toInt()).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5), 0, dp(4), 0)
+        }, LinearLayout.LayoutParams(0, -2, 1f))
         sendButton = ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_send)
             imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF7D8AFF.toInt(), 0xFF5868E8.toInt())).apply {
-                cornerRadius = dp(15).toFloat()
-                setStroke(dp(1), 0xFF9AA5FF.toInt())
+                cornerRadius = dp(21).toFloat()
+                setStroke(dp(1), 0xFFB0B9FF.toInt())
             }
             scaleType = ImageView.ScaleType.CENTER
             elevation = dp(3).toFloat()
@@ -293,7 +366,8 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setOnClickListener { if (activeCall != null) cancelRequest() else sendMessage() }
             installPressFeedback(this)
         }
-        composer.addView(sendButton, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginStart = dp(4) })
+        composeActions.addView(sendButton, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginStart = dp(3) })
+        composer.addView(composeActions, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
         root.addView(composer)
 
         setContentView(root)
@@ -307,6 +381,103 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             val on = mode == activeMode
             val button = chip(mode.label, on) { activeMode = mode; chatPreferences.edit().putString(MODE_KEY, mode.id).apply(); renderModes() }
             modeRow.addView(button, LinearLayout.LayoutParams(-2, dp(36)).apply { marginEnd = dp(7) })
+        }
+    }
+
+    private fun morphAnimation(entering: Boolean) = AnimationSet(true).apply {
+        addAnimation(AlphaAnimation(if (entering) 0f else 1f, if (entering) 1f else 0f))
+        if (entering) addAnimation(TranslateAnimation(0f, 0f, dp(5).toFloat(), 0f))
+        duration = if (entering) 360L else 220L
+        interpolator = DecelerateInterpolator()
+    }
+
+    private fun actionIconBackground(fill: Int, stroke: Int) = GradientDrawable().apply {
+        setColor(fill)
+        shape = GradientDrawable.OVAL
+        setStroke(dp(1), stroke)
+    }
+
+    private fun animateMicPulse() {
+        if (!::micButton.isInitialized) return
+        micButton.animate().cancel()
+        micButton.animate().scaleX(1.12f).scaleY(1.12f).setDuration(130L).withEndAction {
+            if (!isFinishing && !isDestroyed) micButton.animate().scaleX(1f).scaleY(1f).setDuration(210L).start()
+        }.start()
+    }
+
+    private fun renderEmiVoiceControls() {
+        if (!::emiVoiceControls.isInitialized) return
+        emiVoiceControls.removeAllViews()
+        val heading = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val indicator = View(this).apply {
+            background = GradientDrawable().apply {
+                setColor(if (handsFreeEnabled || readRepliesAloud) 0xFF61D8B5.toInt() else 0xFF64748B.toInt())
+                shape = GradientDrawable.OVAL
+            }
+        }
+        heading.addView(indicator, LinearLayout.LayoutParams(dp(7), dp(7)))
+        heading.addView(text("EMI.VOICE", 11f, 0xFFE2EAF5.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7) })
+        heading.addView(text("· voz nativa", 11f, 0xFF8999AE.toInt()), LinearLayout.LayoutParams(0, -2, 1f))
+        heading.addView(text(if (handsFreeEnabled) "MODO ACTIVO" else if (readRepliesAloud) "ACTIVA" else "DESACTIVADA", 9f,
+            if (handsFreeEnabled || readRepliesAloud) 0xFF77E4C2.toInt() else 0xFF75839A.toInt(), true))
+        emiVoiceControls.addView(heading)
+
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        actions.addView(voiceToggle(
+            R.drawable.ic_voice_speaker, "Respuesta por voz", "WIL.E lee la respuesta", readRepliesAloud
+        ) { toggleAutoSpeak() }, LinearLayout.LayoutParams(0, dp(50), 1f).apply { marginEnd = dp(5); topMargin = dp(7) })
+        actions.addView(voiceToggle(
+            R.drawable.ic_voice_handsfree, "Manos libres", "Dicta y envía", handsFreeEnabled
+        ) { toggleHandsFree() }, LinearLayout.LayoutParams(0, dp(50), 1f).apply { marginStart = dp(5); topMargin = dp(7) })
+        emiVoiceControls.addView(actions)
+    }
+
+    private fun voiceToggle(icon: Int, title: String, subtitle: String, enabled: Boolean, action: () -> Unit): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(9), dp(5), dp(7), dp(5))
+            background = rounded(if (enabled) 0xFF18372F.toInt() else 0xFF151F2D.toInt(), dp(13),
+                if (enabled) 0xFF3A8D78.toInt() else 0xFF2C3A4D.toInt())
+            isClickable = true
+            isFocusable = true
+            contentDescription = "$title, ${if (enabled) "activado" else "desactivado"}"
+            setOnClickListener { action() }
+            addView(ImageView(this@NativeAiChatActivity).apply {
+                setImageResource(icon)
+                imageTintList = android.content.res.ColorStateList.valueOf(if (enabled) 0xFF8BE7C9.toInt() else 0xFFB6C4D8.toInt())
+                scaleType = ImageView.ScaleType.CENTER
+            }, LinearLayout.LayoutParams(dp(24), dp(24)))
+            val labels = LinearLayout(this@NativeAiChatActivity).apply { orientation = LinearLayout.VERTICAL }
+            labels.addView(text(title, 10f, if (enabled) 0xFFE4FFF6.toInt() else 0xFFE0E8F3.toInt(), true))
+            labels.addView(text(subtitle, 9f, if (enabled) 0xFF8DCCB7.toInt() else 0xFF8997AB.toInt()))
+            addView(labels, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6) })
+            installPressFeedback(this)
+        }
+
+    private fun persistVoicePreferences() {
+        chatPreferences.edit()
+            .putBoolean("emi_auto_speak", readRepliesAloud)
+            .putBoolean("read_replies", readRepliesAloud)
+            .putBoolean("emi_e2e_voice", handsFreeEnabled)
+            .apply()
+        renderEmiVoiceControls()
+    }
+
+    private fun toggleAutoSpeak() {
+        readRepliesAloud = !readRepliesAloud
+        if (!readRepliesAloud) handsFreeEnabled = false
+        persistVoicePreferences()
+    }
+
+    private fun toggleHandsFree() {
+        handsFreeEnabled = !handsFreeEnabled
+        if (handsFreeEnabled) {
+            readRepliesAloud = true
+            persistVoicePreferences()
+            startSpeechInput()
+        } else {
+            persistVoicePreferences()
         }
     }
 
@@ -337,7 +508,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             generateImage(raw)
             return
         }
-        val userText = textValue + if (pendingAttachmentLabel.isNotBlank()) "\n\n📎 $pendingAttachmentLabel" else ""
+        val userText = textValue + if (pendingAttachmentLabel.isNotBlank()) "\n\nAdjunto: $pendingAttachmentLabel" else ""
         messages.add(ChatMessage("user", userText))
         val request = JSONObject().put("message", activeMode.prefix + textValue).put("sessionId", sessionId).put("memory", true)
         pendingAttachment?.let { attachment ->
@@ -486,7 +657,8 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             "/model" -> addAssistant("WIL.E COPILOT · enrutamiento multi-proveedor desde el backend de CodeHub.")
             "/jarvis" -> {
                 readRepliesAloud = arg.equals("on", true)
-                chatPreferences.edit().putBoolean("read_replies", readRepliesAloud).apply()
+                if (!readRepliesAloud) handsFreeEnabled = false
+                persistVoicePreferences()
                 addAssistant(if (readRepliesAloud) "Lectura en voz alta activada. Usa /jarvis off para desactivarla." else "Lectura automática desactivada.")
             }
             "/skills" -> loadSkills()
@@ -637,6 +809,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun addAssistant(text: String, mediaUrl: String? = null) {
         messages.add(ChatMessage("assistant", text, mediaUrl))
         persistHistory(); renderHistory(); scrollToBottom()
+        if (readRepliesAloud && ttsReady && text.isNotBlank()) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "emi-voice-reply")
     }
 
     private fun clearChat() {
@@ -704,7 +877,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == SPEECH_INPUT && resultCode == RESULT_OK) {
             val phrase = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty()
-            if (phrase.isNotBlank()) { input.setText(if (input.text.isNullOrBlank()) phrase else "${input.text} $phrase"); input.setSelection(input.text.length) }
+            if (phrase.isNotBlank()) {
+                input.setText(if (input.text.isNullOrBlank()) phrase else "${input.text} $phrase")
+                input.setSelection(input.text.length)
+                if (handsFreeEnabled) sendMessage()
+            }
         }
         if (requestCode != PICK_ATTACHMENT || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
@@ -719,7 +896,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             }
             runOnUiThread {
                 setBusy(false)
-                result.onSuccess { pendingAttachment = it.first; pendingAttachmentLabel = it.second; attachLabel.text = "📎 ${it.second} · toca para quitar"; attachLabel.visibility = View.VISIBLE }
+                result.onSuccess { pendingAttachment = it.first; pendingAttachmentLabel = it.second; attachLabel.text = "ADJUNTO · ${it.second} · toca para quitar"; attachLabel.visibility = View.VISIBLE }
                     .onFailure { Toast.makeText(this, "No se pudo abrir el archivo: ${it.message}", Toast.LENGTH_LONG).show() }
             }
         }.start()
@@ -815,12 +992,16 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == SPEECH_INPUT) {
             if (grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) launchSpeechInput()
-            else Toast.makeText(this, "Permite el micrófono para dictar mensajes.", Toast.LENGTH_SHORT).show()
+            else {
+                if (handsFreeEnabled) { handsFreeEnabled = false; persistVoicePreferences() }
+                Toast.makeText(this, "Permite el micrófono para dictar mensajes.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
     private fun renderHistory() {
         if (!::messageList.isInitialized) return
+        if (::quickActionsContainer.isInitialized) quickActionsContainer.visibility = if (messages.isEmpty()) View.VISIBLE else View.GONE
         messageList.removeAllViews()
         if (messages.isEmpty()) {
             val welcome = LinearLayout(this).apply {
@@ -829,7 +1010,16 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 setPadding(dp(24), dp(34), dp(24), dp(30))
                 background = rounded(0xFF131D2C.toInt(), dp(24), 0xFF283850.toInt())
             }
-            welcome.addView(text("✦", 35f, 0xFF88A2FF.toInt(), true).apply { gravity = Gravity.CENTER })
+            welcome.addView(ImageView(this).apply {
+                setImageResource(R.drawable.ic_wile_spark)
+                imageTintList = android.content.res.ColorStateList.valueOf(0xFFB8C3FF.toInt())
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF344274.toInt(), 0xFF202A49.toInt())).apply {
+                    shape = GradientDrawable.OVAL
+                    setStroke(dp(1), 0xFF5869AA.toInt())
+                }
+                setPadding(dp(9), dp(9), dp(9), dp(9))
+                contentDescription = "WIL.E"
+            }, LinearLayout.LayoutParams(dp(48), dp(48)))
             welcome.addView(text("Hola, soy WIL.E", 24f, Color.WHITE, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
             welcome.addView(text("Tu copiloto de CodeHub. Pregunta, comparte una imagen o trabaja con un PDF.", 14f, 0xFFB2BED0.toInt()).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f) }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             messageList.addView(welcome)
@@ -845,7 +1035,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setPadding(dp(13), dp(11), dp(13), dp(11))
             background = rounded(if (isUser) 0xFF252C50.toInt() else 0xFF141C29.toInt(), dp(18), if (isUser) 0xFF414B7A.toInt() else 0xFF283449.toInt())
         }
-        wrapper.addView(text(if (isUser) "TÚ" else "✦ WIL.E", 10f, if (isUser) 0xFFAEB8FF.toInt() else 0xFF82D9E8.toInt(), true))
+        wrapper.addView(text(if (isUser) "TÚ" else "WIL.E", 10f, if (isUser) 0xFFAEB8FF.toInt() else 0xFF82D9E8.toInt(), true))
         if (message.text.isNotBlank()) {
             val body = TextView(this).apply {
                 text = message.text
@@ -922,6 +1112,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun smallIconAction(icon: Int, description: String, action: () -> Unit) = ImageView(this).apply {
         setImageResource(icon)
         imageTintList = android.content.res.ColorStateList.valueOf(0xFFDCE6F5.toInt())
+        background = actionIconBackground(0xFF182334.toInt(), 0xFF34445A.toInt())
         contentDescription = description
         scaleType = ImageView.ScaleType.CENTER
         isClickable = true
@@ -931,27 +1122,56 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun setSendButtonState(busy: Boolean) {
-        sendButton.setImageResource(if (busy) R.drawable.ic_ai_stop else R.drawable.ic_ai_send)
-        sendButton.contentDescription = if (busy) "Detener respuesta" else "Enviar mensaje"
-        val colors = if (busy) intArrayOf(0xFFE16A76.toInt(), 0xFFB94254.toInt())
-            else intArrayOf(0xFF7D8AFF.toInt(), 0xFF5868E8.toInt())
-        val stroke = if (busy) 0xFFFFA2A9.toInt() else 0xFF9AA5FF.toInt()
-        sendButton.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
-            cornerRadius = dp(15).toFloat()
-            setStroke(dp(1), stroke)
+        if (!::sendButton.isInitialized) return
+        val changed = sendButtonBusy != busy
+        sendButtonBusy = busy
+        val applyState = {
+            sendButton.setImageResource(if (busy) R.drawable.ic_ai_stop else R.drawable.ic_ai_send)
+            sendButton.contentDescription = if (busy) "Detener respuesta" else "Enviar mensaje"
+            val colors = if (busy) intArrayOf(0xFFE16A76.toInt(), 0xFFB94254.toInt())
+                else intArrayOf(0xFF7D8AFF.toInt(), 0xFF5868E8.toInt())
+            val stroke = if (busy) 0xFFFFA2A9.toInt() else 0xFFB0B9FF.toInt()
+            sendButton.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), stroke)
+            }
         }
+        if (!changed) { applyState(); return }
+        sendButton.animate().cancel()
+        sendButton.animate().scaleX(.72f).scaleY(.72f).alpha(.35f).setDuration(90L).withEndAction {
+            if (isFinishing || isDestroyed) return@withEndAction
+            applyState()
+            sendButton.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(190L)
+                .setInterpolator(DecelerateInterpolator()).start()
+        }.start()
     }
 
     private fun installPressFeedback(view: View) {
         view.setOnTouchListener { touched, event ->
-            val scale = if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) .92f else 1f
-            touched.animate().scaleX(scale).scaleY(scale).setDuration(110L).start()
+            val scale = if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) .96f else 1f
+            touched.animate().scaleX(scale).scaleY(scale).setDuration(130L).setInterpolator(DecelerateInterpolator()).start()
             false
         }
     }
 
     override fun onInit(statusCode: Int) { ttsReady = statusCode == TextToSpeech.SUCCESS; if (ttsReady) tts.language = Locale("es", "GT") }
-    override fun onDestroy() { activeCall?.cancel(); finishThinking(); if (::tts.isInitialized) { tts.stop(); tts.shutdown() }; super.onDestroy() }
+    override fun onResume() {
+        super.onResume()
+        brandMorphSwitcher?.removeCallbacks(brandMorphTick)
+        brandMorphSwitcher?.postDelayed(brandMorphTick, 4200L)
+    }
+    override fun onPause() {
+        brandMorphSwitcher?.removeCallbacks(brandMorphTick)
+        super.onPause()
+    }
+    override fun onDestroy() {
+        brandMorphSwitcher?.removeCallbacks(brandMorphTick)
+        brandMorphSwitcher = null
+        activeCall?.cancel()
+        finishThinking()
+        if (::tts.isInitialized) { tts.stop(); tts.shutdown() }
+        super.onDestroy()
+    }
 
     private fun Boolean?.orFalse() = this ?: false
 }
