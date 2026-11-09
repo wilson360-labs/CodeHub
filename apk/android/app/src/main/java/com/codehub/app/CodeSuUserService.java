@@ -173,15 +173,15 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                     failed.add(packageName == null ? "(desconocido)" : packageName);
                     continue;
                 }
-                if (level == LEVEL_HIBERNATE || level == LEVEL_UNHIBERNATE) {
-                    String state = level == LEVEL_HIBERNATE ? "true" : "false";
-                    String output = readCommand(new String[]{"cmd", "app_hibernation", "set-state", packageName, state});
-                    if (output.toLowerCase(java.util.Locale.ROOT).contains("error")) failed.add(packageName);
-                    else stopped.add(packageName);
-                    continue;
-                }
-                String command = level == LEVEL_BACKGROUND ? "kill" : "force-stop";
                 try {
+                    if (level == LEVEL_HIBERNATE || level == LEVEL_UNHIBERNATE) {
+                        String state = level == LEVEL_HIBERNATE ? "true" : "false";
+                        String output = readCommand(new String[]{"cmd", "app_hibernation", "set-state", packageName, state});
+                        if (output.toLowerCase(java.util.Locale.ROOT).contains("error")) failed.add(packageName);
+                        else stopped.add(packageName);
+                        continue;
+                    }
+                    String command = level == LEVEL_BACKGROUND ? "kill" : "force-stop";
                     if (level == LEVEL_KILLER && Process.myUid() == 0) {
                         for (String pid : processIdsForPackage(packageName)) {
                             Runtime.getRuntime().exec(new String[]{"/system/bin/kill", "-9", pid}).waitFor();
