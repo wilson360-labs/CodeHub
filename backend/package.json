@@ -14,7 +14,7 @@
   "dependencies": {
     "compression": "^1.7.4",
     "cors": "^2.8.5",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.9",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
@@ -25,7 +25,7 @@
     "@supabase/supabase-js": "^2.43.0",
     "busboy": "^1.6.0",
     "@octokit/rest": "^22.0.1",
-    "web-push": "^3.6.7",
+    "web-push": "^4.0.0",
     "firebase-admin": "^14.4.0",
     "node-pty": "^1.1.0"
   },
@@ -36,7 +36,7 @@
     "qs": "6.16.0"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
+    "eslint": "^10.14.0",
     "prettier": "^3.2.5"
   },
   "license": "MIT"
