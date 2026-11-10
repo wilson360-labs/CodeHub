@@ -26,6 +26,7 @@ public final class CodeSuAppPolicy {
         packages.add("android");
         packages.add("com.codehub.app");
         packages.add("moe.shizuku.privileged.api");
+        packages.add("com.android.shell");
         packages.add("com.android.systemui");
         packages.add("com.android.settings");
         packages.add("com.android.phone");

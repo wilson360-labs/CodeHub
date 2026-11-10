@@ -34,6 +34,8 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     public static final int LEVEL_UNHIBERNATE = 4;
     private static final String OWN_PACKAGE = "com.codehub.app";
     private static final String SHIZUKU_PACKAGE = "moe.shizuku.privileged.api";
+    // Shizuku's UserService runs with the shell UID. Never terminate its host package.
+    private static final String SHELL_PACKAGE = "com.android.shell";
     private static final Pattern PACKAGE_PATTERN = Pattern.compile("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+");
     private static final long COMMAND_TIMEOUT_MS = 15_000L;
     private static final long PACKAGE_INDEX_TTL_MS = 30_000L;
@@ -223,7 +225,8 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                 && PACKAGE_PATTERN.matcher(packageName).matches()
                 && !OWN_PACKAGE.equals(packageName)
                 && !packageName.startsWith(OWN_PACKAGE + ".")
-                && !SHIZUKU_PACKAGE.equals(packageName);
+                && !SHIZUKU_PACKAGE.equals(packageName)
+                && !SHELL_PACKAGE.equals(packageName);
     }
 
     private static int runAm(String operation, String packageName) throws Exception {
