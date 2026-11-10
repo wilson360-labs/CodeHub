@@ -99,7 +99,7 @@ public final class CodeSuAutoKillerWorker extends Worker {
 
     private ICodeSuRemoteService bindService() throws Exception {
         args = new Shizuku.UserServiceArgs(new ComponentName(appContext, CodeSuUserService.class))
-            .daemon(false).processNameSuffix("codesu").debuggable(false).version(3);
+            .daemon(false).processNameSuffix("codesu").debuggable(false).version(CodeSuUserService.USER_SERVICE_VERSION);
         connected = new CountDownLatch(1);
         connection = new ServiceConnection() {
             @Override public void onServiceConnected(ComponentName name, IBinder binder) {

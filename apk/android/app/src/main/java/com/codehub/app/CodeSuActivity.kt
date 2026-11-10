@@ -109,7 +109,7 @@ class CodeSuActivity : Activity() {
             .daemon(false)
             .processNameSuffix("codesu")
             .debuggable(false)
-            .version(3)
+            .version(CodeSuUserService.USER_SERVICE_VERSION)
     }
 
     private val userServiceConnection = object : ServiceConnection {

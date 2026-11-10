@@ -25,6 +25,8 @@ import java.util.regex.Pattern;
 /** Small Shizuku UserService that runs only validated app-stop operations as shell. */
 @Keep
 public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
+    /** Increase whenever this UserService implementation changes so Shizuku replaces stale code. */
+    public static final int USER_SERVICE_VERSION = 4;
     public static final int LEVEL_BACKGROUND = 0;
     public static final int LEVEL_FORCE_STOP = 1;
     public static final int LEVEL_KILLER = 2;
