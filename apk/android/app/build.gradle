@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
     id 'org.jetbrains.kotlin.android'
 }
 
@@ -102,6 +103,7 @@ dependencies {
     // YTXTube aún usa Coil 2; Coil 3 permanece aislado para las imágenes de CodeHub.
     implementation 'io.coil-kt:coil:2.7.0'
     implementation platform('com.google.firebase:firebase-bom:34.18.0')
+    implementation 'com.google.firebase:firebase-crashlytics'
     implementation 'com.google.firebase:firebase-messaging'
     // Requerido en runtime por FirebaseInstallations (JavaDataStorage) desde
     // versiones recientes del BOM — sin esto, NoClassDefFoundError al

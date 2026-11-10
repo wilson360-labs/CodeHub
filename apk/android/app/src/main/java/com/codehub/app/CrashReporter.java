@@ -3,6 +3,8 @@ package com.codehub.app;
 import android.content.Context;
 import android.os.Build;
 
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -33,6 +35,7 @@ public class CrashReporter {
 
     /** Reporte en background — excepciones atrapadas que no matan la app (try/catch en onCreate, etc). */
     public static void reportCaught(final Context ctx, final String tag, final Throwable t) {
+        recordNonFatal(tag, t);
         new Thread(new Runnable() {
             @Override public void run() { send(ctx, buildBody(ctx, false, tag, t), 10000); }
         }).start();
@@ -41,6 +44,9 @@ public class CrashReporter {
     /** Reporte en background — errores JS del sitio dentro del WebView (window.onerror / unhandledrejection). */
     public static void reportJs(final Context ctx, final String message, final String source,
                                  final String line, final String col, final String stack) {
+        RuntimeException jsError = new RuntimeException(
+            safe(message) + " (" + safe(source) + ":" + safe(line) + ":" + safe(col) + ")");
+        recordNonFatal("javascript", jsError);
         new Thread(new Runnable() {
             @Override public void run() {
                 try {
@@ -141,6 +147,17 @@ public class CrashReporter {
         PrintWriter pw = new PrintWriter(sw);
         t.printStackTrace(pw);
         return sw.toString();
+    }
+
+    /** Registra errores recuperables en Crashlytics sin afectar el flujo de Telegram. */
+    private static void recordNonFatal(String tag, Throwable error) {
+        try {
+            FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
+            crashlytics.setCustomKey("codehub_tag", safe(tag));
+            crashlytics.recordException(error);
+        } catch (Throwable ignored) {
+            // Firebase debe ser opcional para el flujo existente de reportes.
+        }
     }
 
     private static String safe(String s) { return s == null ? "" : s; }
