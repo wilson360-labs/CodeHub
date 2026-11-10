@@ -23,6 +23,8 @@ class CodeHubPrivacyActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var blocked: TextView
     private lateinit var toggle: Button
+    private lateinit var modeFast: Button
+    private lateinit var modeEncrypted: Button
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +54,32 @@ class CodeHubPrivacyActivity : Activity() {
             addView(blocked, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
+        body.addView(panel {
+            addView(TextView(this@CodeHubPrivacyActivity).apply {
+                text = "Modo de protección"; textSize = 15f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
+            })
+            addView(TextView(this@CodeHubPrivacyActivity).apply {
+                text = "El mismo bloqueo de anuncios y rastreadores, con la velocidad de resolución que prefieras."
+                textSize = 12f; setTextColor(0xFFA7A9BC.toInt()); setLineSpacing(dp(3).toFloat(), 1f)
+            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+            val row = LinearLayout(this@CodeHubPrivacyActivity).apply { orientation = LinearLayout.HORIZONTAL }
+            modeFast = Button(this@CodeHubPrivacyActivity).apply {
+                isAllCaps = false; text = "Rápido"
+                setOnClickListener { selectMode(CodeHubDnsVpnService.MODE_FAST) }
+            }
+            modeEncrypted = Button(this@CodeHubPrivacyActivity).apply {
+                isAllCaps = false; text = "Cifrado"
+                setOnClickListener { selectMode(CodeHubDnsVpnService.MODE_ENCRYPTED) }
+            }
+            row.addView(modeFast, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(6) })
+            row.addView(modeEncrypted, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(6) })
+            addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+            addView(TextView(this@CodeHubPrivacyActivity).apply {
+                text = "• Cifrado: cada consulta sale por DNS-over-TLS de AdGuard (trafico cifrado) en una conexión TLS reutilizada.\n• Rápido: consulta a AdGuard sin cifrar; si la red la bloquea, salta al DNS de la red sin filtro."
+                textSize = 11f; setTextColor(0xFF8B93A7.toInt()); setLineSpacing(dp(3).toFloat(), 1f)
+            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+
         toggle = Button(this).apply { isAllCaps = false; setOnClickListener { toggleVpn() } }
         body.addView(toggle, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(12) })
 
@@ -60,7 +88,7 @@ class CodeHubPrivacyActivity : Activity() {
                 text = "Transparencia y límites"; textSize = 14f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
             })
             addView(TextView(this@CodeHubPrivacyActivity).apply {
-                text = "• Android requiere que aceptes el permiso VPN; CodeHub no necesita root. Solo puede estar activa una VPN por perfil.\n• La VPN enruta únicamente DNS IPv4; no funciona como firewall ni detiene conexiones web de las apps.\n• El archivo privado acepta dominios, hosts y reglas `||dominio^`; reglas cosméticas o por ruta no se pueden aplicar en un filtro DNS.\n• DNS privado estricto, apps con DNS propio y anuncios servidos desde el mismo dominio pueden evadir el bloqueo.\n• Primero se usa DNS-over-TLS de AdGuard. Si falla, CodeHub usa DNS de respaldo para mantener la navegación y muestra el modo activo; el respaldo de red puede no filtrar anuncios y puede enviar consultas sin cifrar."
+                text = "• Android requiere que aceptes el permiso VPN; CodeHub no necesita root. Solo puede estar activa una VPN por perfil.\n• La VPN enruta únicamente DNS IPv4; no funciona como firewall ni detiene conexiones web de las apps.\n• El archivo privado acepta dominios, hosts y reglas `||dominio^`; reglas cosméticas o por ruta no se pueden aplicar en un filtro DNS.\n• DNS privado estricto, apps con DNS propio y anuncios servidos desde el mismo dominio pueden evadir el bloqueo.\n• La conexión cifrada con AdGuard (DNS-over-TLS) se reutiliza entre consultas: un solo handshake en vez de uno por consulta.\n• El modo Cifrado va primero por TLS y cae a AdGuard sin cifrar y luego al DNS de la red; el modo Rápido salta directo a AdGuard sin cifrar. El respaldo de red puede no filtrar anuncios y puede enviar consultas sin cifrar."
                 textSize = 12f; setTextColor(0xFFA7A9BC.toInt()); setLineSpacing(dp(3).toFloat(), 1f)
             }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -99,6 +127,22 @@ class CodeHubPrivacyActivity : Activity() {
             return
         }
         startVpnIfNeeded()
+    }
+
+    /** Guarda el modo elegido; si el Shield está activo lo reinicia para aplicar la nueva cadena de DNS. */
+    private fun selectMode(mode: String) {
+        val current = prefs.getString(CodeHubDnsVpnService.KEY_FILTER_MODE, CodeHubDnsVpnService.MODE_ENCRYPTED)
+        if (current == mode) return
+        prefs.edit().putString(CodeHubDnsVpnService.KEY_FILTER_MODE, mode).apply()
+        renderState()
+        if (isVpnActive()) {
+            status.text = "Modo cambiado · reiniciando protección…"
+            status.setTextColor(0xFFFBBF24.toInt())
+            stopService(Intent(this, CodeHubDnsVpnService::class.java))
+            prefs.edit().putBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false).apply()
+            // Espera a que el túnel anterior cierre antes de re-establecer la VPN.
+            handler.postDelayed({ if (!isFinishing && !isDestroyed) startVpnService() }, 700)
+        }
     }
 
     private fun startVpnIfNeeded() {
@@ -140,9 +184,13 @@ class CodeHubPrivacyActivity : Activity() {
         val active = isVpnActive()
         status.text = if (active) "● PROTECCIÓN CONECTADA" else "○ PROTECCIÓN DESCONECTADA"
         status.setTextColor(if (active) 0xFF4ADE80.toInt() else 0xFFA7A9BC.toInt())
+        val encryptedMode = prefs.getString(CodeHubDnsVpnService.KEY_FILTER_MODE, CodeHubDnsVpnService.MODE_ENCRYPTED) != CodeHubDnsVpnService.MODE_FAST
+        modeEncrypted.backgroundTintList = android.content.res.ColorStateList.valueOf(if (encryptedMode) 0xFF315A55.toInt() else 0xFF1F2937.toInt())
+        modeFast.backgroundTintList = android.content.res.ColorStateList.valueOf(if (encryptedMode) 0xFF1F2937.toInt() else 0xFF315A55.toInt())
         val resolverMode = prefs.getString(CodeHubDnsVpnService.KEY_RESOLVER_MODE, "Esperando consultas DNS")
         val listStatus = prefs.getString(CodeHubDnsVpnService.KEY_LIST_STATUS, "Lista pendiente de descarga")
-        blocked.text = "Bloqueos locales · ${prefs.getInt(CodeHubDnsVpnService.KEY_BLOCKED_COUNT, 0)}\nadsblock.txt privado · ${prefs.getInt(CodeHubDnsVpnService.KEY_RULE_COUNT, 0)} dominios\n$listStatus\nResolución: $resolverMode"
+        val modeLabel = if (encryptedMode) "Cifrado (DNS-over-TLS)" else "Rápido (sin cifrado)"
+        blocked.text = "Bloqueos locales · ${prefs.getInt(CodeHubDnsVpnService.KEY_BLOCKED_COUNT, 0)}\nadsblock.txt privado · ${prefs.getInt(CodeHubDnsVpnService.KEY_RULE_COUNT, 0)} dominios\n$listStatus\nModo: $modeLabel\nResolución: $resolverMode"
         toggle.text = if (active) "Detener protección" else "Activar protección DNS"
         toggle.backgroundTintList = android.content.res.ColorStateList.valueOf(if (active) 0xFF4B2630.toInt() else 0xFF315A55.toInt())
     }

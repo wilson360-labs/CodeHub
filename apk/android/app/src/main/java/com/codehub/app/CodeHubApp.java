@@ -42,6 +42,10 @@ public class CodeHubApp extends Application implements ImageLoaderFactory {
         // Sync en 2do plano (FCM + ubicación) vía WorkManager — sin Foreground
         // Service, que en Android 15/16 se agota y crasheaba la app.
         try { CodeHubSyncScheduler.schedule(this); } catch (Throwable ignored) {}
+        // Precarga adsblock.txt al abrir CodeHub: el servidor vive en Render
+        // free tier (cold start) y así el Shield arranca con la lista ya en
+        // el almacenamiento privado, sin esperar la descarga del primer filtro.
+        try { CodeHubDnsVpnService.prefetchBlocklist(this); } catch (Throwable ignored) {}
     }
 
     private static final class CrashHandler implements Thread.UncaughtExceptionHandler {

@@ -12,6 +12,7 @@ import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.content.pm.ServiceInfo
+import android.content.Context
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.InetSocketAddress
@@ -38,9 +39,11 @@ class CodeHubDnsVpnService : VpnService() {
     private var worker: Thread? = null
     private val running = AtomicBoolean(false)
     private data class DomainRules(val blocked: Set<String>, val allowed: Set<String>)
-    @Volatile private var domainRules = DomainRules(emptySet(), emptySet())
     private val blockedCount = AtomicInteger(0)
     private val dnsWorkers = Executors.newFixedThreadPool(4) { task -> Thread(task, "CodeHub-DNS-worker").apply { isDaemon = true } }
+    /** Conexión DoT persistente: un handshake TLS reutilizado por todas las consultas. */
+    private val dotLock = Any()
+    private var dotSocket: SSLSocket? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -62,10 +65,14 @@ class CodeHubDnsVpnService : VpnService() {
             running.set(true)
             blockedCount.set(getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_BLOCKED_COUNT, 0))
             getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACTIVE, true).apply()
-            domainRules = loadPrivateBlocklist()
-            Thread({
-                refreshBlocklistFromServer()
-            }, "CodeHub-adblock-list-update").start()
+            loadPrivateBlocklist()
+            // La lista ya se precarga al abrir CodeHub (CodeHubApp); esto solo refresca si venció.
+            prefetchBlocklist(this)
+            // Prepara el TLS con AdGuard en 2do plano: la primera consulta DNS
+            // no paga el handshake (~1,2 s) en el camino crítico.
+            if (filterMode() != MODE_FAST) {
+                Thread({ runCatching { synchronized(dotLock) { openAdGuardDotSocket() } } }, "CodeHub-dot-warmup").start()
+            }
             worker = Thread({ runDnsTunnel(descriptor) }, "CodeHub-DNS-filter").apply { start() }
         } catch (error: Exception) {
             getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACTIVE, false).apply()
@@ -137,47 +144,78 @@ class CodeHubDnsVpnService : VpnService() {
         return ipv4UdpReply(sourceAddress, destinationAddress, destinationPort, sourcePort, packet, reply)
     }
 
-    /** AdGuard DoT first, then its filtered plain DNS, then the device network resolver as fail-open. */
+    /** Cadena de respaldo según el modo elegido por el usuario (KEY_FILTER_MODE). */
     private fun forwardDnsWithRecovery(query: ByteArray): ByteArray? {
-        forwardToAdGuardDot(query)?.let { recordResolverMode("AdGuard DNS cifrado · DNS-over-TLS"); return it }
-        forwardToAdGuardUdp(query)?.let { recordResolverMode("AdGuard DNS · respaldo DNS sin cifrar"); return it }
+        if (filterMode() == MODE_FAST) {
+            forwardToAdGuardUdp(query)?.let { recordResolverMode("AdGuard DNS · modo rápido sin cifrado"); return it }
+            forwardToNetworkDns(query)?.let { recordResolverMode("DNS de la red · respaldo sin filtro"); return it }
+            dotQuery(query)?.let { recordResolverMode("AdGuard DNS cifrado · respaldo final"); return it }
+            recordResolverMode("Sin resolver DNS disponible")
+            return null
+        }
+        dotQuery(query)?.let { recordResolverMode("AdGuard DNS cifrado · DNS-over-TLS"); return it }
+        forwardToAdGuardUdp(query)?.let { recordResolverMode("AdGuard DNS · respaldo sin cifrar"); return it }
         forwardToNetworkDns(query)?.let { recordResolverMode("DNS de la red · respaldo sin filtro"); return it }
         recordResolverMode("Sin resolver DNS disponible")
         return null
     }
 
-    private fun forwardToAdGuardDot(query: ByteArray): ByteArray? {
+    /** Modo de filtro elegido: "encrypted" (DoT primero, por defecto) o "fast" (sin cifrado). */
+    private fun filterMode(): String =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_FILTER_MODE, MODE_ENCRYPTED) ?: MODE_ENCRYPTED
+
+    /** Intercambia una consulta por la conexión DoT persistente; si la conexión venció por inactividad, la reabre una vez. */
+    private fun dotQuery(query: ByteArray): ByteArray? {
+        synchronized(dotLock) {
+            val socket = openAdGuardDotSocket() ?: return null
+            val answer = runCatching { dotExchange(socket, query) }.getOrNull()
+            if (answer != null) return answer
+            closeAdGuardDotSocket()
+            val reopened = openAdGuardDotSocket() ?: return null
+            return runCatching { dotExchange(reopened, query) }.getOrNull()
+        }
+    }
+
+    private fun dotExchange(socket: SSLSocket, query: ByteArray): ByteArray? {
+        val output = DataOutputStream(socket.outputStream)
+        output.writeShort(query.size)
+        output.write(query)
+        output.flush()
+        val input = DataInputStream(socket.inputStream)
+        val response = ByteArray(input.readUnsignedShort())
+        input.readFully(response)
+        return response.takeIf { isUsableDnsResponse(query, it) }
+    }
+
+    /** Abre (o devuelve) la conexión TLS a AdGuard; protégida para que salga fuera del túnel VPN. */
+    private fun openAdGuardDotSocket(): SSLSocket? {
+        dotSocket?.takeIf { it.isConnected && !it.isClosed }?.let { return it }
         return try {
-            var lastError: Exception? = null
-            for (address in ADGUARD_DNS_IPS.take(1)) {
-                try {
-                    val raw = Socket()
-                    try {
-                        if (!protect(raw)) continue
-                        raw.connect(InetSocketAddress(address, 853), 1_200)
-                        raw.soTimeout = 1_800
-                        val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
-                        val tls = (factory.createSocket(raw, ADGUARD_DNS_HOST, 853, true) as SSLSocket).apply {
-                            sslParameters = sslParameters.apply { endpointIdentificationAlgorithm = "HTTPS" }
-                            startHandshake()
-                        }
-                        return tls.use {
-                            val output = DataOutputStream(it.outputStream)
-                            output.writeShort(query.size)
-                            output.write(query)
-                            output.flush()
-                            val input = DataInputStream(it.inputStream)
-                            val response = ByteArray(input.readUnsignedShort())
-                            input.readFully(response)
-                            response.takeIf { isUsableDnsResponse(query, it) }
-                        }
-                    } finally {
-                        runCatching { raw.close() }
-                    }
-                } catch (error: Exception) { lastError = error }
+            val raw = Socket()
+            try {
+                if (!protect(raw)) { runCatching { raw.close() }; return null }
+                raw.connect(InetSocketAddress(ADGUARD_DNS_IPS.first(), 853), 1_200)
+                raw.tcpNoDelay = true
+                raw.keepAlive = true
+                val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
+                val tls = (factory.createSocket(raw, ADGUARD_DNS_HOST, 853, true) as SSLSocket).apply {
+                    sslParameters = sslParameters.apply { endpointIdentificationAlgorithm = "HTTPS" }
+                    soTimeout = 3_000
+                    startHandshake()
+                }
+                dotSocket = tls
+                tls
+            } catch (error: Exception) {
+                runCatching { raw.close() }
+                dotSocket = null
+                throw error
             }
-            throw lastError ?: IllegalStateException("AdGuard DNS no responde")
         } catch (_: Exception) { null }
+    }
+
+    private fun closeAdGuardDotSocket() {
+        runCatching { dotSocket?.close() }
+        dotSocket = null
     }
 
     private fun forwardToAdGuardUdp(query: ByteArray): ByteArray? = forwardUdp(query, ADGUARD_DNS_IPS.mapNotNull(::parseIpv4))
@@ -228,122 +266,19 @@ class CodeHubDnsVpnService : VpnService() {
     }
 
     /** The downloaded rules live in app-private internal storage and are parsed only by CodeHub. */
-    private fun loadPrivateBlocklist(): DomainRules {
+    private fun loadPrivateBlocklist() {
         val file = File(filesDir, PRIVATE_BLOCKLIST_FILE)
         val rules = if (file.isFile) runCatching { parseBlocklist(file.readText()) }.getOrDefault(DomainRules(emptySet(), emptySet())) else DomainRules(emptySet(), emptySet())
+        liveRules = rules
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
             .putInt(KEY_RULE_COUNT, rules.blocked.size)
             .putString(KEY_LIST_STATUS, if (rules.blocked.isEmpty()) "Sin reglas locales · esperando adsblock.txt" else "Lista local activa · ${rules.blocked.size} dominios")
             .apply()
-        return rules
     }
-
-    private fun refreshBlocklistFromServer() {
-        val localFile = File(filesDir, PRIVATE_BLOCKLIST_FILE)
-        val lastUpdated = getSharedPreferences(PREFS, MODE_PRIVATE).getLong(KEY_LIST_UPDATED_AT, 0L)
-        if (localFile.isFile && localFile.length() > 0 && System.currentTimeMillis() - lastUpdated < BLOCKLIST_REFRESH_INTERVAL_MS) return
-        val connection = (URL(BLOCKLIST_URL).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 7_000
-            readTimeout = 15_000
-            setRequestProperty("Accept", "text/plain")
-            setRequestProperty("User-Agent", "CodeHub-Android-DNS/1")
-        }
-        try {
-            val statusCode = connection.responseCode
-            if (statusCode != HttpURLConnection.HTTP_OK) {
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(
-                    KEY_LIST_STATUS,
-                    if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) "Falta adsblock.txt en Supabase (HTTP 404)"
-                    else "No se pudo actualizar adsblock.txt (HTTP $statusCode)"
-                ).apply()
-                return
-            }
-            val body = connection.inputStream.use { input ->
-                val output = java.io.ByteArrayOutputStream()
-                val buffer = ByteArray(16 * 1024)
-                var total = 0
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    if (total > MAX_BLOCKLIST_BYTES) throw IllegalStateException("adsblock.txt excede el límite de tamaño.")
-                    output.write(buffer, 0, count)
-                }
-                output.toString(Charsets.UTF_8.name())
-            }
-            val parsed = parseBlocklist(body)
-            if (parsed.blocked.isEmpty()) {
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                    .putString(KEY_LIST_STATUS, "adsblock.txt no contiene reglas DNS compatibles")
-                    .apply()
-                return // Keep the last known good local file.
-            }
-            val target = File(filesDir, PRIVATE_BLOCKLIST_FILE)
-            val temporary = File(filesDir, "$PRIVATE_BLOCKLIST_FILE.tmp")
-            temporary.writeText(body, Charsets.UTF_8)
-            if (!temporary.renameTo(target)) {
-                target.writeText(body, Charsets.UTF_8)
-                temporary.delete()
-            }
-            domainRules = parsed
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                .putInt(KEY_RULE_COUNT, parsed.blocked.size)
-                .putLong(KEY_LIST_UPDATED_AT, System.currentTimeMillis())
-                .putString(KEY_LIST_STATUS, "Lista activa · ${parsed.blocked.size} dominios")
-                .apply()
-        } catch (error: Exception) {
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(
-                KEY_LIST_STATUS,
-                "No se pudo cargar adsblock.txt: ${error.localizedMessage ?: error.javaClass.simpleName}"
-            ).apply()
-            // Preserve the last known good list and keep DNS fail-open behavior.
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    /** Supports hosts format and domain-only/AdGuard `||domain^` rules; path and cosmetic rules are ignored. */
-    private fun parseBlocklist(contents: String): DomainRules {
-        val blocked = LinkedHashSet<String>()
-        val allowed = LinkedHashSet<String>()
-        for (rawLine in contents.lineSequence()) {
-            var line = rawLine.trim().lowercase(Locale.ROOT)
-            if (line.isEmpty() || line.startsWith("!") || line.startsWith("#") || line.startsWith("[") || line.startsWith("/")) continue
-            if (line.contains("##") || line.contains("#@#") || line.contains("#?#")) continue // cosmetic rules do not map to DNS
-            line = line.substringBefore(" #").substringBefore("\t#").trim()
-            if (line.isEmpty()) continue
-            val exception = line.startsWith("@@")
-            if (exception) line = line.removePrefix("@@")
-            if (line.startsWith("||")) {
-                line = line.removePrefix("||").removePrefix("*.").substringBefore('^').substringBefore('$')
-                if ('/' in line || '*' in line) continue
-                if (!isValidDomain(line)) continue
-                if (exception) allowed += line.trimEnd('.') else blocked += line.trimEnd('.')
-                continue
-            }
-            if (exception) continue
-            val columns = line.split(WHITESPACE_REGEX).filter { it.isNotBlank() }
-            val domainCandidates = if (columns.size > 1 && isIpv4OrLocal(columns.first())) columns.drop(1) else columns.take(1)
-            domainCandidates.forEach { rawDomain ->
-                val domain = rawDomain.removePrefix("*.").trimEnd('.')
-                if (isValidDomain(domain)) blocked += domain
-            }
-        }
-        return DomainRules(blocked, allowed)
-    }
-
-    private fun isValidDomain(domain: String): Boolean = domain.length in 4..253 &&
-        domain.split('.').size >= 2 && domain.split('.').all { label ->
-            label.length in 1..63 && label.firstOrNull()?.isLetterOrDigit() == true &&
-                label.lastOrNull()?.isLetterOrDigit() == true && label.all { it.isLetterOrDigit() || it == '-' }
-        }
-
-    private fun isIpv4OrLocal(value: String): Boolean = value == "0.0.0.0" || value == "127.0.0.1" || value.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}"))
 
     private fun blockedDomain(domain: String): Boolean {
-        if (matchesSuffix(domain, domainRules.allowed)) return false
-        return matchesSuffix(domain, domainRules.blocked)
+        if (matchesSuffix(domain, liveRules.allowed)) return false
+        return matchesSuffix(domain, liveRules.blocked)
     }
 
     private fun matchesSuffix(domain: String, rules: Set<String>): Boolean {
@@ -420,6 +355,7 @@ class CodeHubDnsVpnService : VpnService() {
         running.set(false)
         runCatching { tunnel?.close() }
         tunnel = null
+        closeAdGuardDotSocket()
         worker = null
         dnsWorkers.shutdownNow()
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACTIVE, false).apply()
@@ -437,6 +373,10 @@ class CodeHubDnsVpnService : VpnService() {
         const val KEY_RESOLVER_MODE = "resolver_mode"
         const val KEY_LIST_UPDATED_AT = "list_updated_at"
         const val KEY_LIST_STATUS = "blocklist_status"
+        /** Preferencia del usuario: MODE_ENCRYPTED (DoT primero, por defecto) o MODE_FAST (sin cifrado). */
+        const val KEY_FILTER_MODE = "filter_mode"
+        const val MODE_FAST = "fast"
+        const val MODE_ENCRYPTED = "encrypted"
         const val NOTIFICATION_ID = 7102
         private const val LOCAL_DNS = "10.73.0.1"
         private const val TUN_ADDRESS = "10.73.0.2"
@@ -447,5 +387,123 @@ class CodeHubDnsVpnService : VpnService() {
         private const val MAX_BLOCKLIST_BYTES = 15 * 1024 * 1024
         private const val BLOCKLIST_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000L
         private val WHITESPACE_REGEX = Regex("\\s+")
+
+        /** Reglas vigentes compartidas por el servicio y la precarga al abrir la app. */
+        @Volatile private var liveRules = DomainRules(emptySet(), emptySet())
+
+        private fun refreshBlocklist(context: Context) {
+            val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val localFile = File(context.filesDir, PRIVATE_BLOCKLIST_FILE)
+            val lastUpdated = preferences.getLong(KEY_LIST_UPDATED_AT, 0L)
+            if (localFile.isFile && localFile.length() > 0 && System.currentTimeMillis() - lastUpdated < BLOCKLIST_REFRESH_INTERVAL_MS) return
+            val connection = (URL(BLOCKLIST_URL).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 7_000
+                readTimeout = 15_000
+                setRequestProperty("Accept", "text/plain")
+                setRequestProperty("User-Agent", "CodeHub-Android-DNS/1")
+            }
+            try {
+                val statusCode = connection.responseCode
+                if (statusCode != HttpURLConnection.HTTP_OK) {
+                    preferences.edit().putString(
+                        KEY_LIST_STATUS,
+                        if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) "Falta adsblock.txt en Supabase (HTTP 404)"
+                        else "No se pudo actualizar adsblock.txt (HTTP $statusCode)"
+                    ).apply()
+                    return
+                }
+                val body = connection.inputStream.use { input ->
+                    val output = java.io.ByteArrayOutputStream()
+                    val buffer = ByteArray(16 * 1024)
+                    var total = 0
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        total += count
+                        if (total > MAX_BLOCKLIST_BYTES) throw IllegalStateException("adsblock.txt excede el límite de tamaño.")
+                        output.write(buffer, 0, count)
+                    }
+                    output.toString(Charsets.UTF_8.name())
+                }
+                val parsed = parseBlocklist(body)
+                if (parsed.blocked.isEmpty()) {
+                    preferences.edit()
+                        .putString(KEY_LIST_STATUS, "adsblock.txt no contiene reglas DNS compatibles")
+                        .apply()
+                    return // Keep the last known good local file.
+                }
+                val target = File(context.filesDir, PRIVATE_BLOCKLIST_FILE)
+                val temporary = File(context.filesDir, "$PRIVATE_BLOCKLIST_FILE.tmp")
+                temporary.writeText(body, Charsets.UTF_8)
+                if (!temporary.renameTo(target)) {
+                    target.writeText(body, Charsets.UTF_8)
+                    temporary.delete()
+                }
+                liveRules = parsed
+                preferences.edit()
+                    .putInt(KEY_RULE_COUNT, parsed.blocked.size)
+                    .putLong(KEY_LIST_UPDATED_AT, System.currentTimeMillis())
+                    .putString(KEY_LIST_STATUS, "Lista activa · ${parsed.blocked.size} dominios")
+                    .apply()
+            } catch (error: Exception) {
+                preferences.edit().putString(
+                    KEY_LIST_STATUS,
+                    "No se pudo cargar adsblock.txt: ${error.localizedMessage ?: error.javaClass.simpleName}"
+                ).apply()
+                // Preserve the last known good list and keep DNS fail-open behavior.
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        /**
+         * Precarga adsblock.txt en 2do plano al abrir CodeHub (CodeHubApp):
+         * el servidor vive en Render free tier y su primer arranque tiene
+         * cold start, así que bajar la lista ANTES de activar el Shield elimina
+         * la espera de filtrado del arranque.
+         */
+        @JvmStatic
+        fun prefetchBlocklist(context: Context) {
+            Thread({ try { refreshBlocklist(context.applicationContext) } catch (_: Throwable) { } }, "CodeHub-adblock-prefetch").start()
+        }
+
+        /** Supports hosts format and domain-only/AdGuard `||domain^` rules; path and cosmetic rules are ignored. */
+        private fun parseBlocklist(contents: String): DomainRules {
+            val blocked = LinkedHashSet<String>()
+            val allowed = LinkedHashSet<String>()
+            for (rawLine in contents.lineSequence()) {
+                var line = rawLine.trim().lowercase(Locale.ROOT)
+                if (line.isEmpty() || line.startsWith("!") || line.startsWith("#") || line.startsWith("[") || line.startsWith("/")) continue
+                if (line.contains("##") || line.contains("#@#") || line.contains("#?#")) continue // cosmetic rules do not map to DNS
+                line = line.substringBefore(" #").substringBefore("\t#").trim()
+                if (line.isEmpty()) continue
+                val exception = line.startsWith("@@")
+                if (exception) line = line.removePrefix("@@")
+                if (line.startsWith("||")) {
+                    line = line.removePrefix("||").removePrefix("*.").substringBefore('^').substringBefore('$')
+                    if ('/' in line || '*' in line) continue
+                    if (!isValidDomain(line)) continue
+                    if (exception) allowed += line.trimEnd('.') else blocked += line.trimEnd('.')
+                    continue
+                }
+                if (exception) continue
+                val columns = line.split(WHITESPACE_REGEX).filter { it.isNotBlank() }
+                val domainCandidates = if (columns.size > 1 && isIpv4OrLocal(columns.first())) columns.drop(1) else columns.take(1)
+                domainCandidates.forEach { rawDomain ->
+                    val domain = rawDomain.removePrefix("*.").trimEnd('.')
+                    if (isValidDomain(domain)) blocked += domain
+                }
+            }
+            return DomainRules(blocked, allowed)
+        }
+
+        private fun isValidDomain(domain: String): Boolean = domain.length in 4..253 &&
+            domain.split('.').size >= 2 && domain.split('.').all { label ->
+                label.length in 1..63 && label.firstOrNull()?.isLetterOrDigit() == true &&
+                    label.lastOrNull()?.isLetterOrDigit() == true && label.all { it.isLetterOrDigit() || it == '-' }
+            }
+
+        private fun isIpv4OrLocal(value: String): Boolean = value == "0.0.0.0" || value == "127.0.0.1" || value.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}"))
     }
 }

@@ -98,6 +98,36 @@ public class InstallReceiver extends BroadcastReceiver {
 
     private void notifyInstallApk(Context context, File apkFile, long downloadId) {
         if (apkFile == null || !apkFile.isFile()) return;
+
+        // Ruta preferida: instalación silenciosa vía Shizuku (mismo enfoque que
+        // Obtainium). Ejecuta `pm install -r` con los privilegios shell que el
+        // usuario concedió, así el cambio no pasa por el instalador del
+        // sistema ni por el escaneo de Play Protect, y la actualización se
+        // aplica sin diálogos. Si Shizuku no está listo, cae a la notificación
+        // del instalador del sistema.
+        if (ShizukuInstaller.isReady()) {
+            final PendingResult pending = goAsync();
+            new Thread(() -> {
+                boolean ok = false;
+                try {
+                    ok = ShizukuInstaller.hasPermission() && ShizukuInstaller.installSilently(apkFile.getAbsolutePath());
+                } catch (Throwable ignored) { }
+                final boolean installed = ok;
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                        android.widget.Toast.makeText(context.getApplicationContext(),
+                                installed ? "CodeHub se actualizó en silencio (Shizuku)." : "Shizuku no pudo instalar; usa la notificación.",
+                                android.widget.Toast.LENGTH_SHORT).show());
+                if (!installed) postInstallNotification(context, apkFile, downloadId);
+                pending.finish();
+            }, "CodeHub-shizuku-install").start();
+            return;
+        }
+
+        postInstallNotification(context, apkFile, downloadId);
+    }
+
+    /** Instalación clásica: notificación con el instalador del sistema (Play Protect analiza el APK). */
+    private void postInstallNotification(Context context, File apkFile, long downloadId) {
         // Android 13+: if notifications are disabled, DownloadManager's own
         // completed-download notification remains available as the fallback.
         if (Build.VERSION.SDK_INT >= 33
