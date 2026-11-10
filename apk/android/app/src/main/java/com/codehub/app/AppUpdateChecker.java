@@ -38,7 +38,7 @@ import java.util.List;
  * - La web/PWA NO muestra diálogos de actualización; este chequeo vive
  *   solo en la app y mueestra SU PROPIO diálogo (res/layout/
  *   dialog_update.xml), elegante, sin toques del sistema aburridos.
- * - Habla directo con GitHub Releases del repo (tag apk-codehub-vX.Y).
+ * - Habla directo con GitHub Releases del repo (tag con versión, secuencia y SHA).
  * - Se selecciona el APK de la ABI del dispositivo; se acepta el asset
  *   universal firmado como compatibilidad para equipos no ARM.
  *   Con el criterio viejo (cualquier asset *.apk),
@@ -130,14 +130,19 @@ public class AppUpdateChecker {
                 local = context.getPackageManager()
                         .getPackageInfo(context.getPackageName(), 0).versionName;
             } catch (Exception ignored) {}
-            boolean hasUpdate = isNewer(remote, local);
+            long remoteCode = releaseVersionCode(release);
+            long localCode = localVersionCode(context);
+            boolean hasUpdate = isNewerBuild(remote, remoteCode, local, localCode);
             out.put("ok", true);
             out.put("remote", remote);
             out.put("local", local);
+            out.put("remoteVersionCode", remoteCode);
+            out.put("localVersionCode", localCode);
+            out.put("build", releaseBuildLabel(release));
             out.put("abi", preferredAssetName());
             out.put("hasUpdate", hasUpdate);
             out.put("message", hasUpdate
-                    ? ("Actualizacion disponible: v" + remote + " (tienes v" + local + ")")
+                    ? ("Actualizacion disponible: v" + remote + " " + releaseBuildLabel(release))
                     : ("Ya tienes la ultima version (v" + local + ")"));
             return out.toString();
         } catch (Throwable t) {
@@ -173,8 +178,11 @@ public class AppUpdateChecker {
                         .getPackageInfo(activity.getPackageName(), 0).versionName;
                 } catch (Exception ignored) {}
 
-                if (!isNewer(remoteVersion, localVersion)) {
-                    Log.i(TAG, "sin actualización (local " + localVersion + ", remota " + remoteVersion + ")");
+                long remoteCode = releaseVersionCode(release);
+                long localCode = localVersionCode(activity);
+                if (!isNewerBuild(remoteVersion, remoteCode, localVersion, localCode)) {
+                    Log.i(TAG, "sin actualización (local v" + localVersion + " code " + localCode
+                            + ", remota v" + remoteVersion + " code " + remoteCode + ")");
                     return;
                 }
 
@@ -182,7 +190,11 @@ public class AppUpdateChecker {
                 if (apkUrl == null) return;
 
                 List<String> notes = cleanNotes(release.optString("body", ""));
-                promptUpdate(activity, remoteVersion, apkUrl, notes);
+                String buildLabel = releaseBuildLabel(release);
+                String updateKey = remoteCode > 0 ? remoteVersion + "#" + remoteCode : remoteVersion;
+                String displayVersion = buildLabel.isEmpty()
+                        ? remoteVersion : remoteVersion + " · " + buildLabel;
+                promptUpdate(activity, displayVersion, updateKey, apkUrl, notes);
             } catch (Throwable t) {
                 Log.e(TAG, "Error chequeando actualización", t);
             }
@@ -267,11 +279,46 @@ public class AppUpdateChecker {
     private static String normalizeVersion(String tag) {
         if (tag == null || tag.isEmpty()) return "";
         java.util.regex.Matcher m = java.util.regex.Pattern
-            .compile("(\\d+(?:\\.\\d+)*)")
+            .compile("(?:^|-)v(\\d+(?:\\.\\d+)+)(?:-|$)")
             .matcher(tag);
-        String found = null;
-        while (m.find()) found = m.group(1);
-        return found != null ? found : "";
+        return m.find() ? m.group(1) : "";
+    }
+
+    /** Lee el versionCode publicado en el cuerpo de la release; 0 para releases antiguas. */
+    private static long releaseVersionCode(JSONObject release) {
+        String body = release == null ? "" : release.optString("body", "");
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?im)^\\s*\\*\\*CodeHub-Version-Code:\\*\\*\\s*(\\d+)\\s*$")
+                .matcher(body);
+        if (!m.find()) return 0L;
+        try { return Long.parseLong(m.group(1)); }
+        catch (Exception ignored) { return 0L; }
+    }
+
+    /** Etiqueta visible y estable para builds que comparten versionName. */
+    private static String releaseBuildLabel(JSONObject release) {
+        String tag = release == null ? "" : release.optString("tag_name", "");
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?i)-build(\\d+)-([0-9a-f]{7,40})$")
+                .matcher(tag);
+        if (m.find()) return "build " + m.group(1) + "/5 · " + m.group(2);
+        return "";
+    }
+
+    private static long localVersionCode(Context context) {
+        try {
+            android.content.pm.PackageInfo info = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0);
+            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                    ? info.getLongVersionCode() : info.versionCode;
+        } catch (Exception ignored) { return 0L; }
+    }
+
+    /** Prefiere versionCode para ofrecer builds sucesivos con el mismo versionName. */
+    private static boolean isNewerBuild(String remoteVersion, long remoteCode,
+                                        String localVersion, long localCode) {
+        if (remoteCode > 0 && localCode > 0) return remoteCode > localCode;
+        return isNewer(remoteVersion, localVersion);
     }
 
     /** Compara versiones "1.3.0" vs "1.2.0" numéricamente por segmento. */
@@ -304,6 +351,9 @@ public class AppUpdateChecker {
             if (l.isEmpty()) continue;
             String low = l.toLowerCase();
             if (low.contains("http://") || low.contains("https://") || low.contains("github.com")) continue;
+            if (low.startsWith("**versión:**") || low.startsWith("**build:**")
+                    || low.startsWith("**codehub-version-code:**")
+                    || low.startsWith("## codehub apk")) continue;
             l = l.replaceFirst("^#{1,6}\\s*", "")
                  .replace("**", "")
                  .replaceFirst("^[•\\-*]\\s*", "")
@@ -321,12 +371,13 @@ public class AppUpdateChecker {
      * única puerta de actualización del APK: la web no participa.
      */
     private static void promptUpdate(final MainActivity activity, final String version,
+                                     final String updateKey,
                                      final String apkUrl, final List<String> notes) {
         new Handler(Looper.getMainLooper()).post(() -> {
             if (activity.isFinishing()) return;
 
             SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            if (version.equals(prefs.getString(PREF_SKIP, null))) {
+            if (updateKey.equals(prefs.getString(PREF_SKIP, null))) {
                 Log.i(TAG, "v" + version + " no se muestra: el usuario eligió 'Más tarde' para ella");
                 return;
             }
@@ -374,7 +425,7 @@ public class AppUpdateChecker {
                 View later = dialog.findViewById(R.id.dialog_update_later);
                 if (later != null) {
                     later.setOnClickListener(v -> {
-                        prefs.edit().putString(PREF_SKIP, version).apply();
+                        prefs.edit().putString(PREF_SKIP, updateKey).apply();
                         try { dialog.dismiss(); } catch (Exception ignored) {}
                     });
                 }

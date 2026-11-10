@@ -17,6 +17,12 @@ permissions:
   contents: write
   issues: write
 
+# La secuencia se calcula desde la última release publicada. Serializar evita
+# que dos builds simultáneos lean el mismo contador y publiquen la misma secuencia.
+concurrency:
+  group: codehub-apk-release
+  cancel-in-progress: false
+
 jobs:
   build-apk:
     name: Build Android APK
@@ -27,24 +33,63 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Sincronizar version de la app con sw.js
+      - name: Calcular version y secuencia de release
         id: appver
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
-          # El tag de release es apk-<VERSION> (VERSION = sw.js). Para que
-          # AppUpdateChecker.java no marque actualizaciones falsas, el
-          # versionName del APK publicado debe ser el mismo esquema numérico
-          # que ese tag (7.15, no 1.4.0). Se inyecta aquí en build.gradle.
-          VERSION=$(grep "const VERSION" sw.js | sed "s/.*'\(.*\)'.*/\1/")
-          APPVER=${VERSION##*v}                 # codehub-v7.15 -> 7.15
-          APPCODE=$(echo "$APPVER" | awk -F. '{printf "%d%02d\n", $1, $2}')  # 7.15 -> 715
+          set -euo pipefail
+          # sw.js inicia la serie. Después, el tag de la última release APK
+          # conserva version y secuencia. Solo una release publicada cuenta;
+          # builds fallidos no avanzan el contador.
+          SW_VERSION=$(grep "const VERSION" sw.js | sed -E "s/.*codehub-v([0-9]+\.[0-9]+).*/\1/")
+          RELEASE=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq '[.[] | select(.draft == false and (.tag_name | startswith("apk-codehub-v")))][0] // {}')
+          PREV_TAG=$(printf '%s' "$RELEASE" | jq -r '.tag_name // empty')
+          PREV_VERSION=$(printf '%s' "$PREV_TAG" | sed -nE 's/^apk-codehub-v([0-9]+\.[0-9]+).*/\1/p')
+          PREV_BUILD=$(printf '%s' "$PREV_TAG" | sed -nE 's/^apk-codehub-v[0-9]+\.[0-9]+-build([0-9]+)-.*/\1/p')
+          if [ -z "$PREV_VERSION" ]; then
+            PREV_VERSION="$SW_VERSION"
+            PREV_BUILD=0
+          elif [ -z "$PREV_BUILD" ]; then
+            # La release legacy que ya publica 7.59 corresponde al build
+            # 1/5 (commit 06b6818); la siguiente release será 2/5.
+            PREV_BUILD=1
+          fi
+
+          # Una actualización manual de sw.js puede adelantar la serie, pero
+          # nunca rebaja una versión que ya fue publicada.
+          SW_PARTS=(${SW_VERSION//./ })
+          PREV_PARTS=(${PREV_VERSION//./ })
+          SW_NUMBER=$((10#${SW_PARTS[0]} * 100 + 10#${SW_PARTS[1]}))
+          PREV_NUMBER=$((10#${PREV_PARTS[0]} * 100 + 10#${PREV_PARTS[1]}))
+          if (( SW_NUMBER > PREV_NUMBER )); then
+            APPVER="$SW_VERSION"
+            PREV_BUILD=0
+          else
+            APPVER="$PREV_VERSION"
+          fi
+
+          BUILD_SEQ=$((PREV_BUILD + 1))
+          if (( BUILD_SEQ > 5 )); then
+            VERSION_PARTS=(${APPVER//./ })
+            APPVER="$((10#${VERSION_PARTS[0]})).$((10#${VERSION_PARTS[1]} + 1))"
+            BUILD_SEQ=1
+          fi
+          VERSION="$APPVER"
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          VERSION_PARTS=(${APPVER//./ })
+          # Version code monotónico entre versiones y builds: 7.59/1 => 700591.
+          APPCODE=$((10#${VERSION_PARTS[0]} * 100000 + 10#${VERSION_PARTS[1]} * 10 + BUILD_SEQ))
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "APPVER=$APPVER"   >> "$GITHUB_ENV"
           echo "APPCODE=$APPCODE" >> "$GITHUB_ENV"
+          echo "BUILD_SEQ=$BUILD_SEQ" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
           sed -i -E "s/versionName \"[^\"]*\"/versionName \"$APPVER\"/" apk/android/app/build.gradle
           sed -i -E "s/versionCode [0-9]+/versionCode $APPCODE/"       apk/android/app/build.gradle
-          echo "build.gradle -> versionName $APPVER (versionCode $APPCODE)"
+          echo "build.gradle -> versionName $APPVER (build $BUILD_SEQ/5, versionCode $APPCODE, commit $SHORT_SHA)"
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -417,8 +462,10 @@ jobs:
       - name: Get version
         id: version
         run: |
-          VERSION=$(grep "const VERSION" sw.js | sed "s/.*'\(.*\)'.*/\1/")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_seq=$BUILD_SEQ" >> $GITHUB_OUTPUT
+          echo "version_code=$APPCODE" >> $GITHUB_OUTPUT
+          echo "sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
       - name: Find APK
         id: find-apk
@@ -517,11 +564,13 @@ jobs:
         if: env.HAS_RELEASE_SECRETS == 'true'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: apk-${{ steps.version.outputs.version }}
-          name: "📱 CodeHub APK ${{ steps.version.outputs.version }}"
+          tag_name: apk-codehub-v${{ steps.version.outputs.version }}-build${{ steps.version.outputs.build_seq }}-${{ steps.version.outputs.sha }}
+          name: "📱 CodeHub APK ${{ steps.version.outputs.version }} · build ${{ steps.version.outputs.build_seq }}/5 · ${{ steps.version.outputs.sha }}"
           body: |
             ## CodeHub APK — App Nativa Android
             **Versión:** ${{ steps.version.outputs.version }}
+            **Build:** ${{ steps.version.outputs.build_seq }}/5 · `${{ steps.version.outputs.sha }}`
+            **CodeHub-Version-Code:** ${{ steps.version.outputs.version_code }}
             ### Instalación
             1. Descarga el APK
             2. Abre en tu Android
