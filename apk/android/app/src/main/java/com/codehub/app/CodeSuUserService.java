@@ -205,6 +205,7 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
         return packageName != null
                 && PACKAGE_PATTERN.matcher(packageName).matches()
                 && !OWN_PACKAGE.equals(packageName)
+                && !packageName.startsWith(OWN_PACKAGE + ".")
                 && !SHIZUKU_PACKAGE.equals(packageName);
     }
 

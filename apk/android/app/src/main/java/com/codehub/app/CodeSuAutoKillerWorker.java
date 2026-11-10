@@ -42,9 +42,10 @@ public final class CodeSuAutoKillerWorker extends Worker {
             ICodeSuRemoteService service = bindService();
             try {
                 Set<String> critical = CodeSuAppPolicy.criticalPackages(appContext);
+                Set<String> running = new HashSet<>();
+                java.util.Collections.addAll(running, service.runningPackages());
                 Set<String> selected = prefs.getStringSet("selected_packages", new HashSet<>());
                 if (selected == null) selected = new HashSet<>();
-                boolean hideCritical = prefs.getBoolean("hide_critical_apps", prefs.getBoolean("protect_essential_apps", true));
                 int source = prefs.getInt("source_mode", CodeSuAppPolicy.SOURCE_ALL);
                 int selection = prefs.getInt("selection_mode", 0);
                 Set<String> installed = new HashSet<>();
@@ -55,7 +56,11 @@ public final class CodeSuAutoKillerWorker extends Worker {
                 }
                 ArrayList<String> targets = new ArrayList<>();
                 for (String packageName : installed) {
-                    if (hideCritical && critical.contains(packageName)) continue;
+                    // Never force-stop the launcher, system UI, CodeHub, Shizuku, or another
+                    // essential package. The UI toggle controls visibility, not kill safety.
+                    if (critical.contains(packageName)) continue;
+                    // Keep Auto Killer aligned with the manual action and skip inactive apps.
+                    if (!running.contains(packageName)) continue;
                     if (!CodeSuAppPolicy.matchesSource(appContext, packageName, source)) continue;
                     boolean isSelected = selected.contains(packageName);
                     if ((selection == 0 && isSelected) || (selection != 0 && !isSelected)) targets.add(packageName);
