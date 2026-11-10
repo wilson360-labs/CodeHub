@@ -1443,6 +1443,7 @@ const STORAGE_BUCKET = 'CodeHub';
 let adsBlockCache = null;
 let adsBlockCacheEtag = '';
 let adsBlockCacheAt = 0;
+const ADS_BLOCKLIST_SOURCE = 'https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt';
 const adsBlockDownloadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 120,
@@ -1456,9 +1457,37 @@ app.get('/api/security/adsblock.txt', adsBlockDownloadLimiter, async (req, res) 
       const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download('adsblock.txt');
       if (error || !data) {
         console.warn('No se pudo leer CodeHub/adsblock.txt:', error?.message || 'archivo vacío');
-        if (!adsBlockCache) return res.status(404).type('text/plain').send('Falta CodeHub/adsblock.txt en Supabase Storage.');
-        // Sirve la última copia válida mientras Supabase recupera conexión; se reintenta pronto.
-        adsBlockCacheAt = Date.now() - 110_000;
+        const objectMissing = String(error?.statusCode || '') === '404' || /object not found|not found/i.test(error?.message || '');
+        if (objectMissing && !adsBlockCache) {
+          const upstream = await fetch(ADS_BLOCKLIST_SOURCE, { signal: AbortSignal.timeout(20000) });
+          if (!upstream.ok) throw new Error(`Fuente AdGuard respondió HTTP ${upstream.status}`);
+          const content = Buffer.from(await upstream.arrayBuffer());
+          if (content.length === 0 || content.length > 15 * 1024 * 1024) {
+            throw new Error('La lista AdGuard está vacía o supera el límite de 15 MB.');
+          }
+          const compatibleRules = content.toString('utf8').split(/\r?\n/)
+            .filter((line) => /^\|\|[a-z0-9.-]+\^(?:$|\$)/i.test(line.trim())).length;
+          if (compatibleRules < 1000) throw new Error(`La lista solo contiene ${compatibleRules} reglas DNS compatibles.`);
+
+          const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload('adsblock.txt', content, {
+            contentType: 'text/plain; charset=utf-8',
+            cacheControl: '3600',
+            upsert: true,
+          });
+          if (uploadError) {
+            // The live response remains useful if Storage write policy is misconfigured.
+            console.error('No se pudo guardar CodeHub/adsblock.txt en Supabase:', uploadError.message);
+          }
+          adsBlockCache = content;
+          adsBlockCacheEtag = `"${crypto.createHash('sha256').update(content).digest('hex')}"`;
+          adsBlockCacheAt = Date.now();
+          console.info(`Lista DNS AdGuard inicializada: ${compatibleRules} reglas compatibles; Storage ${uploadError ? 'pendiente' : 'actualizado'}.`);
+        } else if (!adsBlockCache) {
+          return res.status(503).type('text/plain').send('Supabase no está disponible para obtener adsblock.txt.');
+        } else {
+          // Sirve la última copia válida mientras Supabase recupera conexión; se reintenta pronto.
+          adsBlockCacheAt = Date.now() - 110_000;
+        }
       } else {
         const content = Buffer.from(await data.arrayBuffer());
         if (content.length === 0 || content.length > 15 * 1024 * 1024) {
@@ -1470,6 +1499,7 @@ app.get('/api/security/adsblock.txt', adsBlockDownloadLimiter, async (req, res) 
       }
     }
     res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.set('X-CodeHub-Blocklist', 'AdGuard DNS filter');
     res.set('Cache-Control', 'public, max-age=120');
     res.set('ETag', adsBlockCacheEtag);
     if (req.headers['if-none-match'] === adsBlockCacheEtag) return res.status(304).end();

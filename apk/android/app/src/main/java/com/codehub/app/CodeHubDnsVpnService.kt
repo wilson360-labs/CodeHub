@@ -62,9 +62,8 @@ class CodeHubDnsVpnService : VpnService() {
             running.set(true)
             blockedCount.set(getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_BLOCKED_COUNT, 0))
             getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACTIVE, true).apply()
+            domainRules = loadPrivateBlocklist()
             Thread({
-                val savedRules = loadPrivateBlocklist()
-                if (savedRules.blocked.isNotEmpty()) domainRules = savedRules
                 refreshBlocklistFromServer()
             }, "CodeHub-adblock-list-update").start()
             worker = Thread({ runDnsTunnel(descriptor) }, "CodeHub-DNS-filter").apply { start() }
@@ -232,7 +231,10 @@ class CodeHubDnsVpnService : VpnService() {
     private fun loadPrivateBlocklist(): DomainRules {
         val file = File(filesDir, PRIVATE_BLOCKLIST_FILE)
         val rules = if (file.isFile) runCatching { parseBlocklist(file.readText()) }.getOrDefault(DomainRules(emptySet(), emptySet())) else DomainRules(emptySet(), emptySet())
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_RULE_COUNT, rules.blocked.size).apply()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putInt(KEY_RULE_COUNT, rules.blocked.size)
+            .putString(KEY_LIST_STATUS, if (rules.blocked.isEmpty()) "Sin reglas locales · esperando adsblock.txt" else "Lista local activa · ${rules.blocked.size} dominios")
+            .apply()
         return rules
     }
 
@@ -248,7 +250,15 @@ class CodeHubDnsVpnService : VpnService() {
             setRequestProperty("User-Agent", "CodeHub-Android-DNS/1")
         }
         try {
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) return
+            val statusCode = connection.responseCode
+            if (statusCode != HttpURLConnection.HTTP_OK) {
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(
+                    KEY_LIST_STATUS,
+                    if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) "Falta adsblock.txt en Supabase (HTTP 404)"
+                    else "No se pudo actualizar adsblock.txt (HTTP $statusCode)"
+                ).apply()
+                return
+            }
             val body = connection.inputStream.use { input ->
                 val output = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(16 * 1024)
@@ -263,7 +273,12 @@ class CodeHubDnsVpnService : VpnService() {
                 output.toString(Charsets.UTF_8.name())
             }
             val parsed = parseBlocklist(body)
-            if (parsed.blocked.isEmpty()) return // Keep the last known good local file.
+            if (parsed.blocked.isEmpty()) {
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putString(KEY_LIST_STATUS, "adsblock.txt no contiene reglas DNS compatibles")
+                    .apply()
+                return // Keep the last known good local file.
+            }
             val target = File(filesDir, PRIVATE_BLOCKLIST_FILE)
             val temporary = File(filesDir, "$PRIVATE_BLOCKLIST_FILE.tmp")
             temporary.writeText(body, Charsets.UTF_8)
@@ -275,8 +290,13 @@ class CodeHubDnsVpnService : VpnService() {
             getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                 .putInt(KEY_RULE_COUNT, parsed.blocked.size)
                 .putLong(KEY_LIST_UPDATED_AT, System.currentTimeMillis())
+                .putString(KEY_LIST_STATUS, "Lista activa · ${parsed.blocked.size} dominios")
                 .apply()
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(
+                KEY_LIST_STATUS,
+                "No se pudo cargar adsblock.txt: ${error.localizedMessage ?: error.javaClass.simpleName}"
+            ).apply()
             // Preserve the last known good list and keep DNS fail-open behavior.
         } finally {
             connection.disconnect()
@@ -416,6 +436,7 @@ class CodeHubDnsVpnService : VpnService() {
         const val KEY_RULE_COUNT = "local_rule_count"
         const val KEY_RESOLVER_MODE = "resolver_mode"
         const val KEY_LIST_UPDATED_AT = "list_updated_at"
+        const val KEY_LIST_STATUS = "blocklist_status"
         const val NOTIFICATION_ID = 7102
         private const val LOCAL_DNS = "10.73.0.1"
         private const val TUN_ADDRESS = "10.73.0.2"

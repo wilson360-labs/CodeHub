@@ -601,6 +601,11 @@ class CodeSuActivity : Activity() {
         }
     }
 
+    private fun runningTargets(candidates: List<Candidate>): List<Candidate> =
+        if (runningStatusAvailable) candidates.filter {
+            it.isRunning == true && !it.isEngineProtected && !it.isEssential
+        } else emptyList()
+
     private fun renderControls() {
         if (!::sourceControls.isInitialized) return
         sourceControls.removeAllViews()
@@ -812,16 +817,17 @@ class CodeSuActivity : Activity() {
     private fun updateActionButton() {
         if (!::actionButton.isInitialized) return
         val targetCount = targetCandidates().size
+        val runningTargetCount = runningTargets(targetCandidates()).size
         if (::infoText.isInitialized && allApps.isNotEmpty()) {
             infoText.text = appListSummary(visibleCandidates(), targetCount)
         }
-        actionButton.text = "Cerrar seleccionadas ($targetCount)"
-        actionButton.isEnabled = !isProcessing && targetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
+        actionButton.text = if (runningStatusAvailable) "Cerrar seleccionadas ($runningTargetCount)" else "Esperando estado de apps…"
+        actionButton.isEnabled = !isProcessing && runningTargetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
         hibernateButton.text = if (targetCandidates().any { it.packageName in hibernatedPackages }) "Reactivar seleccionadas (${targetCount})" else "Hibernar seleccionadas ($targetCount)"
         hibernateButton.isEnabled = !isProcessing && targetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
-        val allCount = visibleCandidates().count { !it.isEngineProtected }
+        val allCount = runningTargets(visibleCandidates()).size
         closeAllButton.text = "Cerrar todo ($allCount)"
-        closeAllButton.isEnabled = !isProcessing && allCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
+        closeAllButton.isEnabled = !isProcessing && runningStatusAvailable && allCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
     }
 
     private fun appListSummary(visible: List<Candidate>, targetCount: Int = targetCandidates().size): String {
@@ -862,7 +868,12 @@ class CodeSuActivity : Activity() {
     }
 
     private fun confirmStopTargets() {
-        val targets = targetCandidates()
+        if (!runningStatusAvailable) {
+            closeProgressLabel.text = "Actualizando procesos activos…"
+            refreshRunningState()
+            return
+        }
+        val targets = runningTargets(targetCandidates())
         if (targets.isEmpty()) return
         val names = targets.take(5).joinToString(", ") { it.label }
         val extra = if (targets.size > 5) " y ${targets.size - 5} más" else ""
@@ -874,7 +885,7 @@ class CodeSuActivity : Activity() {
         val systemNote = if (sourceMode == SourceMode.SYSTEM) "\n\nEstás actuando sobre apps del sistema. Algunas sostienen funciones del teléfono." else ""
         AlertDialog.Builder(this)
             .setTitle("$action · ${targets.size} apps")
-            .setMessage("${names}${extra}.\n\nLa selección puede incluir apps que ahora estén inactivas. Una app detenida puede perder trabajo sin guardar; Android puede volver a iniciarla.$systemNote")
+            .setMessage("Solo se procesarán apps que Shizuku confirmó activas: ${names}${extra}. Una app detenida puede perder trabajo sin guardar; Android puede volver a iniciarla.$systemNote")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Continuar") { _, _ -> stopPackages(targets) }
             .show()
@@ -898,14 +909,19 @@ class CodeSuActivity : Activity() {
     }
 
     private fun confirmStopAllVisible() {
-        val targets = visibleCandidates().filterNot { it.isEngineProtected }
+        if (!runningStatusAvailable) {
+            closeProgressLabel.text = "Actualizando procesos activos…"
+            refreshRunningState()
+            return
+        }
+        val targets = runningTargets(visibleCandidates())
         if (targets.isEmpty()) return
         val names = targets.take(5).joinToString(", ") { it.label }
         val extra = if (targets.size > 5) " y ${targets.size - 5} más" else ""
         val systemNote = if (sourceMode == SourceMode.SYSTEM) "\n\nEl filtro incluye apps del sistema." else ""
         AlertDialog.Builder(this)
             .setTitle("Cerrar todas las visibles · ${targets.size}")
-            .setMessage("Se aplicará ${killLevelName()} a ${names}${extra}, estén en ejecución o no. Respeta Source mode y Hide critical apps, pero ignora la selección individual. Android puede volver a iniciar apps necesarias.$systemNote")
+            .setMessage("Se aplicará ${killLevelName()} solo a las apps activas confirmadas por Shizuku: ${names}${extra}. Respeta Source mode y Hide critical apps, pero ignora la selección individual. CodeHub y Shizuku están protegidas.$systemNote")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Cerrar todas") { _, _ -> stopPackages(targets) }
             .show()
@@ -918,6 +934,12 @@ class CodeSuActivity : Activity() {
     }
 
     private fun stopPackages(targets: List<Candidate>, operationLevel: Int = killMode) {
+        if (isProcessing || targets.isEmpty()) return
+        if (operationLevel != CodeSuUserService.LEVEL_HIBERNATE && operationLevel != CodeSuUserService.LEVEL_UNHIBERNATE && !runningStatusAvailable) {
+            closeProgressLabel.text = "No se inició: falta confirmar apps activas con Shizuku."
+            refreshRunningState()
+            return
+        }
         isProcessing = true
         actionButton.isEnabled = false
         hibernateButton.isEnabled = false
@@ -932,20 +954,27 @@ class CodeSuActivity : Activity() {
                 val identity = service.diagnostics()
                 val stopped = mutableListOf<String>()
                 val failed = mutableListOf<String>()
-                targets.forEachIndexed { index, target ->
-                    val result = service.stopPackages(arrayOf(target.packageName), operationLevel)
-                    stopped += result.getStringArrayList("stopped").orEmpty()
-                    failed += result.getStringArrayList("failed").orEmpty()
-                    val percent = ((index + 1) * 100 / targets.size).coerceIn(0, 100)
+                var completed = 0
+                targets.chunked(2).forEach { batch ->
+                    val result = service.stopPackages(batch.map { it.packageName }.toTypedArray(), operationLevel)
+                    val batchStopped = result.getStringArrayList("stopped").orEmpty().toList()
+                    val batchFailed = result.getStringArrayList("failed").orEmpty().toList()
+                    stopped += batchStopped
+                    failed += batchFailed
+                    completed += batch.size
+                    val currentCompleted = completed
+                    val percent = (currentCompleted * 100 / targets.size).coerceIn(0, 100)
                     runOnUiThread {
+                        if (isFinishing || isDestroyed) return@runOnUiThread
                         closeProgress.progress = percent
                         val operationText = when (operationLevel) {
                             CodeSuUserService.LEVEL_HIBERNATE -> "Hibernando aplicaciones"
                             CodeSuUserService.LEVEL_UNHIBERNATE -> "Reactivando aplicaciones"
                             else -> "Cerrando aplicaciones"
                         }
-                        closeProgressLabel.text = "$operationText · $percent% · ${index + 1}/${targets.size}"
-                        if (target.packageName in stopped) {
+                        closeProgressLabel.text = "$operationText · $percent% · $currentCompleted/${targets.size}"
+                        batch.forEach batchLoop@{ target ->
+                            if (target.packageName !in batchStopped) return@batchLoop
                             when (operationLevel) {
                                 CodeSuUserService.LEVEL_HIBERNATE -> {
                                     hibernatedPackages += target.packageName
@@ -957,10 +986,13 @@ class CodeSuActivity : Activity() {
                                     runningPackages = runningPackages - target.packageName
                                 }
                             }
-                            persistPreferences()
-                            updateLiveStateBadges()
-                            renderApps()
+                            val appIndex = allApps.indexOfFirst { it.packageName == target.packageName }
+                            if (appIndex >= 0 && operationLevel != CodeSuUserService.LEVEL_UNHIBERNATE) {
+                                allApps[appIndex] = allApps[appIndex].copy(isRunning = false)
+                            }
                         }
+                        persistPreferences()
+                        updateLiveStateBadges()
                     }
                 }
                 Triple(stopped, failed, identity)

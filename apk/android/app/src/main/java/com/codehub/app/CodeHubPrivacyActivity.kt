@@ -141,7 +141,8 @@ class CodeHubPrivacyActivity : Activity() {
         status.text = if (active) "● PROTECCIÓN CONECTADA" else "○ PROTECCIÓN DESCONECTADA"
         status.setTextColor(if (active) 0xFF4ADE80.toInt() else 0xFFA7A9BC.toInt())
         val resolverMode = prefs.getString(CodeHubDnsVpnService.KEY_RESOLVER_MODE, "Esperando consultas DNS")
-        blocked.text = "Bloqueos locales · ${prefs.getInt(CodeHubDnsVpnService.KEY_BLOCKED_COUNT, 0)}\nadsblock.txt privado · ${prefs.getInt(CodeHubDnsVpnService.KEY_RULE_COUNT, 0)} dominios\nResolución: $resolverMode"
+        val listStatus = prefs.getString(CodeHubDnsVpnService.KEY_LIST_STATUS, "Lista pendiente de descarga")
+        blocked.text = "Bloqueos locales · ${prefs.getInt(CodeHubDnsVpnService.KEY_BLOCKED_COUNT, 0)}\nadsblock.txt privado · ${prefs.getInt(CodeHubDnsVpnService.KEY_RULE_COUNT, 0)} dominios\n$listStatus\nResolución: $resolverMode"
         toggle.text = if (active) "Detener protección" else "Activar protección DNS"
         toggle.backgroundTintList = android.content.res.ColorStateList.valueOf(if (active) 0xFF4B2630.toInt() else 0xFF315A55.toInt())
     }
