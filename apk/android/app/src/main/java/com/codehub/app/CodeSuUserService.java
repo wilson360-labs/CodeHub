@@ -166,6 +166,8 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     public Bundle stopPackages(String[] packageNames, int level) {
         ArrayList<String> stopped = new ArrayList<>();
         ArrayList<String> failed = new ArrayList<>();
+        long rssBeforeKb = 0L;
+        long releasedRssKb = 0L;
         if (packageNames != null) {
             for (String packageName : packageNames) {
                 if (!isAllowedTarget(packageName)
@@ -174,11 +176,18 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                     continue;
                 }
                 try {
+                    long packageRssBeforeKb = packageResidentMemoryKb(packageName);
                     if (level == LEVEL_HIBERNATE || level == LEVEL_UNHIBERNATE) {
                         String state = level == LEVEL_HIBERNATE ? "true" : "false";
                         String output = readCommand(new String[]{"cmd", "app_hibernation", "set-state", packageName, state});
                         if (output.toLowerCase(java.util.Locale.ROOT).contains("error")) failed.add(packageName);
-                        else stopped.add(packageName);
+                        else {
+                            stopped.add(packageName);
+                            if (level == LEVEL_HIBERNATE) {
+                                rssBeforeKb += packageRssBeforeKb;
+                                releasedRssKb += Math.max(0L, packageRssBeforeKb - waitForPackageMemoryKb(packageName));
+                            }
+                        }
                         continue;
                     }
                     String command = level == LEVEL_BACKGROUND ? "kill" : "force-stop";
@@ -188,7 +197,11 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                         }
                     }
                     int exitCode = runAm(command, packageName);
-                    if (exitCode == 0) stopped.add(packageName); else failed.add(packageName);
+                    if (exitCode == 0) {
+                        stopped.add(packageName);
+                        rssBeforeKb += packageRssBeforeKb;
+                        releasedRssKb += Math.max(0L, packageRssBeforeKb - waitForPackageMemoryKb(packageName));
+                    } else failed.add(packageName);
                 } catch (Throwable error) {
                     failed.add(packageName);
                 }
@@ -198,6 +211,8 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
         result.putStringArrayList("stopped", stopped);
         result.putStringArrayList("failed", failed);
         result.putString("identity", diagnostics());
+        result.putLong("rss_before_kb", rssBeforeKb);
+        result.putLong("released_rss_kb", releasedRssKb);
         return result;
     }
 
@@ -262,6 +277,29 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
             if (processName.equals(packageName) || processName.startsWith(packageName + ":")) matches.add(pid);
         }
         return matches;
+    }
+
+    /** Sum the resident set of the target package's processes, using the Shizuku shell access to /proc. */
+    private static long packageResidentMemoryKb(String packageName) {
+        long totalKb = 0L;
+        for (String pid : processIdsForPackage(packageName)) {
+            File status = new File("/proc/" + pid + "/status");
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(status))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("VmRSS:")) continue;
+                    String[] parts = line.substring("VmRSS:".length()).trim().split("\\s+");
+                    if (parts.length > 0) totalKb += Long.parseLong(parts[0]);
+                    break;
+                }
+            } catch (Exception ignored) { }
+        }
+        return totalKb;
+    }
+
+    private static long waitForPackageMemoryKb(String packageName) {
+        android.os.SystemClock.sleep(150L);
+        return packageResidentMemoryKb(packageName);
     }
 
     private static String readCommand(String[] command) throws Exception {

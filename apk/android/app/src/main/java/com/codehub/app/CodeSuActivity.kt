@@ -1,6 +1,7 @@
 package com.codehub.app
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.ComponentName
@@ -19,6 +20,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.text.format.Formatter
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -45,6 +47,7 @@ class CodeSuActivity : Activity() {
     private val hibernatedPackages = linkedSetOf<String>()
     private val allApps = mutableListOf<Candidate>()
     private val runningLabels = mutableMapOf<String, TextView>()
+    private val selectionChecks = mutableMapOf<String, CheckBox>()
     @Volatile private var runningPackages = emptySet<String>()
     @Volatile private var runningStatusAvailable = false
     @Volatile private var runningRefreshInFlight = false
@@ -73,6 +76,7 @@ class CodeSuActivity : Activity() {
     private lateinit var hibernateButton: Button
     private lateinit var closeProgress: ProgressBar
     private lateinit var closeProgressLabel: TextView
+    private lateinit var ramStatusText: TextView
     private lateinit var autoControls: LinearLayout
     private lateinit var autoInfo: TextView
     private lateinit var listStyleControls: LinearLayout
@@ -85,6 +89,16 @@ class CodeSuActivity : Activity() {
     private var compactRows = false
     private var listError: String? = null
     private var isProcessing = false
+    private var updatingSelection = false
+    private var releasedRssKb = 0L
+
+    private val ramRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (isFinishing || isDestroyed) return
+            renderRamStatus()
+            mainHandler.postDelayed(this, 2_000L)
+        }
+    }
 
     @Volatile private var remoteService: ICodeSuRemoteService? = null
     @Volatile private var bindLatch: CountDownLatch? = null
@@ -153,22 +167,25 @@ class CodeSuActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        // Reload the installed catalog, then keep only the running badges live through Shizuku.
+        // Load only live processes, then refresh that small list while the screen is open.
         refreshStatus()
         renderAutoControls()
         loadInstalledApps()
-        refreshRunningState()
         mainHandler.removeCallbacks(liveRefreshRunnable)
         mainHandler.postDelayed(liveRefreshRunnable, 5_000L)
+        mainHandler.removeCallbacks(ramRefreshRunnable)
+        mainHandler.post(ramRefreshRunnable)
     }
 
     override fun onPause() {
         mainHandler.removeCallbacks(liveRefreshRunnable)
+        mainHandler.removeCallbacks(ramRefreshRunnable)
         super.onPause()
     }
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(liveRefreshRunnable)
+        mainHandler.removeCallbacks(ramRefreshRunnable)
         if (userServiceBound) {
             try { Shizuku.unbindUserService(userServiceArgs, userServiceConnection, true) } catch (_: Throwable) {}
             userServiceBound = false
@@ -356,7 +373,7 @@ class CodeSuActivity : Activity() {
                 text = "Actualizar lista"
                 textSize = 11f
                 isAllCaps = false
-                setOnClickListener { loadInstalledApps(); refreshRunningState() }
+                setOnClickListener { loadInstalledApps() }
             }
             addView(listRefreshButton, LinearLayout.LayoutParams(-2, dp(40)))
         }
@@ -372,6 +389,8 @@ class CodeSuActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(5), dp(18), dp(8))
         }
+        ramStatusText = label("RAM disponible: leyendo…", 10f, muted)
+        footer.addView(ramStatusText, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
         closeProgressLabel = label("Listo para optimizar", 10f, muted)
         footer.addView(closeProgressLabel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
         closeProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -441,7 +460,7 @@ class CodeSuActivity : Activity() {
                 else -> "Comprueba que Shizuku esté iniciado y vuelve a autorizar CodeHub si es necesario."
             }
         } else {
-            connectionHelp.text = "Lista todas las apps instaladas y consulta su estado de ejecución con Shizuku."
+            connectionHelp.text = "Muestra las apps con procesos activos y consulta su estado en vivo con Shizuku."
         }
         updateActionButton()
     }
@@ -451,7 +470,6 @@ class CodeSuActivity : Activity() {
             SystemCleaner.Status.READY -> {
                 refreshStatus()
                 loadInstalledApps()
-                refreshRunningState()
             }
             SystemCleaner.Status.NEEDS_PERMISSION -> requestShizukuPermission()
             SystemCleaner.Status.NOT_RUNNING -> {
@@ -476,7 +494,6 @@ class CodeSuActivity : Activity() {
                 if (granted) {
                     refreshStatus()
                     loadInstalledApps()
-                    refreshRunningState()
                 } else {
                     statusText.text = "No se confirmó el permiso. Revisa el diálogo de Shizuku y vuelve a intentar."
                     connectButton.isEnabled = true
@@ -492,17 +509,23 @@ class CodeSuActivity : Activity() {
 
     private fun loadInstalledApps() {
         listRefreshButton.isEnabled = false
-        infoText.text = "Cargando todas las aplicaciones instaladas…"
+        infoText.text = "Consultando apps activas con Shizuku…"
+        val hibernatedSnapshot = hibernatedPackages.toSet()
         Thread({
             val result = runCatching {
+                if (SystemCleaner.refreshStatus() != SystemCleaner.Status.READY) {
+                    throw IllegalStateException("Conecta y autoriza Shizuku para consultar apps en ejecución.")
+                }
+                val active = bindUserService().runningPackages().orEmpty().toSet()
                 val launchIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 val launcherPackages = packageManager.queryIntentActivities(launchIntent, 0)
                     .mapNotNull { it.activityInfo?.packageName }
                     .toSet()
                 val essential = essentialPackages()
-                packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                val loaded = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
                     .asSequence()
                     .filterNot { it.packageName == packageName }
+                    .filter { it.packageName in active || it.packageName in hibernatedSnapshot }
                     .map { appInfo ->
                         val label = runCatching { packageManager.getApplicationLabel(appInfo).toString() }
                             .getOrDefault(appInfo.packageName)
@@ -515,25 +538,28 @@ class CodeSuActivity : Activity() {
                             isSystem = appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0,
                             hasLauncher = appInfo.packageName in launcherPackages,
                             isEssential = appInfo.packageName in essential,
-                            isRunning = if (runningStatusAvailable) appInfo.packageName in runningPackages else null,
+                            isRunning = appInfo.packageName in active,
                             isEngineProtected = appInfo.packageName == packageName ||
                                 appInfo.packageName == "moe.shizuku.privileged.api",
                         )
                     }
                     .sortedBy { it.label.lowercase(java.util.Locale.ROOT) }
                     .toList()
+                active to loaded
             }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 listRefreshButton.isEnabled = true
-                result.onSuccess { loaded ->
+                result.onSuccess { (active, loaded) ->
+                    runningPackages = active
+                    runningStatusAvailable = true
                     listError = null
                     allApps.clear()
                     allApps.addAll(loaded)
-                    infoText.text = "${allApps.size} aplicaciones instaladas. Actualizando estado en vivo…"
                     renderApps()
-                    refreshRunningState()
                 }.onFailure { error ->
+                    runningStatusAvailable = false
+                    runningPackages = emptySet()
                     allApps.clear()
                     listError = error.message ?: "No se pudieron leer los procesos activos."
                     renderApps()
@@ -543,24 +569,53 @@ class CodeSuActivity : Activity() {
         }, "CodeSu-package-scan").start()
     }
 
-    /** Refresh only process state; the installed-app list stays complete and stable. */
+    /** Refresh process state and keep the rendered catalog limited to live or hibernated apps. */
     private fun refreshRunningState() {
         if (runningRefreshInFlight) return
         runningRefreshInFlight = true
+        val knownPackages = allApps.mapTo(mutableSetOf()) { it.packageName }
+        val hibernatedSnapshot = hibernatedPackages.toSet()
         Thread({
             val result = runCatching {
                 if (SystemCleaner.refreshStatus() != SystemCleaner.Status.READY) {
                     throw IllegalStateException("Shizuku necesita estar activo y autorizado para ver el estado en vivo.")
                 }
-                bindUserService().runningPackages().orEmpty().toSet()
+                val active = bindUserService().runningPackages().orEmpty().toSet()
+                val newlyRunningPackages = active.filter { it !in knownPackages && it !in hibernatedSnapshot && it != packageName }
+                val essential = if (newlyRunningPackages.isEmpty()) emptySet() else essentialPackages()
+                val newlyActive = newlyRunningPackages.asSequence()
+                    .mapNotNull { activePackage ->
+                        runCatching {
+                            val appInfo = packageManager.getApplicationInfo(activePackage, 0)
+                            val label = runCatching { packageManager.getApplicationLabel(appInfo).toString() }
+                                .getOrDefault(activePackage)
+                            val icon = runCatching { packageManager.getApplicationIcon(appInfo) }
+                                .getOrElse { packageManager.defaultActivityIcon }
+                            Candidate(
+                                packageName = activePackage,
+                                label = label,
+                                icon = icon,
+                                isSystem = appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0,
+                                hasLauncher = packageManager.getLaunchIntentForPackage(activePackage) != null,
+                                isEssential = activePackage in essential,
+                                isRunning = true,
+                                isEngineProtected = activePackage == "moe.shizuku.privileged.api",
+                            )
+                        }.getOrNull()
+                    }.toList()
+                active to newlyActive
             }
             runOnUiThread {
                 runningRefreshInFlight = false
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                result.onSuccess { active ->
+                val previousVisible = runningLabels.keys.toSet()
+                result.onSuccess { (active, newlyActive) ->
                     runningPackages = active
                     runningStatusAvailable = true
                     listError = null
+                    val existingPackages = allApps.mapTo(mutableSetOf()) { it.packageName }
+                    allApps.addAll(newlyActive.filter { it.packageName !in existingPackages })
+                    allApps.removeAll { it.packageName !in active && it.packageName !in hibernatedPackages }
                     allApps.indices.forEach { index ->
                         allApps[index] = allApps[index].copy(isRunning = allApps[index].packageName in active)
                     }
@@ -570,8 +625,12 @@ class CodeSuActivity : Activity() {
                     listError = error.message ?: "No se pudo actualizar el estado de ejecución."
                     allApps.indices.forEach { index -> allApps[index] = allApps[index].copy(isRunning = null) }
                 }
-                updateLiveStateBadges()
-                updateActionButton()
+                val currentVisible = visibleCandidates().map { it.packageName }.toSet()
+                if (previousVisible != currentVisible) renderApps()
+                else {
+                    updateLiveStateBadges()
+                    updateActionButton()
+                }
             }
         }, "CodeSu-live-process-refresh").start()
     }
@@ -587,7 +646,8 @@ class CodeSuActivity : Activity() {
                 SourceMode.SYSTEM -> app.isSystem
                 SourceMode.ALL -> true
             }
-            app.packageName != packageName && sourceMatches && (!hideCriticalApps || !app.isEssential) && (needle.isEmpty()
+            val isActiveOrHibernated = app.isRunning == true || app.packageName in hibernatedPackages
+            app.packageName != packageName && isActiveOrHibernated && sourceMatches && (!hideCriticalApps || !app.isEssential) && (needle.isEmpty()
                 || app.label.lowercase(java.util.Locale.ROOT).contains(needle)
                 || app.packageName.lowercase(java.util.Locale.ROOT).contains(needle))
         }
@@ -741,24 +801,32 @@ class CodeSuActivity : Activity() {
     }
 
     private fun updateVisibleSelection(select: Boolean) {
-        val visible = visibleCandidates().filterNot { it.isEngineProtected }.map { it.packageName }
+        val visible = visibleCandidates().filterNot { it.isEngineProtected || it.isEssential }.map { it.packageName }
         selectionMode = SelectionMode.INCLUDE
-        if (select) selectedPackages.addAll(visible) else selectedPackages.removeAll(visible.toSet())
+        selectedPackages.clear()
+        if (select) selectedPackages.addAll(visible)
+        updatingSelection = true
+        selectionChecks.forEach { (packageName, check) ->
+            check.isChecked = packageName in selectedPackages && packageName in visible
+        }
+        updatingSelection = false
         persistPreferences()
         renderControls()
-        renderApps()
+        updateActionButton()
     }
 
     private fun renderApps() {
         if (!::list.isInitialized) return
         list.removeAllViews()
         runningLabels.clear()
+        selectionChecks.clear()
         val visible = visibleCandidates()
         if (visible.isEmpty()) {
             val emptyMessage = listError ?: when {
                 SystemCleaner.refreshStatus() != SystemCleaner.Status.READY -> "Conecta Shizuku para actualizar el estado en ejecución."
-                allApps.isEmpty() -> "No se encontraron aplicaciones instaladas. Actualiza la lista."
-                else -> "No hay resultados para este filtro."
+                !runningStatusAvailable -> "Consultando procesos activos con Shizuku…"
+                allApps.isEmpty() -> "No se detectaron aplicaciones en ejecución."
+                else -> "No hay apps en ejecución con este filtro."
             }
             list.addView(label(emptyMessage, 12f, muted),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -797,17 +865,20 @@ class CodeSuActivity : Activity() {
                 buttonTintList = android.content.res.ColorStateList.valueOf(cyan)
                 isEnabled = !app.isEngineProtected && (!hideCriticalApps || !app.isEssential)
                 setOnCheckedChangeListener { _, checked ->
+                    if (updatingSelection) return@setOnCheckedChangeListener
                     if (checked) selectedPackages.add(app.packageName) else selectedPackages.remove(app.packageName)
                     persistPreferences()
                     updateActionButton()
                 }
             }
+            selectionChecks[app.packageName] = check
             row.addView(check)
             row.setOnClickListener { if (check.isEnabled) check.isChecked = !check.isChecked }
             list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(if (compactRows) 4 else 7) })
         }
         infoText.text = when {
-            visible.isEmpty() && allApps.isEmpty() -> listError ?: "No se encontraron aplicaciones instaladas. Actualiza la lista."
+            visible.isEmpty() && runningStatusAvailable && allApps.isEmpty() -> "No se detectaron aplicaciones en ejecución."
+            visible.isEmpty() && allApps.isEmpty() -> listError ?: "Conecta Shizuku para consultar las apps en ejecución."
             visible.isEmpty() -> "No hay resultados para el filtro o la búsqueda."
             else -> appListSummary(visible)
         }
@@ -948,6 +1019,8 @@ class CodeSuActivity : Activity() {
         closeProgress.progress = 0
         closeProgress.visibility = View.VISIBLE
         closeProgressLabel.text = "Preparando cierre · 0%"
+        releasedRssKb = 0L
+        renderRamStatus()
         Thread({
             val response = runCatching {
                 val service = bindUserService()
@@ -959,6 +1032,7 @@ class CodeSuActivity : Activity() {
                     val result = service.stopPackages(batch.map { it.packageName }.toTypedArray(), operationLevel)
                     val batchStopped = result.getStringArrayList("stopped").orEmpty().toList()
                     val batchFailed = result.getStringArrayList("failed").orEmpty().toList()
+                    val batchReleasedRssKb = result.getLong("released_rss_kb", 0L)
                     stopped += batchStopped
                     failed += batchFailed
                     completed += batch.size
@@ -973,6 +1047,8 @@ class CodeSuActivity : Activity() {
                             else -> "Cerrando aplicaciones"
                         }
                         closeProgressLabel.text = "$operationText · $percent% · $currentCompleted/${targets.size}"
+                        releasedRssKb += batchReleasedRssKb
+                        renderRamStatus()
                         batch.forEach batchLoop@{ target ->
                             if (target.packageName !in batchStopped) return@batchLoop
                             when (operationLevel) {
@@ -1074,6 +1150,17 @@ class CodeSuActivity : Activity() {
             .putInt("screen_off_delay_minutes", screenOffDelayMinutes)
             .putBoolean("compact_rows", compactRows)
             .apply()
+    }
+
+    private fun renderRamStatus() {
+        if (!::ramStatusText.isInitialized) return
+        val manager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return
+        val memory = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(memory)
+        val available = Formatter.formatShortFileSize(this, memory.availMem)
+        val total = Formatter.formatShortFileSize(this, memory.totalMem)
+        val released = Formatter.formatShortFileSize(this, releasedRssKb * 1024L)
+        ramStatusText.text = "RAM libre $available / $total · RSS estimada liberada ~$released"
     }
 
     private fun card(top: Int = dp(0), content: LinearLayout.() -> Unit): LinearLayout = LinearLayout(this).apply {
