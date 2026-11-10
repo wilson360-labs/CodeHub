@@ -538,7 +538,7 @@ class CodeSuActivity : Activity() {
                             icon = icon,
                             isSystem = appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0,
                             hasLauncher = appInfo.packageName in launcherPackages,
-                            isEssential = appInfo.packageName in essential,
+                            isEssential = appInfo.packageName in essential || CodeSuAppPolicy.matchesProtectedPrefix(appInfo.packageName),
                             isRunning = appInfo.packageName in active,
                             isEngineProtected = appInfo.packageName == packageName ||
                                 appInfo.packageName == "moe.shizuku.privileged.api",
@@ -598,7 +598,7 @@ class CodeSuActivity : Activity() {
                                 icon = icon,
                                 isSystem = appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0,
                                 hasLauncher = packageManager.getLaunchIntentForPackage(activePackage) != null,
-                                isEssential = activePackage in essential,
+                                isEssential = activePackage in essential || CodeSuAppPolicy.matchesProtectedPrefix(activePackage),
                                 isRunning = true,
                                 isEngineProtected = activePackage == "moe.shizuku.privileged.api",
                             )

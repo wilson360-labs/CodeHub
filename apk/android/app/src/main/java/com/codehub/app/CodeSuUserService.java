@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 @Keep
 public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     /** Increase whenever this UserService implementation changes so Shizuku replaces stale code. */
-    public static final int USER_SERVICE_VERSION = 4;
+    public static final int USER_SERVICE_VERSION = 5;
     public static final int LEVEL_BACKGROUND = 0;
     public static final int LEVEL_FORCE_STOP = 1;
     public static final int LEVEL_KILLER = 2;
@@ -40,6 +40,58 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     private static final long COMMAND_TIMEOUT_MS = 15_000L;
     private static final long PACKAGE_INDEX_TTL_MS = 30_000L;
     private static volatile PackageIndex cachedPackageIndex;
+    /**
+     * Deny list server-side. El UserService no tiene Context para consultar
+     * CodeSuAppPolicy, y ninguna vía de stop debe poder parar a quien sostiene
+     * al resto del sistema: AMS mata por pkgDeps los procesos que dependen del
+     * paquete forzado (p. ej. `am force-stop` del provider de WebView mata a
+     * CodeHub, cuya UI es WebView).
+     */
+    private static final String[] PROTECTED_PACKAGES = {
+            "android",
+            "com.codehub.app",
+            "moe.shizuku.privileged.api",
+            "com.android.shell",
+            "com.android.systemui",
+            "com.android.settings",
+            "com.android.phone",
+            "com.android.server.telecom",
+            "com.android.providers.settings",
+            "com.android.providers.downloads",
+            "com.android.providers.media",
+            "com.android.providers.media.module",
+            "com.android.bluetooth",
+            "com.android.nfc",
+            "com.android.permissioncontroller",
+            "com.android.packageinstaller",
+            "com.google.android.gms",
+            "com.google.android.gsf",
+            "org.microg.gms.droidguard",
+            "com.miui.securitycenter",
+            "com.miui.powerkeeper",
+            "com.miui.guardprovider",
+            "com.xiaomi.finddevice",
+            "com.miui.core",
+            "com.miui.home",
+            "com.samsung.android.lool",
+            "com.samsung.android.securitylogagent",
+            "com.samsung.android.biometrics.app.setting",
+            "com.samsung.android.incallui",
+            "com.samsung.android.sm_cn",
+            "com.coloros.safecenter",
+            "com.oplus.battery",
+            "com.oplus.safe",
+            "com.huawei.systemmanager",
+    };
+    private static final String[] PROTECTED_PACKAGE_PREFIXES = {
+            "com.google.android.webview",
+            "com.android.webview",
+            "com.google.android.trichromelibrary",
+            "com.android.chrome",
+            "org.chromium.webview_shell",
+    };
+    /** Los UIDs por debajo del primer rango de apps no son targets legítimos de stop. */
+    private static final int MIN_INSTALL_UID = 10_000;
 
     private static final class PackageIndex {
         final Map<Integer, LinkedHashSet<String>> byUid;
@@ -179,6 +231,12 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                     failed.add(packageName == null ? "(desconocido)" : packageName);
                     continue;
                 }
+                Integer targetUid = null;
+                try { targetUid = uidForPackage(packageName); } catch (Throwable ignored) { }
+                if (isProtectedTarget(packageName, targetUid)) {
+                    failed.add(packageName);
+                    continue;
+                }
                 try {
                     long packageRssBeforeKb = packageResidentMemoryKb(packageName);
                     if (level == LEVEL_HIBERNATE || level == LEVEL_UNHIBERNATE) {
@@ -227,6 +285,26 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                 && !packageName.startsWith(OWN_PACKAGE + ".")
                 && !SHIZUKU_PACKAGE.equals(packageName)
                 && !SHELL_PACKAGE.equals(packageName);
+    }
+
+    private static Integer uidForPackage(String packageName) throws Exception {
+        for (Map.Entry<Integer, LinkedHashSet<String>> entry : packageIndex().byUid.entrySet()) {
+            if (entry.getValue().contains(packageName)) return entry.getKey();
+        }
+        return null;
+    }
+
+    /** Rechaza targets que sostienen al sistema o de los que procesos con WebView dependen por pkgDeps. */
+    private static boolean isProtectedTarget(String packageName, Integer uid) {
+        for (String name : PROTECTED_PACKAGES) {
+            if (name.equals(packageName)) return true;
+        }
+        if (packageName != null) {
+            for (String prefix : PROTECTED_PACKAGE_PREFIXES) {
+                if (packageName.startsWith(prefix)) return true;
+            }
+        }
+        return uid != null && uid < MIN_INSTALL_UID;
     }
 
     private static int runAm(String operation, String packageName) throws Exception {
