@@ -110,7 +110,11 @@ object SystemCleaner {
             }
 
             pendingPermission = { granted ->
-                if (cont.isActive) { cont.resume(granted) }
+                // El callback solo confirma la respuesta al diálogo. Antes de
+                // declarar CodeHub autorizado, vuelve a consultar el permiso
+                // real del servidor para no guardar un grant solo en memoria.
+                val verified = granted && isSelfGranted()
+                if (cont.isActive) { cont.resume(verified) }
             }
 
             Handler(Looper.getMainLooper()).post {
@@ -152,29 +156,16 @@ object SystemCleaner {
     @Volatile private var statusPush: ((String) -> Unit)? = null
     @Volatile private var binderEventsOn = false
 
-    /**
-     * El usuario concedió el permiso en esta sesión (diálogo in-app o app
-     * Shizuku). En varias ROMs `Shizuku.checkSelfPermission()` puede tardar o
-     * devolver DENIED aunque el permiso ya esté concedido; este indicador
-     * evita que el panel se quede clavado en "Permiso pendiente". Se limpia
-     * cuando muere el binder para volver a verificar contra el estado real.
-     */
-    @Volatile private var grantedViaDialog = false
-
-    /** ¿Tenemos permiso de Shizuku ahora mismo? (chequeo real + memoria de la sesión). */
+    /** ¿Tenemos permiso real de Shizuku ahora mismo? */
     fun isSelfGranted(): Boolean {
-        if (grantedViaDialog) return true
         return try {
             Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         } catch (_: Throwable) { false }
     }
 
     private val permissionListener = Shizuku.OnRequestPermissionResultListener { code, result ->
-        val granted = result == PackageManager.PERMISSION_GRANTED
-        if (granted) grantedViaDialog = true
-        else if (code == PERMISSION_REQUEST_CODE) grantedViaDialog = false
         if (code == PERMISSION_REQUEST_CODE) {
-            pendingPermission?.invoke(granted)
+            pendingPermission?.invoke(result == PackageManager.PERMISSION_GRANTED)
             pendingPermission = null
         }
         // Empujón inmediato: al conceder el permiso el panel pasa a "Listo" sin
@@ -231,7 +222,6 @@ object SystemCleaner {
             try { Shizuku.addBinderReceivedListener { pushStatusNow() } } catch (_: Throwable) {}
             try {
                 Shizuku.addBinderDeadListener {
-                    grantedViaDialog = false   // el binder murió: re-verificar contra el estado real
                     pushStatusNow()
                 }
             } catch (_: Throwable) {}

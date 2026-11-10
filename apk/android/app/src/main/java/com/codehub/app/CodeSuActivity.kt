@@ -491,11 +491,12 @@ class CodeSuActivity : Activity() {
             val granted = runCatching { SystemCleaner.requestPermissionAsyncCompat() }.getOrDefault(false)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                if (granted) {
+                if (granted && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY) {
                     refreshStatus()
                     loadInstalledApps()
                 } else {
-                    statusText.text = "No se confirmó el permiso. Revisa el diálogo de Shizuku y vuelve a intentar."
+                    refreshStatus()
+                    statusText.text = "Shizuku no confirmó el permiso persistente para CodeHub. Revisa Permisos de aplicaciones en Shizuku y vuelve a autorizarlo."
                     connectButton.isEnabled = true
                 }
             }

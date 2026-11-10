@@ -57,6 +57,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var codeBeatCard: View
     private lateinit var codeStreamCard: View
     private lateinit var copilotCard: View
+    private lateinit var cvCard: View
     private lateinit var weatherCard: View
     private lateinit var toolsCard: View
     private lateinit var optimizerCard: View
@@ -114,6 +115,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             listener.onOpenCopilot()
         }
         addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
+        cvCard = featureCard(R.drawable.ic_home_cv, "Crear mi CV", "Generador guiado con IA", 0xFFA78BFA.toInt()) {
+            listener.onOpenWebsite("/cv-generador")
+        }
+        addEntranceTarget(content, cvCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         weatherCard = actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
             listener.onOpenWeather()
@@ -186,6 +192,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         tourSteps += Triple(codeBeatCard, "CodeBeat", "Música y extensiones para tu flujo de trabajo.")
         tourSteps += Triple(codeStreamCard, "CodeStream", "Videos, música y Shorts dentro de la app.")
         tourSteps += Triple(copilotCard, "WIL.E COPILOT", "Asistente IA nativo para depurar, revisar código y generar README.")
+        tourSteps += Triple(cvCard, "Crear mi CV", "Abre el generador guiado con IA para construir y mejorar tu currículum.")
         tourSteps += Triple(weatherCard, "Clima", "Pronóstico y alertas para tu ubicación.")
         tourSteps += Triple(toolsCard, "Herramientas", "Utilidades y servicios de CodeHub.")
         tourSteps += Triple(optimizerCard, "CodeSu", "Revisa apps activas y detén solo las que elijas. Requiere Shizuku autorizado; no borra datos ni promete aumentar la batería.")
