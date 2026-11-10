@@ -86,10 +86,9 @@ public final class CodeSuAppPolicy {
         HashSet<String> packages = new HashSet<>(Arrays.asList(STATIC_CRITICAL_PACKAGES));
         if (Build.VERSION.SDK_INT >= 26) {
             try {
-                WebView current = WebView.getCurrentWebViewPackage();
-                if (current != null && current.getPackageInfo() != null
-                        && current.getPackageInfo().packageName != null) {
-                    packages.add(current.getPackageInfo().packageName);
+                android.content.pm.PackageInfo webView = WebView.getCurrentWebViewPackage();
+                if (webView != null && webView.packageName != null) {
+                    packages.add(webView.packageName);
                 }
             } catch (Exception ignored) {}
         }
