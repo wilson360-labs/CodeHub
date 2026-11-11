@@ -90,6 +90,7 @@ public class MainActivity extends Activity {
     private AppUpdateChecker.UpdateInfo pendingAppUpdate;
     private boolean appUpdateRunning;
     private boolean appUpdateAwaitingConfirmation;
+    private AlertDialog requiredUpdateDialog;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -328,10 +329,36 @@ public class MainActivity extends Activity {
         if (info == null || isFinishing()) return;
         pendingAppUpdate = info;
         if (nativeHome != null) nativeHome.showAppUpdateAvailable(
-                info.version, info.buildLabel, ShizukuInstaller.isReady());
+                info.version, info.buildLabel, ShizukuInstaller.isReady(), info.required);
+        if (info.required) showRequiredUpdateDialog(info);
+        else dismissRequiredUpdateDialog();
+    }
+
+    private void dismissRequiredUpdateDialog() {
+        if (requiredUpdateDialog != null) {
+            if (requiredUpdateDialog.isShowing()) requiredUpdateDialog.dismiss();
+            requiredUpdateDialog = null;
+        }
+    }
+
+    private void showRequiredUpdateDialog(AppUpdateChecker.UpdateInfo info) {
+        if (info == null || !info.required || isFinishing() || isDestroyed()) return;
+        if (requiredUpdateDialog != null && requiredUpdateDialog.isShowing()) return;
+        requiredUpdateDialog = new AlertDialog.Builder(this)
+            .setTitle("Actualización obligatoria")
+            .setMessage("Esta versión de CodeHub ya no tiene soporte. Actualiza a v" + info.version
+                + (info.buildLabel == null || info.buildLabel.trim().isEmpty() ? "" : " · " + info.buildLabel)
+                + " para seguir usando la aplicación.")
+            .setPositiveButton("Actualizar ahora", (dialog, which) -> startAppUpdate())
+            .setNegativeButton("Cerrar CodeHub", (dialog, which) -> finish())
+            .create();
+        requiredUpdateDialog.setCancelable(false);
+        requiredUpdateDialog.setCanceledOnTouchOutside(false);
+        requiredUpdateDialog.show();
     }
 
     void hideAppUpdateBanner() {
+        if (pendingAppUpdate != null && pendingAppUpdate.required) return;
         if (appUpdateRunning || appUpdateAwaitingConfirmation) return;
         if (nativeHome != null) nativeHome.hideAppUpdateBanner();
     }
@@ -1336,11 +1363,13 @@ public class MainActivity extends Activity {
             appUpdateAwaitingConfirmation = false;
             long installedCode = AppUpdateChecker.localVersionCode(this);
             if (pendingAppUpdate.versionCode > 0 && installedCode >= pendingAppUpdate.versionCode) {
+                dismissRequiredUpdateDialog();
                 if (nativeHome != null) nativeHome.showAppUpdateInstalled(pendingAppUpdate.version);
             } else {
                 clearPendingSelfUpdate();
                 if (nativeHome != null) nativeHome.showAppUpdateAvailable(
-                    pendingAppUpdate.version, pendingAppUpdate.buildLabel, ShizukuInstaller.isReady());
+                    pendingAppUpdate.version, pendingAppUpdate.buildLabel, ShizukuInstaller.isReady(), pendingAppUpdate.required);
+                if (pendingAppUpdate.required) showRequiredUpdateDialog(pendingAppUpdate);
             }
         }
         try { if (nativeHome != null) nativeHome.refreshActivitySummary(); } catch (Throwable ignored) {}

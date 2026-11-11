@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Auto-update de la config del APK: publica apkLatestVersion + apkUpdateNotes
+ * Auto-update de la config del APK: publica version, versionCode y notas
  * en el backend (PATCH /api/admin/config) para que el diálogo de
  * "Actualización disponible" del APK se active tras publicar una versión nueva.
  *
@@ -11,6 +11,7 @@
  *   node scripts/update-apk-config.js --notes-file notas.txt
  *   node scripts/update-apk-config.js --version 1.4.1 --bump-code
  *   node scripts/update-apk-config.js --fallback "Mejoras y correcciones"
+ *   node scripts/update-apk-config.js --version-code 756 --minimum-version-code 756 --fallback "Actualización obligatoria"
  *
  * Auth: requiere ADMIN_KEY (env o --key). Endpoint default: Render.
  */
@@ -75,8 +76,19 @@ async function main() {
 
   const gradle = parseGradle();
   const version = readArg('--version') || gradle.versionName;
+  const versionCode = Number(readArg('--version-code') || gradle.versionCode);
+  const minimumArg = readArg('--minimum-version-code');
+  const minimumVersionCode = minimumArg == null ? null : Number(minimumArg);
   if (!semverValid(version)) {
     console.error(`✖ versionName "${version}" no es semver válido (ej: 1.4.1)`);
+    process.exit(1);
+  }
+  if (!Number.isSafeInteger(versionCode) || versionCode < 1) {
+    console.error('✖ versionCode debe ser un entero positivo');
+    process.exit(1);
+  }
+  if (minimumVersionCode != null && (!Number.isSafeInteger(minimumVersionCode) || minimumVersionCode < 0)) {
+    console.error('✖ minimum-version-code debe ser 0 (desactivado) o un entero positivo');
     process.exit(1);
   }
 
@@ -116,6 +128,8 @@ async function main() {
 
   console.log('PAYLOAD:');
   console.log('  apkLatestVersion: ' + version);
+  console.log('  apkLatestVersionCode: ' + versionCode);
+  if (minimumVersionCode != null) console.log('  apkMinSupportedVersionCode: ' + minimumVersionCode);
   console.log('  apkUpdateNotes:');
   notes.split('\n').forEach((l) => console.log('    • ' + l));
 
@@ -160,10 +174,12 @@ async function main() {
   if (sessionToken) headers['x-admin-session'] = sessionToken;
   else headers['x-admin-key'] = key; // backend sin /auth/bot (transición)
 
+  const config = { apkLatestVersion: version, apkLatestVersionCode: versionCode, apkUpdateNotes: notes };
+  if (minimumVersionCode != null) config.apkMinSupportedVersionCode = minimumVersionCode;
   const res = await fetch(backend + '/api/admin/config', {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ config: { apkLatestVersion: version, apkUpdateNotes: notes } }),
+    body: JSON.stringify({ config }),
   });
   const text = await res.text();
   let data = null;
@@ -172,7 +188,7 @@ async function main() {
     console.error(`✖ PATCH falló (HTTP ${res.status}): ${text.slice(0, 300)}`);
     process.exit(1);
   }
-  console.log(`\n✔ Config remota publicada (version config ${data.version}). El diálogo del APK se activará con "${version}".`);
+  console.log(`\n✔ Config remota publicada (config ${data.version}, APK ${version} code ${versionCode}).`);
 }
 
 main().catch((e) => { console.error('✖', e.message); process.exit(1); });

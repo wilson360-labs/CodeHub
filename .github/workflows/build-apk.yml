@@ -594,6 +594,7 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           CH_MSG: ${{ github.event.head_commit.message || '' }}
+          APK_VERSION_CODE: ${{ steps.version.outputs.version_code }}
         run: |
           # Activa el diálogo "Actualización disponible" del APK publicando
           # apkLatestVersion + apkUpdateNotes en /api/admin/config (Render).
@@ -602,7 +603,7 @@ jobs:
           # ese texto lo leen usuarios finales en el diálogo de la app.
           MSG="${CH_MSG%%$'\n'*}"
           MSG="${MSG:-Nueva versión de CodeHub con mejoras y correcciones}"
-          node scripts/update-apk-config.js --fallback "$MSG"
+          node scripts/update-apk-config.js --version-code "$APK_VERSION_CODE" --fallback "$MSG"
 
       - name: Limpiar keystore local del runner
         if: always()

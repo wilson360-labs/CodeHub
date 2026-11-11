@@ -161,7 +161,7 @@ const corsOptions = {
     cb(null, false);
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-admin-key', 'x-admin-user', 'x-admin-session', 'Accept', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'x-admin-key', 'x-admin-user', 'x-admin-session', 'Accept', 'Authorization', 'X-Firebase-AppCheck', 'X-CodeHub-Client', 'X-CodeHub-Version-Code'],
   exposedHeaders: ['Content-Length', 'X-Cache'],
   credentials: true,
   preflightContinue: false,
@@ -355,6 +355,10 @@ const AppConfig = mongoose.model('AppConfig', new mongoose.Schema({
 const DEFAULT_CONFIG = {
   version: 1,
   apkLatestVersion: '',
+  apkLatestVersionCode: 0,
+  // 0 mantiene compatibilidad y desactiva el corte obligatorio.
+  // Se eleva manualmente después de publicar la nueva versión con el gate.
+  apkMinSupportedVersionCode: 0,
   apkUpdateNotes: '',
   features: {
     chatEnabled: true,
@@ -6137,6 +6141,7 @@ if (VAPID_READY) webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC
 let admin = null;
 let fcmEnabled = false;
 let adminMessagingRef = null;
+let adminAppCheckRef = null;
 try {
   admin = require('firebase-admin');
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
@@ -6148,6 +6153,12 @@ try {
     const certFn = admin.cert || (admin.credential && admin.credential.cert);
     if (!certFn) throw new Error('firebase-admin sin credential.cert ni cert');
     admin.initializeApp({ credential: certFn(serviceAccount) });
+    try {
+      const { getAppCheck } = require('firebase-admin/app-check');
+      adminAppCheckRef = getAppCheck();
+    } catch (e) {
+      console.warn('⚠️ App Check backend no disponible:', e.message);
+    }
     if (typeof admin.messaging === 'function') {
       adminMessagingRef = admin.messaging();
     } else {
@@ -6890,6 +6901,42 @@ app.get('/api/changelog', (req, res) => {
   res.json({ ok: true, entries });
 });
 
+// ── MOBILE APP POLICY — attested APK update floor ────────────
+// Este endpoint se protege con Firebase App Check. No activa el corte por sí
+// solo: apkMinSupportedVersionCode=0 conserva compatibilidad hasta que el
+// propietario eleve el mínimo desde AdminHub después de publicar el gate.
+app.get('/api/mobile/policy', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (!adminAppCheckRef) {
+    return res.status(503).json({ ok: false, error: 'App Check backend no configurado' });
+  }
+  const token = String(req.get('X-Firebase-AppCheck') || '');
+  if (!token) return res.status(401).json({ ok: false, error: 'App Check requerido' });
+  try {
+    const claims = await adminAppCheckRef.verifyToken(token);
+    const expectedAppId = process.env.FIREBASE_ANDROID_APP_ID || '1:759051125264:android:b27a64d117f378f27f0095';
+    if (claims.sub !== expectedAppId) {
+      return res.status(403).json({ ok: false, error: 'App Android no reconocida' });
+    }
+    const cfg = await getAppConfig();
+    const policy = {
+      packageName: 'com.codehub.app',
+      latestVersion: String(cfg.apkLatestVersion || ''),
+      latestVersionCode: Math.max(0, Number(cfg.apkLatestVersionCode) || 0),
+      minimumSupportedVersionCode: Math.max(0, Number(cfg.apkMinSupportedVersionCode) || 0),
+    };
+    const reportedCode = Math.max(0, Number(req.get('X-CodeHub-Version-Code')) || 0);
+    if (policy.minimumSupportedVersionCode > 0 && reportedCode > 0
+        && reportedCode < policy.minimumSupportedVersionCode) {
+      return res.status(426).json({ ok: false, updateRequired: true, policy });
+    }
+    res.json({ ok: true, policy });
+  } catch (e) {
+    console.warn('GET /api/mobile/policy App Check rechazado:', e.message);
+    res.status(401).json({ ok: false, error: 'Token App Check inválido' });
+  }
+});
+
 // ── REMOTE CONFIG — public endpoint (frontend reads this) ─────
 app.get('/api/config', async (req, res) => {
   try {
@@ -6901,10 +6948,12 @@ app.get('/api/config', async (req, res) => {
     const clientVersion = parseInt(req.query.v) || 0;
     const needsUpdate = clientVersion < cfg.version;
     const apkLatest = cfg.apkLatestVersion || '';
+    const apkLatestCode = Math.max(0, Number(cfg.apkLatestVersionCode) || 0);
+    const apkMinCode = Math.max(0, Number(cfg.apkMinSupportedVersionCode) || 0);
     const apkNotes = cfg.apkUpdateNotes || '';
     res.set('Cache-Control', 'public, max-age=30');
     res.set('X-Config-Version', String(cfg.version));
-    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null, googleMapsKey: cfg.ui.googleMapsKey, maptilerKey: cfg.ui.maptilerKey, apkLatestVersion: apkLatest, apkUpdateNotes: apkNotes } });
+    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null, googleMapsKey: cfg.ui.googleMapsKey, maptilerKey: cfg.ui.maptilerKey, apkLatestVersion: apkLatest, apkLatestVersionCode: apkLatestCode, apkMinSupportedVersionCode: apkMinCode, apkUpdateNotes: apkNotes } });
   } catch (e) {
     res.json({ ok: true, config: DEFAULT_CONFIG });
   }

@@ -8,6 +8,8 @@ import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import com.google.firebase.appcheck.FirebaseAppCheck;
+import com.google.android.gms.tasks.Tasks;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -41,6 +43,8 @@ public class AppUpdateChecker {
     private static final String GITHUB_REPO  = "CodeHub";
     private static final String RELEASES_LATEST_URL =
         "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/releases/latest";
+    private static final String UPDATE_POLICY_URL =
+        "https://codehub-98s6.onrender.com/api/mobile/policy";
 
     private static final String APK_ASSET_NAME = "app-release-signed.apk";
     private static final String APK_ARM64_ASSET_NAME = "app-release-arm64-v8a.apk";
@@ -61,7 +65,9 @@ public class AppUpdateChecker {
     private static final String PREF_AVAILABLE_CODE = "app_update_available_code";
     private static final String PREF_LAST_CHECK = "update_last_check_ts";
     private static final String PREF_LAST_ATTEMPT = "update_last_attempt_ts";
+    private static final String PREF_LAST_POLICY_CHECK = "update_policy_last_check_ts";
     private static final long CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000; // éxito: 1 vez al día
+    private static final long POLICY_CHECK_INTERVAL_MS = 15L * 60 * 1000;
     // Fallo de red: reintentar en 30 min. Antes la marca de último chequeo se
     // guardaba ANTES de consultar, así que una consulta fallida (GitHub
     // inalcanzable) dejaba el diálogo bloqueado 24 horas — ese era el bug
@@ -77,6 +83,7 @@ public class AppUpdateChecker {
      */
     public static void checkIfDue(final MainActivity activity) {
         SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        checkPolicyIfDue(activity, prefs);
         long now = System.currentTimeMillis();
         long lastSuccess = prefs.getLong(PREF_LAST_CHECK, 0);
         long lastAttempt = prefs.getLong(PREF_LAST_ATTEMPT, 0);
@@ -144,8 +151,14 @@ public class AppUpdateChecker {
 
     /** Chequeo inmediato (queda disponible para futuros usos en ajustes). */
     public static void checkNow(final MainActivity activity) {
+        checkNow(activity, -1L);
+    }
+
+    private static void checkNow(final MainActivity activity, final long knownMinimumCode) {
         new Thread(() -> {
             try {
+                long minimumSupportedCode = knownMinimumCode >= 0
+                        ? knownMinimumCode : fetchMinimumSupportedCode(activity);
                 JSONObject release = fetchLatestRelease();
                 if (release == null) {
                     Log.i(TAG, "GitHub no contestó; reintento automático en " + (CHECK_RETRY_MS / 60000) + " min");
@@ -183,13 +196,92 @@ public class AppUpdateChecker {
                 if (apkUrl == null) return;
 
                 String buildLabel = releaseBuildLabel(release);
-                UpdateInfo info = new UpdateInfo(remoteVersion, buildLabel, apkUrl, remoteCode);
+                UpdateInfo info = new UpdateInfo(remoteVersion, buildLabel, apkUrl, remoteCode,
+                        minimumSupportedCode > 0 && localCode < minimumSupportedCode);
                 cacheUpdate(activity, info);
                 activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
             } catch (Throwable t) {
                 Log.e(TAG, "Error chequeando actualización", t);
             }
         }).start();
+    }
+
+    /** Refresca la fecha de corte aparte del chequeo diario de GitHub Releases. */
+    private static void checkPolicyIfDue(MainActivity activity, SharedPreferences prefs) {
+        long now = System.currentTimeMillis();
+        if (now - prefs.getLong(PREF_LAST_POLICY_CHECK, 0L) < POLICY_CHECK_INTERVAL_MS) return;
+        prefs.edit().putLong(PREF_LAST_POLICY_CHECK, now).apply();
+        new Thread(() -> {
+            long minimumCode = fetchMinimumSupportedCode(activity);
+            if (minimumCode < 0) return; // error de red/App Check: conservar estado anterior
+            long localCode = localVersionCode(activity);
+            boolean required = minimumCode > 0 && localCode < minimumCode;
+            SharedPreferences current = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            String version = current.getString(PREF_AVAILABLE_VERSION, "");
+            String build = current.getString(PREF_AVAILABLE_BUILD, "");
+            String url = current.getString(PREF_AVAILABLE_URL, "");
+            long code = current.getLong(PREF_AVAILABLE_CODE, 0L);
+            if (version.isEmpty() || url.isEmpty()) {
+                if (required) checkNow(activity, minimumCode);
+                return;
+            }
+            String localVersion = "0";
+            try {
+                localVersion = activity.getPackageManager()
+                        .getPackageInfo(activity.getPackageName(), 0).versionName;
+            } catch (Exception ignored) { }
+            if (!required && !isNewerBuild(version, code, localVersion, localCode)) {
+                clearCachedUpdate(activity);
+                activity.runOnUiThread(activity::hideAppUpdateBanner);
+                return;
+            }
+            UpdateInfo info = new UpdateInfo(version, build, url, code, required);
+            cacheUpdate(activity, info);
+            activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
+        }).start();
+    }
+
+    /**
+     * Lee la política remota con un token App Check. Si Render/Firebase no
+     * responde, se falla abierto: una caída del servicio no debe inutilizar
+     * CodeHub ni impedir que el updater directo de GitHub siga funcionando.
+     */
+    private static long fetchMinimumSupportedCode(Context context) {
+        HttpURLConnection conn = null;
+        try {
+            String token = Tasks.await(
+                    FirebaseAppCheck.getInstance().getAppCheckToken(false), 12,
+                    java.util.concurrent.TimeUnit.SECONDS).getToken();
+            if (token == null || token.isEmpty()) return -1L;
+            conn = (HttpURLConnection) new URL(UPDATE_POLICY_URL).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-Firebase-AppCheck", token);
+            conn.setRequestProperty("X-CodeHub-Client", "android");
+            conn.setRequestProperty("X-CodeHub-Version-Code", String.valueOf(localVersionCode(context)));
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+            int status = conn.getResponseCode();
+            if (status != HttpURLConnection.HTTP_OK && status != 426) return -1L;
+            InputStream response = status == HttpURLConnection.HTTP_OK
+                    ? conn.getInputStream() : conn.getErrorStream();
+            if (response == null) return -1L;
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(response, StandardCharsets.UTF_8))) {
+                StringBuilder body = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) body.append(line);
+                JSONObject json = new JSONObject(body.toString());
+                JSONObject policy = json.optJSONObject("policy");
+                return policy == null ? -1L : Math.max(0L,
+                        policy.optLong("minimumSupportedVersionCode", 0L));
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "Política remota no disponible; se conserva modo compatible: " + t.getMessage());
+            return -1L;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private static JSONObject fetchLatestRelease() {
@@ -298,12 +390,18 @@ public class AppUpdateChecker {
         public final String buildLabel;
         public final String apkUrl;
         public final long versionCode;
+        public final boolean required;
 
         UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode) {
+            this(version, buildLabel, apkUrl, versionCode, false);
+        }
+
+        UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode, boolean required) {
             this.version = version;
             this.buildLabel = buildLabel;
             this.apkUrl = apkUrl;
             this.versionCode = versionCode;
+            this.required = required;
         }
     }
 
@@ -313,6 +411,7 @@ public class AppUpdateChecker {
                 .putString(PREF_AVAILABLE_BUILD, info.buildLabel)
                 .putString(PREF_AVAILABLE_URL, info.apkUrl)
                 .putLong(PREF_AVAILABLE_CODE, info.versionCode)
+                .putBoolean("app_update_required", info.required)
                 .apply();
     }
 
@@ -322,6 +421,7 @@ public class AppUpdateChecker {
                 .remove(PREF_AVAILABLE_BUILD)
                 .remove(PREF_AVAILABLE_URL)
                 .remove(PREF_AVAILABLE_CODE)
+                .remove("app_update_required")
                 .apply();
     }
 
@@ -331,6 +431,7 @@ public class AppUpdateChecker {
         String build = prefs.getString(PREF_AVAILABLE_BUILD, "");
         String url = prefs.getString(PREF_AVAILABLE_URL, "");
         long code = prefs.getLong(PREF_AVAILABLE_CODE, 0L);
+        boolean required = prefs.getBoolean("app_update_required", false);
         if (version.isEmpty() || url.isEmpty()) return;
 
         String localVersion = "0";
@@ -338,12 +439,12 @@ public class AppUpdateChecker {
             localVersion = activity.getPackageManager()
                     .getPackageInfo(activity.getPackageName(), 0).versionName;
         } catch (Exception ignored) { }
-        if (!isNewerBuild(version, code, localVersion, localVersionCode(activity))) {
+        if (!required && !isNewerBuild(version, code, localVersion, localVersionCode(activity))) {
             clearCachedUpdate(activity);
             activity.runOnUiThread(activity::hideAppUpdateBanner);
             return;
         }
-        UpdateInfo info = new UpdateInfo(version, build, url, code);
+        UpdateInfo info = new UpdateInfo(version, build, url, code, required);
         activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
     }
 

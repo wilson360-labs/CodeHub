@@ -4,6 +4,9 @@ import android.app.Application;
 import android.util.Log;
 import coil.ImageLoader;
 import coil.ImageLoaderFactory;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.appcheck.FirebaseAppCheck;
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -22,6 +25,18 @@ public class CodeHubApp extends Application implements ImageLoaderFactory {
     @Override
     public void onCreate() {
         super.onCreate();
+        // Se instala antes de que CodeHub use Firebase o consulte la política
+        // de versión. La distribución es por APK externo, por lo que Firebase
+        // debe estar configurado sin exigir PLAY_RECOGNIZED/LICENSED.
+        try {
+            FirebaseApp firebase = FirebaseApp.initializeApp(this);
+            if (firebase != null) {
+                FirebaseAppCheck.getInstance(firebase).installAppCheckProviderFactory(
+                    PlayIntegrityAppCheckProviderFactory.getInstance());
+            }
+        } catch (Throwable t) {
+            Log.w("CodeHub", "App Check no disponible; el backend mantiene el modo compatible", t);
+        }
         codeSuScreenReceiver = new CodeSuScreenReceiver();
         CodeSuScreenReceiver.register(this, codeSuScreenReceiver);
         crashDir = getFilesDir();

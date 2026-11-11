@@ -102,6 +102,8 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:34.18.0')
     implementation 'com.google.firebase:firebase-crashlytics'
     implementation 'com.google.firebase:firebase-messaging'
+    // App Check con Play Integrity protege los endpoints nativos del backend.
+    implementation 'com.google.firebase:firebase-appcheck-playintegrity'
     // Firebase Installations usa Preferences DataStore. Mantener la versión
     // actual: Firebase JavaDataStorage requiere FileStorage (no existe en 1.0.0).
     implementation 'androidx.datastore:datastore-preferences:1.2.1'

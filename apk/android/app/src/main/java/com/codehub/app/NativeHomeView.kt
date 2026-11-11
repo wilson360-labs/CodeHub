@@ -580,11 +580,13 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(updateProgress, LayoutParams(-1, dp(3)).apply { topMargin = dp(8) })
     }
 
-    fun showAppUpdateAvailable(version: String, build: String, shizukuReady: Boolean) {
-        updateTitle.text = "Hay una actualización disponible"
-        updateSubtitle.text = "v$version" + (if (build.isNotBlank()) " · $build" else "") +
+    @JvmOverloads
+    fun showAppUpdateAvailable(version: String, build: String, shizukuReady: Boolean, required: Boolean = false) {
+        updateTitle.text = if (required) "Actualización obligatoria" else "Hay una actualización disponible"
+        updateSubtitle.text = (if (required) "Esta versión ya no tiene soporte · " else "") + "v$version" +
+            (if (build.isNotBlank()) " · $build" else "") +
             if (shizukuReady) " · instalación rápida lista" else " · instalación confirmada por Android"
-        updateAction.text = "Actualizar"
+        updateAction.text = if (required) "Actualizar ahora" else "Actualizar"
         updateAction.isEnabled = true
         updateAction.alpha = 1f
         updateProgress.visibility = View.GONE
