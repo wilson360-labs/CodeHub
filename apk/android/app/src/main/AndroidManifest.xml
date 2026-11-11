@@ -305,14 +305,6 @@
             </intent-filter>
         </receiver>
 
-        <receiver
-            android:name=".InstallReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
-            </intent-filter>
-        </receiver>
-
         <!-- Shizuku — expone el binder del servicio a esta app cuando el
              usuario ya la autorizó desde la app Shizuku. No requiere que
              CodeHub tenga root; Shizuku hace de intermediario. -->

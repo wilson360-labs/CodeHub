@@ -24,6 +24,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 
@@ -38,6 +39,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenProfile()
         fun onOpenWeather()
         fun onOpenCodeSu()
+        fun onStartAppUpdate()
         fun onManagePrivacyVpn(start: Boolean)
         fun onForceStopApp()
         fun onOpenWebsite(path: String)
@@ -67,6 +69,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var websiteCard: View
     private lateinit var profilePill: View
     private lateinit var guideButton: View
+    private lateinit var updateBanner: LinearLayout
+    private lateinit var updateTitle: TextView
+    private lateinit var updateSubtitle: TextView
+    private lateinit var updateProgress: ProgressBar
+    private lateinit var updateAction: TextView
     private var tourStepIndex = 0
     private val tourSteps = mutableListOf<Triple<View, String, String>>()
     private var entrancePlayed = false
@@ -78,6 +85,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         setBackgroundColor(0xFF080B11.toInt())
 
         addView(buildHeader(), LayoutParams(-1, dp(64)))
+        updateBanner = buildUpdateBanner()
+        addView(updateBanner, LayoutParams(-1, -2).apply {
+            leftMargin = dp(14); rightMargin = dp(14); bottomMargin = dp(7)
+        })
 
         homeScroll = ScrollView(context).apply {
             clipToPadding = false
@@ -520,6 +531,126 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             addView(label("Mi perfil", 10f, indigo, true), LayoutParams(-2, -2).apply { marginStart = dp(5) })
         }
         addView(profilePill, LayoutParams(-2, dp(40)).apply { marginStart = dp(8) })
+    }
+
+    private fun buildUpdateBanner() = LinearLayout(context).apply {
+        orientation = VERTICAL
+        visibility = View.GONE
+        setPadding(dp(12), dp(10), dp(12), dp(9))
+        background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(0xFF15223A.toInt(), 0xFF10252F.toInt()),
+        ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), 0xFF385B79.toInt()) }
+        val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        row.addView(TextView(context).apply {
+            text = "↑"
+            textSize = 19f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(0xFF67E8F9.toInt())
+            background = rounded(0xFF19364A.toInt(), dp(12))
+            contentDescription = "Actualización disponible"
+        }, LayoutParams(dp(37), dp(37)))
+        val copy = LinearLayout(context).apply { orientation = VERTICAL }
+        updateTitle = label("Hay una actualización disponible", 13f, Color.WHITE, true)
+        updateSubtitle = label("CodeHub · preparando información…", 10f, 0xFFB6C6D9.toInt(), false)
+        copy.addView(updateTitle)
+        copy.addView(updateSubtitle, LayoutParams(-1, -2).apply { topMargin = dp(2) })
+        row.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
+        updateAction = TextView(context).apply {
+            text = "Actualizar"
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(0xFF07111D.toInt())
+            setPadding(dp(11), 0, dp(11), 0)
+            background = rounded(0xFF67E8F9.toInt(), dp(13))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { listener.onStartAppUpdate() }
+        }
+        row.addView(updateAction, LayoutParams(-2, dp(36)).apply { marginStart = dp(8) })
+        addView(row, LayoutParams(-1, -2))
+        updateProgress = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progressTintList = ColorStateList.valueOf(0xFF67E8F9.toInt())
+            progressBackgroundTintList = ColorStateList.valueOf(0xFF29394C.toInt())
+            visibility = View.GONE
+        }
+        addView(updateProgress, LayoutParams(-1, dp(3)).apply { topMargin = dp(8) })
+    }
+
+    fun showAppUpdateAvailable(version: String, build: String, shizukuReady: Boolean) {
+        updateTitle.text = "Hay una actualización disponible"
+        updateSubtitle.text = "v$version" + (if (build.isNotBlank()) " · $build" else "") +
+            if (shizukuReady) " · instalación rápida lista" else " · instalación confirmada por Android"
+        updateAction.text = "Actualizar"
+        updateAction.isEnabled = true
+        updateAction.alpha = 1f
+        updateProgress.visibility = View.GONE
+        updateBanner.visibility = View.VISIBLE
+        updateBanner.alpha = 0f
+        updateBanner.animate().alpha(1f).setDuration(240).start()
+    }
+
+    fun showAppUpdateProgress(percent: Int?, message: String) {
+        updateTitle.text = message
+        updateSubtitle.text = if (percent == null) "Verificando la descarga y el paquete" else "Descargando CodeHub · $percent%"
+        updateAction.text = if (percent == null) "Preparando" else "$percent%"
+        updateAction.isEnabled = false
+        updateAction.alpha = .75f
+        if (percent == null) {
+            updateProgress.isIndeterminate = true
+        } else {
+            updateProgress.isIndeterminate = false
+            updateProgress.progress = percent.coerceIn(0, 100)
+        }
+        updateProgress.visibility = View.VISIBLE
+        updateBanner.visibility = View.VISIBLE
+    }
+
+    fun showAppUpdateAwaitingConfirmation() {
+        updateTitle.text = "Confirma la actualización en Android"
+        updateSubtitle.text = "Play Protect y el instalador del sistema conservan sus comprobaciones."
+        updateProgress.visibility = View.GONE
+        updateAction.text = "Instalador abierto"
+        updateAction.isEnabled = false
+        updateAction.alpha = .72f
+        updateBanner.visibility = View.VISIBLE
+    }
+
+    fun showAppUpdateInstallPermission() {
+        updateTitle.text = "Permite la instalación desde CodeHub"
+        updateSubtitle.text = "Activa este permiso en Android y vuelve a tocar Actualizar."
+        updateProgress.visibility = View.GONE
+        updateAction.text = "Reintentar"
+        updateAction.isEnabled = true
+        updateAction.alpha = 1f
+        updateBanner.visibility = View.VISIBLE
+    }
+
+    fun showAppUpdateError(message: String) {
+        updateTitle.text = "No se pudo actualizar CodeHub"
+        updateSubtitle.text = message.take(100).ifBlank { "Revisa la conexión e inténtalo otra vez." }
+        updateProgress.visibility = View.GONE
+        updateAction.text = "Reintentar"
+        updateAction.isEnabled = true
+        updateAction.alpha = 1f
+        updateBanner.visibility = View.VISIBLE
+    }
+
+    fun showAppUpdateInstalled(version: String) {
+        updateTitle.text = "Actualización instalada"
+        updateSubtitle.text = "CodeHub ya está en la versión $version."
+        updateProgress.visibility = View.GONE
+        updateAction.text = "Listo"
+        updateAction.isEnabled = false
+        updateAction.alpha = .72f
+        updateBanner.visibility = View.VISIBLE
+    }
+
+    fun hideAppUpdateBanner() {
+        if (::updateBanner.isInitialized) updateBanner.visibility = View.GONE
     }
 
     private fun buildHero(): View = LinearLayout(context).apply {

@@ -68,6 +68,8 @@ public class MainActivity extends Activity {
     private static final int PERMISSION_REQUEST_CODE = 200;
     private static final int WEB_PERMISSION_REQUEST_CODE = 201;
     static final int MICROPHONE_PERMISSION_REQUEST_CODE = 401;
+    private static final int UPDATE_NOTIFICATION_PERMISSION_REQUEST_CODE = 402;
+    public static final String EXTRA_OPEN_SELF_UPDATE_INSTALLER = "com.codehub.app.EXTRA_OPEN_SELF_UPDATE_INSTALLER";
 
     private WebView webView;
     private String pendingWebUrl;
@@ -85,6 +87,9 @@ public class MainActivity extends Activity {
     private FusedLocationProviderClient fusedLocation;
     /** Franja inferior reservada para el banner (nunca superpuesto al contenido). */
     private FrameLayout bannerSlot;
+    private AppUpdateChecker.UpdateInfo pendingAppUpdate;
+    private boolean appUpdateRunning;
+    private boolean appUpdateAwaitingConfirmation;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -133,6 +138,7 @@ public class MainActivity extends Activity {
             @Override public void onOpenProfile() { openNativeProfile(); }
             @Override public void onOpenWeather() { openNativeWeather(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
+            @Override public void onStartAppUpdate() { startAppUpdate(); }
             @Override public void onManagePrivacyVpn(boolean start) {
                 if (start) {
                     Intent intent = new Intent(MainActivity.this, CodeHubPrivacyActivity.class);
@@ -177,11 +183,8 @@ public class MainActivity extends Activity {
         // Las funciones solicitan permisos al usarse; no bloquear el primer inicio con varios diálogos.
         try { initAdMob(); } catch (Throwable t) { crashLog("adMob", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
-        // Chequeo de actualizaciones SOLO nativo: la app consulta GitHub
-        // Releases (release con el asset app-release-signed.apk) y usa su
-        // DIÁLOGO PROPIO (res/layout/dialog_update.xml) dentro del APK.
-        // La web/PWA ya no muestra diálogos de actualización: el APK se
-        // actualiza desde el APK.
+        // Chequeo nativo: las actualizaciones aparecen en la franja superior
+        // de la portada y usan el descargador verificado de CodeHub Store.
         try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("updateCheck", t); }
 
         // Sync en 2do plano vía WorkManager (token FCM + ubicación cada 15 min).
@@ -308,13 +311,139 @@ public class MainActivity extends Activity {
             NotificationChannel updates = new NotificationChannel("codehub_updates", "Actualizaciones", NotificationManager.IMPORTANCE_HIGH);
             updates.setDescription("Nuevas apps y actualizaciones del catálogo");
 
+            NotificationChannel apkUpdates = new NotificationChannel("codehub_apk_updates", "Actualizaciones de CodeHub", NotificationManager.IMPORTANCE_DEFAULT);
+            apkUpdates.setDescription("Confirmación de instalación de actualizaciones de CodeHub");
+
             NotificationChannel weather = new NotificationChannel("codehub_weather", "Clima", NotificationManager.IMPORTANCE_HIGH);
             weather.setDescription("Alertas de cambio de clima");
 
             nm.createNotificationChannel(def);
             nm.createNotificationChannel(updates);
+            nm.createNotificationChannel(apkUpdates);
             nm.createNotificationChannel(weather);
         }
+    }
+
+    void showAppUpdateBanner(AppUpdateChecker.UpdateInfo info) {
+        if (info == null || isFinishing()) return;
+        pendingAppUpdate = info;
+        if (nativeHome != null) nativeHome.showAppUpdateAvailable(
+                info.version, info.buildLabel, ShizukuInstaller.isReady());
+    }
+
+    void hideAppUpdateBanner() {
+        if (appUpdateRunning || appUpdateAwaitingConfirmation) return;
+        if (nativeHome != null) nativeHome.hideAppUpdateBanner();
+    }
+
+    private void startAppUpdate() {
+        if (pendingAppUpdate == null || appUpdateRunning) return;
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, UPDATE_NOTIFICATION_PERMISSION_REQUEST_CODE);
+            return;
+        }
+        startAppUpdateDownload();
+    }
+
+    private void startAppUpdateDownload() {
+        startAppUpdateDownload(false);
+    }
+
+    private void startAppUpdateDownload(boolean shizukuPermissionResolved) {
+        final AppUpdateChecker.UpdateInfo update = pendingAppUpdate;
+        if (update == null || appUpdateRunning) return;
+
+        if (!shizukuPermissionResolved && ShizukuInstaller.isBinderAlive()
+                && !ShizukuInstaller.hasPermission()) {
+            appUpdateRunning = true;
+            if (nativeHome != null) nativeHome.showAppUpdateProgress(null, "Autoriza CodeHub en Shizuku…");
+            ShizukuInstaller.requestPermission(granted -> runOnUiThread(() -> {
+                appUpdateRunning = false;
+                startAppUpdateDownload(true);
+            }));
+            return;
+        }
+
+        boolean shizukuReady = ShizukuInstaller.isReady();
+        if (!shizukuReady && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !getPackageManager().canRequestPackageInstalls()) {
+            if (nativeHome != null) nativeHome.showAppUpdateInstallPermission();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception e) {
+                android.util.Log.w("CodeHubUpdater", "No se pudo abrir permiso de instalación", e);
+            }
+            return;
+        }
+
+        appUpdateRunning = true;
+        appUpdateAwaitingConfirmation = false;
+        if (nativeHome != null) nativeHome.showAppUpdateProgress(null, "Preparando actualización…");
+        getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE).edit()
+            .putBoolean(AppUpdateChecker.PREF_UPDATE_PENDING, true)
+            .putLong(AppUpdateChecker.PREF_UPDATE_PENDING_AT, System.currentTimeMillis())
+            .putLong(AppUpdateChecker.PREF_UPDATE_PENDING_CODE, update.versionCode)
+            .putString(AppUpdateChecker.PREF_UPDATE_PENDING_VERSION, update.version)
+            .putString(AppUpdateChecker.PREF_UPDATE_PENDING_BUILD, update.buildLabel)
+            .apply();
+        try {
+            NativeStoreApkInstaller.start(
+                this,
+                update.apkUrl,
+                AppUpdateChecker.SELF_UPDATE_ID,
+                getPackageName(),
+                true,
+                "CodeHub",
+                this,
+                new NativeStoreApkInstaller.Listener() {
+                    @Override public void onProgress(long downloadedBytes, long totalBytes) {
+                        final Integer percent = totalBytes > 0
+                                ? (int) Math.min(100L, downloadedBytes * 100L / totalBytes) : null;
+                        runOnUiThread(() -> {
+                            if (nativeHome != null) nativeHome.showAppUpdateProgress(percent, "Descargando CodeHub…");
+                        });
+                    }
+
+                    @Override public void onFinished(NativeStoreApkInstaller.Status status, String message) {
+                        runOnUiThread(() -> {
+                            appUpdateRunning = false;
+                            if (status == NativeStoreApkInstaller.Status.INSTALLED) {
+                                if (nativeHome != null) nativeHome.showAppUpdateInstalled(update.version);
+                            } else if (status == NativeStoreApkInstaller.Status.INSTALLER_OPENED) {
+                                appUpdateAwaitingConfirmation = true;
+                                if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
+                            } else if (status == NativeStoreApkInstaller.Status.READY_BACKGROUND) {
+                                appUpdateAwaitingConfirmation = true;
+                                if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
+                            } else {
+                                clearPendingSelfUpdate();
+                                if (nativeHome != null) nativeHome.showAppUpdateError(message);
+                            }
+                        });
+                    }
+                },
+                java.util.Collections.emptyList(),
+                null,
+                true
+            );
+        } catch (Throwable error) {
+            appUpdateRunning = false;
+            clearPendingSelfUpdate();
+            android.util.Log.e("CodeHubUpdater", "No se pudo iniciar la actualización", error);
+            if (nativeHome != null) nativeHome.showAppUpdateError(error.getMessage());
+        }
+    }
+
+    private void clearPendingSelfUpdate() {
+        getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE).edit()
+            .remove(AppUpdateChecker.PREF_UPDATE_PENDING)
+            .remove(AppUpdateChecker.PREF_UPDATE_PENDING_AT)
+            .remove(AppUpdateChecker.PREF_UPDATE_PENDING_CODE)
+            .remove(AppUpdateChecker.PREF_UPDATE_PENDING_VERSION)
+            .remove(AppUpdateChecker.PREF_UPDATE_PENDING_BUILD)
+            .apply();
     }
 
     // ── PERMISSIONS ─────────────────────────────────────────────
@@ -334,6 +463,12 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == UPDATE_NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            // La notificación es deseada, pero no bloquea la actualización si
+            // el usuario no la concede.
+            startAppUpdateDownload();
+            return;
+        }
         if (requestCode == PERMISSION_REQUEST_CODE) {
             boolean locGranted = false;
             for (int i = 0; i < permissions.length; i++) {
@@ -842,6 +977,14 @@ public class MainActivity extends Activity {
     private void handleIntent(Intent intent) {
         if (intent == null) return;
 
+        if (intent.getBooleanExtra(EXTRA_OPEN_SELF_UPDATE_INSTALLER, false)) {
+            intent.removeExtra(EXTRA_OPEN_SELF_UPDATE_INSTALLER);
+            if (!NativeStoreApkInstaller.launchUserInstall(this, AppUpdateChecker.SELF_UPDATE_ID)) {
+                Toast.makeText(this, "El APK verificado ya no está disponible. Inicia otra vez la actualización.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+
         if (intent.getBooleanExtra("open_weather_native", false)) {
             openNativeWeather();
             return;
@@ -918,6 +1061,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
         handleIntent(intent);
     }
 
@@ -1188,6 +1332,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (appUpdateAwaitingConfirmation && pendingAppUpdate != null) {
+            appUpdateAwaitingConfirmation = false;
+            long installedCode = AppUpdateChecker.localVersionCode(this);
+            if (pendingAppUpdate.versionCode > 0 && installedCode >= pendingAppUpdate.versionCode) {
+                if (nativeHome != null) nativeHome.showAppUpdateInstalled(pendingAppUpdate.version);
+            } else {
+                clearPendingSelfUpdate();
+                if (nativeHome != null) nativeHome.showAppUpdateAvailable(
+                    pendingAppUpdate.version, pendingAppUpdate.buildLabel, ShizukuInstaller.isReady());
+            }
+        }
         try { if (nativeHome != null) nativeHome.refreshActivitySummary(); } catch (Throwable ignored) {}
         try { if (nativeHome != null) nativeHome.refreshPrivacyStatus(); } catch (Throwable ignored) {}
         if (webView != null) webView.onResume();

@@ -42,6 +42,7 @@ class NativeStoreDownloadService : Service() {
         private const val CHANNEL_ID = "codehub_store_downloads"
         private const val GROUP_KEY = "com.codehub.app.STORE_TRANSFERS"
         private const val ACTION_CANCEL = "com.codehub.app.STORE_CANCEL_TRANSFER"
+        private const val EXTRA_OPEN_SELF_UPDATE = "com.codehub.app.EXTRA_OPEN_SELF_UPDATE_INSTALLER"
         private const val EXTRA_APP_ID = "com.codehub.app.EXTRA_APP_ID"
         private const val EXTRA_APP_NAME = "com.codehub.app.EXTRA_APP_NAME"
         private const val FOREGROUND_ID = 40321
@@ -83,6 +84,16 @@ class NativeStoreDownloadService : Service() {
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
+
+        private fun openSelfUpdateIntent(context: Context): PendingIntent = PendingIntent.getActivity(
+            context,
+            "self-update-installer".hashCode(),
+            Intent(context, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra(EXTRA_OPEN_SELF_UPDATE, true)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -182,28 +193,36 @@ class NativeStoreDownloadService : Service() {
                     hasActive = true
                     if (NativeStoreApkInstaller.pendingApkFile(appId) != null) {
                         val name = NativeStoreApkInstaller.displayName(appId)
-                        manager.notify(appId.hashCode(), builder()
+                        val selfUpdate = appId == NativeStoreApkInstaller.SELF_UPDATE_ID
+                        val notification = builder()
                             .apply {
                                 setOngoing(true)
                                 setOnlyAlertOnce(true)
                                 setSmallIcon(android.R.drawable.stat_sys_download_done)
-                                setContentTitle("Listo para instalar")
-                                setContentText("Confirma la instalación de $name")
+                                setContentTitle(if (selfUpdate) "Actualización de CodeHub lista" else "Listo para instalar")
+                                setContentText(if (selfUpdate) "Toca para continuar con el instalador de Android" else "Confirma la instalación de $name")
                                 setGroup(GROUP_KEY)
                             }
-                            .setContentIntent(openStoreIntent(this, appId, name))
-                            .build())
+                            .setContentIntent(if (selfUpdate) openSelfUpdateIntent(this) else openStoreIntent(this, appId, name))
+                            .build()
+                        manager.notify(appId.hashCode(), notification)
                     }
                 }
                 ApkTransferState.Installed -> {
-                    maybeNotify(manager, appId, builder()
-                        .apply {
-                            setSmallIcon(android.R.drawable.stat_sys_download_done)
-                            setContentTitle("Instalada")
-                            setContentText("${NativeStoreApkInstaller.displayName(appId)} se instaló correctamente")
-                            setGroup(GROUP_KEY)
-                        }
-                        .build())
+                    if (appId == NativeStoreApkInstaller.SELF_UPDATE_ID) {
+                        // BootReceiver confirma el reemplazo desde Package Manager
+                        // y emite la notificación final una sola vez.
+                        NativeStoreApkInstaller.clearUiStateOnly(appId)
+                    } else {
+                        maybeNotify(manager, appId, builder()
+                            .apply {
+                                setSmallIcon(android.R.drawable.stat_sys_download_done)
+                                setContentTitle("Instalada")
+                                setContentText("${NativeStoreApkInstaller.displayName(appId)} se instaló correctamente")
+                                setGroup(GROUP_KEY)
+                            }
+                            .build())
+                    }
                 }
                 is ApkTransferState.Failed -> {
                     maybeNotify(manager, appId, builder()

@@ -1,7 +1,6 @@
 package com.codehub.app;
 
 import android.app.Activity;
-import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -240,28 +239,6 @@ public class CodeHubBridge {
         return android.os.Build.SUPPORTED_ABIS == null
             ? ""
             : android.text.TextUtils.join(",", android.os.Build.SUPPORTED_ABIS);
-    }
-
-    @JavascriptInterface
-    public String checkForUpdate() {
-        // Deshabilitado: el repo es privado, la API pública de GitHub no
-        // sirve sus releases y no debe exponerse el repo. La actualización
-        // se maneja vía backend (/api/changelog + descarga del APK).
-        return null;
-    }
-
-    @JavascriptInterface
-    public void downloadUpdate(String apkUrl) {
-        if (apkUrl == null || apkUrl.isEmpty()) return;
-        DownloadManager dm = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
-        if (dm == null) return;
-        DownloadManager.Request req = new DownloadManager.Request(Uri.parse(apkUrl));
-        req.setTitle("CodeHub - Descargando actualización");
-        req.setDescription("Se instalará automáticamente al completar");
-        req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "CodeHub-update.apk");
-        req.setMimeType("application/vnd.android.package-archive");
-        dm.enqueue(req);
     }
 
     @JavascriptInterface

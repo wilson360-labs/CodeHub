@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -56,6 +57,8 @@ sealed interface ApkTransferState {
  * instalar" through [pendingApkFile] + [launchUserInstall].
  */
 object NativeStoreApkInstaller {
+    const val SELF_UPDATE_ID = AppUpdateChecker.SELF_UPDATE_ID
+
     interface Listener {
         fun onProgress(downloadedBytes: Long, totalBytes: Long)
         fun onFinished(status: Status, message: String = "")
@@ -75,7 +78,8 @@ object NativeStoreApkInstaller {
     private val jobs = ConcurrentHashMap<String, Job>()
     private val installerFileMaxAgeMs = 7L * 24 * 60 * 60 * 1000
     private val trustedHosts = setOf(
-        "codehub-98s6.onrender.com", "github.com", "githubusercontent.com", "github.io", "jsdelivr.net",
+        "codehub-98s6.onrender.com", "github.com", "githubusercontent.com",
+        "release-assets.githubusercontent.com", "github.io", "jsdelivr.net",
     )
     private val mutableTransfers = MutableStateFlow<Map<String, ApkTransferState>>(emptyMap())
 
@@ -107,6 +111,7 @@ object NativeStoreApkInstaller {
         listener: Listener? = null,
         fallbackUrls: List<String> = emptyList(),
         fallbackRepo: String? = null,
+        relaunchAfterInstall: Boolean = false,
     ) {
         if (jobs[appId]?.isActive == true) {
             listener?.onFinished(Status.FAILED, "La descarga de esta app ya está en curso.")
@@ -139,6 +144,14 @@ object NativeStoreApkInstaller {
                 if (!expectedPackage.isNullOrBlank() && expectedPackage != archive?.packageName) {
                     error("El paquete APK no coincide con la app seleccionada")
                 }
+                if (relaunchAfterInstall) {
+                    val current = context.packageManager.getPackageInfo(context.packageName, 0)
+                    val downloadedCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                        archive!!.longVersionCode else archive!!.versionCode.toLong()
+                    val installedCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                        current.longVersionCode else current.versionCode.toLong()
+                    if (downloadedCode <= installedCode) error("El APK no es más reciente que CodeHub instalado")
+                }
 
                 // Insights + history while the APK is still on disk (silent install
                 // deletes it afterwards). Local, key-less (no VirusTotal).
@@ -156,7 +169,16 @@ object NativeStoreApkInstaller {
                 setState(appId, ApkTransferState.ReadyToInstall)
                 if (preferSilent && ShizukuInstaller.isReady()) {
                     try {
-                        withContext(Dispatchers.IO) { ShizukuInstaller.installSilently(destination.absolutePath) }
+                        withContext(Dispatchers.IO) {
+                            if (relaunchAfterInstall) {
+                                val component = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                                    ?.component?.flattenToShortString()
+                                    ?: error("No se encontró la pantalla de inicio de CodeHub")
+                                ShizukuInstaller.installSilentlyAndRelaunch(destination.absolutePath, component)
+                            } else {
+                                ShizukuInstaller.installSilently(destination.absolutePath)
+                            }
+                        }
                         destination.delete()
                         setState(appId, ApkTransferState.Installed)
                         main.post { listener?.onFinished(Status.INSTALLED) }

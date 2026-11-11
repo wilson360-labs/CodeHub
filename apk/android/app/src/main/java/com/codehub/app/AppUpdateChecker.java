@@ -1,24 +1,10 @@
 package com.codehub.app;
 
-import android.app.Dialog;
-import android.app.DownloadManager;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
-import android.provider.Settings;
 import android.util.Log;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -29,15 +15,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Actualización de CodeHub, 100% NATIVA (dentro del APK).
  *
- * - La web/PWA NO muestra diálogos de actualización; este chequeo vive
- *   solo en la app y mueestra SU PROPIO diálogo (res/layout/
- *   dialog_update.xml), elegante, sin toques del sistema aburridos.
+ * - La web/PWA no participa: la disponibilidad aparece en la portada Kotlin.
  * - Habla directo con GitHub Releases del repo (tag con versión, secuencia y SHA).
  * - Se selecciona el APK de la ABI del dispositivo; se acepta el asset
  *   universal firmado como compatibilidad para equipos no ARM.
@@ -47,10 +29,8 @@ import java.util.List;
  *   ese bug de raíz.
  * - Las notas se limpian antes de mostrarse: jamás se muestran enlaces
  *   al repo (Full Changelog / compare) ni sintaxis Markdown.
- * - "Más tarde" memoriza la versión y no vuelve a molestar por ella;
- *   cuando sale una versión más nueva, pregunta de nuevo.
- * - Al confirmar, descarga vía DownloadManager y InstallReceiver lanza
- *   el instalador del sistema (mismo flujo del catálogo Open Source).
+ * - La portada nativa recibe el release y su botón delega la descarga y
+ *   validación al instalador común de la CodeHub Store.
  *
  * Uso: AppUpdateChecker.checkIfDue(activity);  // en MainActivity.onCreate Y onResume
  */
@@ -68,10 +48,19 @@ public class AppUpdateChecker {
     private static final String APK_X86_64_ASSET_NAME = "app-release-x86_64.apk";
     private static final String APK_X86_ASSET_NAME = "app-release-x86.apk";
 
-    private static final String PREFS = "codehub";
+    public static final String SELF_UPDATE_ID = "codehub-self-update";
+    public static final String PREFS = "codehub";
+    public static final String PREF_UPDATE_PENDING = "self_update_pending";
+    public static final String PREF_UPDATE_PENDING_AT = "self_update_pending_at";
+    public static final String PREF_UPDATE_PENDING_CODE = "self_update_pending_code";
+    public static final String PREF_UPDATE_PENDING_VERSION = "self_update_pending_version";
+    public static final String PREF_UPDATE_PENDING_BUILD = "self_update_pending_build";
+    private static final String PREF_AVAILABLE_VERSION = "app_update_available_version";
+    private static final String PREF_AVAILABLE_BUILD = "app_update_available_build";
+    private static final String PREF_AVAILABLE_URL = "app_update_available_url";
+    private static final String PREF_AVAILABLE_CODE = "app_update_available_code";
     private static final String PREF_LAST_CHECK = "update_last_check_ts";
     private static final String PREF_LAST_ATTEMPT = "update_last_attempt_ts";
-    private static final String PREF_SKIP = "update_skip_version";
     private static final long CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000; // éxito: 1 vez al día
     // Fallo de red: reintentar en 30 min. Antes la marca de último chequeo se
     // guardaba ANTES de consultar, así que una consulta fallida (GitHub
@@ -91,8 +80,10 @@ public class AppUpdateChecker {
         long now = System.currentTimeMillis();
         long lastSuccess = prefs.getLong(PREF_LAST_CHECK, 0);
         long lastAttempt = prefs.getLong(PREF_LAST_ATTEMPT, 0);
-        if (now - lastSuccess < CHECK_INTERVAL_MS) return; // chequeado OK hace <24h
-        if (now - lastAttempt < CHECK_RETRY_MS) return;    // falló hace <30min: esperar
+        if (now - lastSuccess < CHECK_INTERVAL_MS || now - lastAttempt < CHECK_RETRY_MS) {
+            showCachedBanner(activity);
+            return;
+        }
         prefs.edit().putLong(PREF_LAST_ATTEMPT, now).apply();
         checkNow(activity);
     }
@@ -183,18 +174,18 @@ public class AppUpdateChecker {
                 if (!isNewerBuild(remoteVersion, remoteCode, localVersion, localCode)) {
                     Log.i(TAG, "sin actualización (local v" + localVersion + " code " + localCode
                             + ", remota v" + remoteVersion + " code " + remoteCode + ")");
+                    clearCachedUpdate(activity);
+                    activity.runOnUiThread(activity::hideAppUpdateBanner);
                     return;
                 }
 
                 String apkUrl = findApkAssetUrl(release);
                 if (apkUrl == null) return;
 
-                List<String> notes = cleanNotes(release.optString("body", ""));
                 String buildLabel = releaseBuildLabel(release);
-                String updateKey = remoteCode > 0 ? remoteVersion + "#" + remoteCode : remoteVersion;
-                String displayVersion = buildLabel.isEmpty()
-                        ? remoteVersion : remoteVersion + " · " + buildLabel;
-                promptUpdate(activity, displayVersion, updateKey, apkUrl, notes);
+                UpdateInfo info = new UpdateInfo(remoteVersion, buildLabel, apkUrl, remoteCode);
+                cacheUpdate(activity, info);
+                activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
             } catch (Throwable t) {
                 Log.e(TAG, "Error chequeando actualización", t);
             }
@@ -272,10 +263,7 @@ public class AppUpdateChecker {
         return APK_ASSET_NAME;
     }
 
-    /**
-     * Normaliza el tag a una versión comparable con versionName.
-     * Workflow publica "apk-codehub-v7.43" → "7.43" (último bloque numérico).
-     */
+    /** Normaliza tags antiguos y nuevos: apk-codehub-v7.59-build2-SHA → 7.59. */
     private static String normalizeVersion(String tag) {
         if (tag == null || tag.isEmpty()) return "";
         java.util.regex.Matcher m = java.util.regex.Pattern
@@ -305,7 +293,61 @@ public class AppUpdateChecker {
         return "";
     }
 
-    private static long localVersionCode(Context context) {
+    public static final class UpdateInfo {
+        public final String version;
+        public final String buildLabel;
+        public final String apkUrl;
+        public final long versionCode;
+
+        UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode) {
+            this.version = version;
+            this.buildLabel = buildLabel;
+            this.apkUrl = apkUrl;
+            this.versionCode = versionCode;
+        }
+    }
+
+    private static void cacheUpdate(Context context, UpdateInfo info) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(PREF_AVAILABLE_VERSION, info.version)
+                .putString(PREF_AVAILABLE_BUILD, info.buildLabel)
+                .putString(PREF_AVAILABLE_URL, info.apkUrl)
+                .putLong(PREF_AVAILABLE_CODE, info.versionCode)
+                .apply();
+    }
+
+    private static void clearCachedUpdate(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .remove(PREF_AVAILABLE_VERSION)
+                .remove(PREF_AVAILABLE_BUILD)
+                .remove(PREF_AVAILABLE_URL)
+                .remove(PREF_AVAILABLE_CODE)
+                .apply();
+    }
+
+    private static void showCachedBanner(MainActivity activity) {
+        SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String version = prefs.getString(PREF_AVAILABLE_VERSION, "");
+        String build = prefs.getString(PREF_AVAILABLE_BUILD, "");
+        String url = prefs.getString(PREF_AVAILABLE_URL, "");
+        long code = prefs.getLong(PREF_AVAILABLE_CODE, 0L);
+        if (version.isEmpty() || url.isEmpty()) return;
+
+        String localVersion = "0";
+        try {
+            localVersion = activity.getPackageManager()
+                    .getPackageInfo(activity.getPackageName(), 0).versionName;
+        } catch (Exception ignored) { }
+        if (!isNewerBuild(version, code, localVersion, localVersionCode(activity))) {
+            clearCachedUpdate(activity);
+            activity.runOnUiThread(activity::hideAppUpdateBanner);
+            return;
+        }
+        UpdateInfo info = new UpdateInfo(version, build, url, code);
+        activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
+    }
+
+    public static long localVersionCode(Context context) {
         try {
             android.content.pm.PackageInfo info = context.getPackageManager()
                     .getPackageInfo(context.getPackageName(), 0);
@@ -339,133 +381,4 @@ public class AppUpdateChecker {
         catch (Exception e) { return 0; }
     }
 
-    /**
-     * Notas limpias: sin enlaces (repo nunca se muestra), sin Markdown,
-     * sin líneas de guía de instalación vacías, máximo 6 puntos.
-     */
-    private static List<String> cleanNotes(String body) {
-        List<String> out = new ArrayList<>();
-        if (body == null || body.isEmpty()) return out;
-        for (String raw : body.split("\\r?\\n")) {
-            String l = raw == null ? "" : raw.trim();
-            if (l.isEmpty()) continue;
-            String low = l.toLowerCase();
-            if (low.contains("http://") || low.contains("https://") || low.contains("github.com")) continue;
-            if (low.startsWith("**versión:**") || low.startsWith("**build:**")
-                    || low.startsWith("**codehub-version-code:**")
-                    || low.startsWith("## codehub apk")) continue;
-            l = l.replaceFirst("^#{1,6}\\s*", "")
-                 .replace("**", "")
-                 .replaceFirst("^[•\\-*]\\s*", "")
-                 .trim();
-            if (l.length() < 3) continue;
-            out.add(l);
-            if (out.size() >= 6) break;
-        }
-        return out;
-    }
-
-    /**
-     * Diálogo de actualización NATIVO con el estilo propio de la app
-     * (res/layout/dialog_update.xml + drawables bg_update_*). Es la
-     * única puerta de actualización del APK: la web no participa.
-     */
-    private static void promptUpdate(final MainActivity activity, final String version,
-                                     final String updateKey,
-                                     final String apkUrl, final List<String> notes) {
-        new Handler(Looper.getMainLooper()).post(() -> {
-            if (activity.isFinishing()) return;
-
-            SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            if (updateKey.equals(prefs.getString(PREF_SKIP, null))) {
-                Log.i(TAG, "v" + version + " no se muestra: el usuario eligió 'Más tarde' para ella");
-                return;
-            }
-
-            try {
-                final Dialog dialog = new Dialog(activity);
-                dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-                dialog.setContentView(R.layout.dialog_update);
-
-                Window w = dialog.getWindow();
-                if (w != null) {
-                    w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-                    w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.WRAP_CONTENT);
-                }
-
-                TextView ver = dialog.findViewById(R.id.dialog_update_ver);
-                if (ver != null) ver.setText("v" + version);
-
-                boolean hasNotes = notes != null && !notes.isEmpty();
-                LinearLayout notesWrap = dialog.findViewById(R.id.dialog_update_notes_wrap);
-                TextView notesEl = dialog.findViewById(R.id.dialog_update_notes);
-                if (notesWrap != null && notesEl != null) {
-                    if (hasNotes) {
-                        StringBuilder sb = new StringBuilder();
-                        for (String n : notes) {
-                            if (sb.length() > 0) sb.append('\n');
-                            sb.append("• ").append(n);
-                        }
-                        notesEl.setText(sb.toString());
-                        notesWrap.setVisibility(View.VISIBLE);
-                    } else {
-                        notesWrap.setVisibility(View.GONE);
-                    }
-                }
-
-                View apply = dialog.findViewById(R.id.dialog_update_apply);
-                if (apply != null) {
-                    apply.setOnClickListener(v -> {
-                        try { dialog.dismiss(); } catch (Exception ignored) {}
-                        startDownload(activity, apkUrl, version);
-                    });
-                }
-
-                View later = dialog.findViewById(R.id.dialog_update_later);
-                if (later != null) {
-                    later.setOnClickListener(v -> {
-                        prefs.edit().putString(PREF_SKIP, updateKey).apply();
-                        try { dialog.dismiss(); } catch (Exception ignored) {}
-                    });
-                }
-
-                dialog.setCancelable(true);
-                if (w != null) w.setWindowAnimations(-1);
-                dialog.show();
-            } catch (Throwable t) {
-                Log.e(TAG, "promptUpdate falló", t);
-            }
-        });
-    }
-
-    private static void startDownload(MainActivity activity, String apkUrl, String version) {
-        // Android 8+: permiso para instalar de fuentes desconocidas desde
-        // ESTA app antes de que InstallReceiver dispare el instalador.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            PackageManager pm = activity.getPackageManager();
-            if (!pm.canRequestPackageInstalls()) {
-                Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:" + activity.getPackageName()));
-                try { activity.startActivity(settingsIntent); } catch (Exception ignored) {}
-            }
-        }
-
-        try {
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkUrl));
-            request.setTitle("CodeHub v" + version);
-            request.setDescription("Descargando actualización…");
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalFilesDir(activity, android.os.Environment.DIRECTORY_DOWNLOADS,
-                "CodeHub-update.apk");
-            request.setMimeType("application/vnd.android.package-archive");
-
-            DownloadManager dm = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
-            if (dm != null) dm.enqueue(request);
-            // Al completarse, InstallReceiver (ACTION_DOWNLOAD_COMPLETE) lanza
-            // el instalador del sistema automáticamente.
-        } catch (Exception e) {
-            Log.e(TAG, "startDownload falló", e);
-        }
-    }
 }

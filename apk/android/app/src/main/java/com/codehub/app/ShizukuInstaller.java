@@ -184,6 +184,35 @@ public class ShizukuInstaller {
         return true;
     }
 
+    /** Self-update path: after Package Manager accepts CodeHub, reopen its launcher activity. */
+    public static boolean installSilentlyAndRelaunch(String apkPath, String activityComponent) throws Exception {
+        if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
+        if (activityComponent == null || !activityComponent.matches("[A-Za-z0-9._]+/[A-Za-z0-9._]+")) {
+            throw new IllegalArgumentException("Componente de inicio no válido");
+        }
+        String safePath = apkPath.replace("\"", "\\\"");
+        String command = "pm install -r \"" + safePath + "\"; result=$?; "
+                + "if [ $result -eq 0 ]; then sleep 1; am start -n \"" + activityComponent
+                + "\" || true; fi; exit $result";
+        Process p = newProcessReflective(new String[]{"sh", "-c", command}, null, null);
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) output.append(line).append('\n');
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) output.append(line).append('\n');
+        }
+        int code = p.waitFor();
+        String result = output.toString().trim();
+        if (code != 0 || result.toLowerCase(java.util.Locale.ROOT).contains("failure")
+                || !result.contains("Success")) {
+            throw new Exception(result.isEmpty() ? ("pm install exit=" + code) : result);
+        }
+        return true;
+    }
+
     /**
      * Shizuku.newProcess(String[], String[], String) pasó de público a privado
      * en shizuku-api 13.1.x (sigue existiendo, solo cambió la visibilidad), así
