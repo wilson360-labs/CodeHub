@@ -69,7 +69,10 @@ jobs:
 
   e2e:
     name: Smoke E2E (Playwright)
-    runs-on: ubuntu-latest
+    # ubuntu-latest moved to Ubuntu 26.04 (resolute); apt DNS failures there
+    # made Playwright's --with-deps fail before browser installation. Pin the
+    # supported LTS image and install the browser without invoking apt.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -88,7 +91,7 @@ jobs:
         run: npm run build
 
       - name: Instalar Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Tests
         run: npx playwright test
@@ -103,7 +106,7 @@ jobs:
 
   lighthouse:
     name: Lighthouse (movil/desktop) - reporte
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     continue-on-error: true
     steps:
@@ -123,7 +126,7 @@ jobs:
         run: npm run build
 
       - name: Instalar Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Auditar mobile + desktop contra / (servidor local)
         run: node scripts/lighthouse-audit.js --base http://localhost:4173 --out lighthouse-out
