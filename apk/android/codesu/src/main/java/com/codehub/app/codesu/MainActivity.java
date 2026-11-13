@@ -20,7 +20,6 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
-import androidx.navigation.ui.NavigationUI;
 
 import com.codehub.app.codesu.databinding.ActivityMainBinding;
 
@@ -43,7 +42,6 @@ public class MainActivity extends AppCompatActivity {
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.nav_host_fragment_activity_main);
         NavController navController = navHostFragment.getNavController();
-        NavigationUI.setupWithNavController(binding.navView, navController);
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -80,6 +78,18 @@ public class MainActivity extends AppCompatActivity {
                     imm.showSoftInput(binding.searchEditText, InputMethodManager.SHOW_IMPLICIT);
             }
         });
+
+        // Navegacion manual (evita BottomNavigationView, que crashea por
+        // atributos Material no resueltos en el tema vacio del host).
+        View.OnClickListener navListener = v -> {
+            int id = v.getId();
+            if (id == R.id.nav_home) navController.navigate(R.id.navigation_home);
+            else if (id == R.id.nav_excluded) navController.navigate(R.id.navigation_excluded);
+            else if (id == R.id.nav_settings) navController.navigate(R.id.navigation_settings);
+        };
+        binding.navHome.setOnClickListener(navListener);
+        binding.navExcluded.setOnClickListener(navListener);
+        binding.navSettings.setOnClickListener(navListener);
     }
 
     @Override
