@@ -148,14 +148,6 @@
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- CodeSu: utilidades nativas Android con operaciones explícitas vía Shizuku. -->
-        <activity
-            android:name=".CodeSuActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
-            android:screenOrientation="unspecified"
-            android:windowSoftInputMode="adjustResize" />
-
         <activity
             android:name=".CodeHubPrivacyActivity"
             android:exported="false"
@@ -246,14 +238,6 @@
 
         <receiver
             android:name=".SyncAlarmReceiver"
-            android:exported="false">
-        </receiver>
-
-        <!-- CodeSu Auto Killer diario (semántica KillMyApps): alarma RTC_WAKEUP
-             del sistema que dispara incluso en Doze. Explicit component, no
-             necesita intent-filter. -->
-        <receiver
-            android:name=".CodeSuDailyAlarmReceiver"
             android:exported="false">
         </receiver>
 

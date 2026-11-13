@@ -18,3 +18,4 @@ rootProject.name = "CodeHub"
 include ':app'
 include ':echo'
 include ':codestream'
+include ':codesu'

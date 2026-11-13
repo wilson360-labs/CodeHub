@@ -1,0 +1,7 @@
+<resources>
+    <string name="codesu_app_name">CodeSu</string>
+    <string name="codesu_app_version">CodeSu 1.6 · KillMyApps engine</string>
+    <string name="title_home">Running Apps</string>
+    <string name="title_selection">Selection</string>
+    <string name="title_settings">Settings</string>
+</resources>

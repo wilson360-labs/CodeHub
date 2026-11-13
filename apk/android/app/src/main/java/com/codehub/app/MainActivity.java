@@ -1231,7 +1231,7 @@ public class MainActivity extends Activity {
 
     private void openNativeCodeSu() {
         try {
-            startActivity(new Intent(this, CodeSuActivity.class));
+            startActivity(new Intent(this, com.codehub.app.codesu.MainActivity.class));
         } catch (Exception e) {
             android.util.Log.e("CodeHub", "No se pudo abrir CodeSu", e);
             android.widget.Toast.makeText(this, "CodeSu no pudo iniciarse.", android.widget.Toast.LENGTH_SHORT).show();

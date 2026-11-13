@@ -15,7 +15,8 @@ import java.io.PrintWriter;
 public class CodeHubApp extends Application implements ImageLoaderFactory {
 
     private File crashDir;
-    private CodeSuScreenReceiver codeSuScreenReceiver;
+    // (CodeSu ahora vive en el módulo :codesu; el receptor de pantalla del
+    // CodeSu viejo quedó retirado.)
 
     @Override
     public ImageLoader newImageLoader() {
@@ -37,8 +38,6 @@ public class CodeHubApp extends Application implements ImageLoaderFactory {
         } catch (Throwable t) {
             Log.w("CodeHub", "App Check no disponible; el backend mantiene el modo compatible", t);
         }
-        codeSuScreenReceiver = new CodeSuScreenReceiver();
-        CodeSuScreenReceiver.register(this, codeSuScreenReceiver);
         crashDir = getFilesDir();
         Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(this));
         // Si quedó un crash.log de una sesión anterior que no pudo enviarse
@@ -51,6 +50,13 @@ public class CodeHubApp extends Application implements ImageLoaderFactory {
             dev.brahmkshatriya.echo.EchoBoot.start(this);
         } catch (Throwable t) {
             Log.e("CodeHub", "Echo no arrancó (Koin): " + t, t);
+        }
+        // CodeSu (módulo :codesu, port completo de KillMyApps): inicializa su
+        // Room DB, settings, executor y servicios de auto-kill. Defensivo.
+        try {
+            com.codehub.app.codesu.App.init(this);
+        } catch (Throwable t) {
+            Log.e("CodeHub", "CodeSu no arrancó: " + t, t);
         }
         // Unity Ads se inicializa en MainActivity (UnityAdsManager) tras el
         // gate de consentimiento UMP (ConsentManager).

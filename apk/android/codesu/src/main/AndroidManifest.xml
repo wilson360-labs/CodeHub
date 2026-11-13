@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Módulo CodeSu (port de KillMyApps) dentro de CodeHub:
+     sin <application> attrs propios (los pone el host) y sin
+     ShizukuProvider (el app ya lo declara con la misma authority). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application>
+
+        <!-- Se abre solo desde CodeHub (no tiene LAUNCHER). Mantiene el
+             intent-filter de preferencias del QS tile. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="CodeSu"
+            android:theme="@style/Theme.CodeSu">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widget.KillWidgetProvider"
+            android:exported="true"
+            android:label="CodeSu">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.codehub.app.codesu.action.KILL_APPS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/kill_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.KillWidget1x1Provider"
+            android:exported="true"
+            android:label="CodeSu">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.codehub.app.codesu.action.KILL_APPS_1X1" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/kill_widget_1x1_info" />
+        </receiver>
+
+        <service
+            android:name=".service.KillTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_snow"
+            android:label="CodeSu"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".service.AutoKillService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Monitors screen state to terminate background apps upon screen off." />
+        </service>
+
+        <receiver
+            android:name=".receiver.AutoKillReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.codehub.app.codesu.action.SCHEDULED_KILL" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>

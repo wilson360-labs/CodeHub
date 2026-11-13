@@ -87,6 +87,8 @@ dependencies {
     implementation project(':echo')
     // CodeStream: reproductor nativo basado en YTXTube, integrado como módulo library.
     implementation project(':codestream')
+    // CodeSu: port completo de KillMyApps (com.codehub.app.codesu).
+    implementation project(':codesu')
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.google.android.material:material:1.11.0'
