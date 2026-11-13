@@ -18,6 +18,12 @@
         tools:layout="@layout/fragment_excluded" />
 
     <fragment
+        android:id="@+id/navigation_cache"
+        android:name="com.codehub.app.codesu.ui.cache.CacheCleanerFragment"
+        android:label="Cache"
+        tools:layout="@layout/codesu_cache_cleaner" />
+
+    <fragment
         android:id="@+id/navigation_settings"
         android:name="com.codehub.app.codesu.ui.Settings.SettingsFragment"
         android:label="@string/title_settings"
