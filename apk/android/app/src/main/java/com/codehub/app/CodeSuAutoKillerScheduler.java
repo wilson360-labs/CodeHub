@@ -28,7 +28,7 @@ public final class CodeSuAutoKillerScheduler {
     public static final String TRIGGER_SCREEN = "screen";
     public static final String TRIGGER_DAILY = "daily";
     private static final String SCREEN_WORK = "codesu_auto_screen_off";
-    private static final String PREFS = "codesu_preferences";
+    public static final String PREFS = "codesu_preferences";
     private static final int DAILY_ALARM_REQUEST = 2002;
 
     private CodeSuAutoKillerScheduler() {}
