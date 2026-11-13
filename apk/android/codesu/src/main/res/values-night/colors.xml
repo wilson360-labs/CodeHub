@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="codesu_accent_soft">#FF80DEEA</color>
+    <color name="codesu_accent_text">#80DEEA</color>
+    <color name="codesu_background">#FF0E1518</color>
+    <color name="codesu_surface">#FF192327</color>
+    <color name="codesu_text_primary">#FFF1F6F7</color>
+    <color name="codesu_text_secondary">#FFAFBEC2</color>
+    <color name="codesu_result_surface">#FF20393B</color>
+</resources>

@@ -67,14 +67,14 @@ public final class CacheCleaner {
 
     public static List<CacheAppInfo> loadInstalledApps(Context context) throws Exception {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
-            throw new IllegalStateException("Cache estimates require Android 8.0 or newer.");
+            throw new IllegalStateException("La medición de caché requiere Android 8.0 o posterior.");
         if (!hasUsageAccess(context))
-            throw new SecurityException("Grant Usage access to read per-app cache estimates.");
+            throw new SecurityException("Activa el acceso al uso para consultar la caché de cada app.");
 
         PackageManager pm = context.getPackageManager();
         StorageStatsManager statsManager = (StorageStatsManager)
                 context.getSystemService(Context.STORAGE_STATS_SERVICE);
-        if (statsManager == null) throw new IllegalStateException("Storage stats service unavailable.");
+        if (statsManager == null) throw new IllegalStateException("Las estadísticas de almacenamiento no están disponibles.");
 
         List<ApplicationInfo> installed;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -120,14 +120,14 @@ public final class CacheCleaner {
     public static List<CacheAppInfo> recalculateCacheSizes(Context context, List<CacheAppInfo> apps)
             throws Exception {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
-            throw new IllegalStateException("Cache estimates require Android 8.0 or newer.");
+            throw new IllegalStateException("La medición de caché requiere Android 8.0 o posterior.");
         if (!hasUsageAccess(context))
-            throw new SecurityException("Grant Usage access to recalculate app cache sizes.");
+            throw new SecurityException("Activa el acceso al uso para volver a medir la caché.");
 
         PackageManager pm = context.getPackageManager();
         StorageStatsManager statsManager = (StorageStatsManager)
                 context.getSystemService(Context.STORAGE_STATS_SERVICE);
-        if (statsManager == null) throw new IllegalStateException("Storage stats service unavailable.");
+        if (statsManager == null) throw new IllegalStateException("Las estadísticas de almacenamiento no están disponibles.");
         UserHandle user = Process.myUserHandle();
         List<CacheAppInfo> refreshed = new ArrayList<>(apps.size());
         for (CacheAppInfo app : apps) {
@@ -203,8 +203,8 @@ public final class CacheCleaner {
     public static ClearResult clearEligibleCaches(Context context, List<CacheAppInfo> apps, ProgressListener listener)
             throws Exception {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
-            throw new IllegalStateException("Selective cache cleaning with protected-app exclusions requires Android 11+.");
-        if (!isShizukuReady()) throw new SecurityException("Shizuku is not running or CodeSu is not authorized.");
+            throw new IllegalStateException("La limpieza selectiva con protección de apps requiere Android 11 o posterior.");
+        if (!isShizukuReady()) throw new SecurityException("Shizuku no está activo o CodeSu no tiene autorización.");
 
         List<CacheAppInfo> targets = new ArrayList<>();
         Set<String> protectedPackages = getProtectedPackages(context);
@@ -214,7 +214,7 @@ public final class CacheCleaner {
                     && !isProtected(app.packageName))
                 targets.add(app);
         }
-        if (targets.isEmpty()) return new ClearResult(0, 0, 0L);
+        if (targets.isEmpty()) return new ClearResult(0, 0, 0L, 0);
 
         String script = "for p in \"$@\"; do "
                 + "out=$(pm clear --cache-only --user current \"$p\" 2>&1); "
@@ -231,18 +231,19 @@ public final class CacheCleaner {
         Method newProcess = Shizuku.class.getDeclaredMethod(
                 "newProcess", String[].class, String[].class, String.class);
         newProcess.setAccessible(true);
-        ProcessResult processResult = readProcess(newProcess.invoke(null, command, null, null), targets, listener);
+        ProcessResult processResult = readProcess(context, newProcess.invoke(null, command, null, null), targets, listener);
         return processResult.result;
     }
 
-    private static ProcessResult readProcess(Object processObject, List<CacheAppInfo> targets,
+    private static ProcessResult readProcess(Context context, Object processObject, List<CacheAppInfo> targets,
                                              ProgressListener listener) throws Exception {
         if (!(processObject instanceof java.lang.Process))
-            throw new IllegalStateException("Shizuku did not create the cache-cleaner process.");
+            throw new IllegalStateException("Shizuku no pudo iniciar el proceso de limpieza de caché.");
         java.lang.Process process = (java.lang.Process) processObject;
         int success = 0;
         int failure = 0;
-        long estimatedFreed = 0L;
+        long verifiedFreed = 0L;
+        int unmeasured = 0;
         int completed = 0;
         Set<String> reported = new HashSet<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -256,34 +257,61 @@ public final class CacheCleaner {
                 completed++;
                 if (ok) {
                     success++;
-                    for (CacheAppInfo app : targets) {
-                        if (app.packageName.equals(pkg)) { estimatedFreed += app.cacheBytes; break; }
+                    CacheAppInfo target = findTarget(targets, pkg);
+                    if (target != null) {
+                        try {
+                            long afterBytes = queryCacheBytes(context, pkg);
+                            verifiedFreed += Math.max(0L, target.cacheBytes - afterBytes);
+                        } catch (Exception ignored) {
+                            unmeasured++;
+                        }
                     }
                 } else {
                     failure++;
                 }
-                if (listener != null) listener.onProgress(completed, targets.size(), pkg, ok);
+                if (listener != null)
+                    listener.onProgress(completed, targets.size(), pkg, ok, verifiedFreed, unmeasured);
             }
         } finally {
             process.getErrorStream().close();
         }
         process.waitFor();
         if (completed < targets.size()) failure += targets.size() - completed;
-        return new ProcessResult(new ClearResult(success, failure, estimatedFreed));
+        return new ProcessResult(new ClearResult(success, failure, verifiedFreed, unmeasured));
+    }
+
+    private static CacheAppInfo findTarget(List<CacheAppInfo> targets, String packageName) {
+        for (CacheAppInfo app : targets) if (app.packageName.equals(packageName)) return app;
+        return null;
+    }
+
+    private static long queryCacheBytes(Context context, String packageName) throws Exception {
+        PackageManager pm = context.getPackageManager();
+        ApplicationInfo app = pm.getApplicationInfo(packageName, 0);
+        StorageStatsManager statsManager = (StorageStatsManager)
+                context.getSystemService(Context.STORAGE_STATS_SERVICE);
+        if (statsManager == null) throw new IllegalStateException("Las estadísticas de almacenamiento no están disponibles.");
+        StorageStats stats = statsManager.queryStatsForPackage(
+                app.storageUuid == null ? StorageManager.UUID_DEFAULT : app.storageUuid,
+                packageName, Process.myUserHandle());
+        return Math.max(0L, stats.getCacheBytes());
     }
 
     public interface ProgressListener {
-        void onProgress(int completed, int total, String packageName, boolean cleared);
+        void onProgress(int completed, int total, String packageName, boolean cleared,
+                        long verifiedFreedBytes, int unmeasuredApps);
     }
 
     public static final class ClearResult {
         public final int cleared;
         public final int failed;
-        public final long estimatedFreedBytes;
-        ClearResult(int cleared, int failed, long estimatedFreedBytes) {
+        public final long verifiedFreedBytes;
+        public final int unmeasuredApps;
+        ClearResult(int cleared, int failed, long verifiedFreedBytes, int unmeasuredApps) {
             this.cleared = cleared;
             this.failed = failed;
-            this.estimatedFreedBytes = estimatedFreedBytes;
+            this.verifiedFreedBytes = verifiedFreedBytes;
+            this.unmeasuredApps = unmeasuredApps;
         }
     }
 

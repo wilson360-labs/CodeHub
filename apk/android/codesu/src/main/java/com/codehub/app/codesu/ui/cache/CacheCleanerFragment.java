@@ -64,11 +64,11 @@ public class CacheCleanerFragment extends Fragment {
     private void loadCacheApps() {
         if (binding == null) return;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            showAccessGate("Cache estimates require Android 8.0 or newer.", false);
+            showAccessGate("La medición de caché requiere Android 8.0 o posterior.", false);
             return;
         }
         if (!CacheCleaner.hasUsageAccess(requireContext())) {
-            showAccessGate("Grant Usage access so Android can report each app’s cache size.", true);
+            showAccessGate("Activa el acceso al uso para consultar el tamaño de caché de cada app.", true);
             return;
         }
 
@@ -79,8 +79,8 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgress.setVisibility(View.VISIBLE);
         binding.codesuCacheProgress.setIndeterminate(true);
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
-        binding.codesuCacheProgressText.setText("Calculating cache estimates…");
-        binding.codesuCacheTotal.setText("Reading installed apps");
+        binding.codesuCacheProgressText.setText("Calculando tamaños de caché…");
+        binding.codesuCacheTotal.setText("Leyendo aplicaciones instaladas");
 
         Context appContext = requireContext().getApplicationContext();
         App.executorService.execute(() -> {
@@ -97,32 +97,32 @@ public class CacheCleanerFragment extends Fragment {
                             appsWithCache++;
                         }
                     }
-                    binding.codesuCacheTotal.setText("Deep-clean ready (>1 MB) · "
-                            + CacheAppAdapter.formatBytes(totalBytes) + " across " + appsWithCache + " apps");
+                    binding.codesuCacheTotal.setText("Limpieza profunda disponible · "
+                            + CacheAppAdapter.formatBytes(totalBytes) + " en " + appsWithCache + " apps (>1 MB)");
                     binding.codesuCacheProgress.setVisibility(View.GONE);
                     binding.codesuCacheProgressText.setVisibility(View.GONE);
                     binding.codesuCacheEmpty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
                     binding.codesuCacheEmpty.setText(apps.isEmpty()
-                            ? "No installed apps are available for cache reporting." : "");
+                            ? "No hay aplicaciones instaladas disponibles para medir su caché." : "");
                     binding.codesuCacheCleanButton.setVisibility(appsWithCache > 0 ? View.VISIBLE : View.GONE);
                     binding.codesuCacheCleanButton.setEnabled(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R);
                     binding.codesuCacheSafetyNote.setText(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                            ? "User and system apps are listed largest first. Deep clean targets only apps above 1 MB; protected apps are skipped. App data and sign-ins stay intact."
-                            : "Selective cleaning with protected-app exclusions needs Android 11+. Cache estimates are shown for review.");
+                            ? "Apps de usuario y del sistema, ordenadas por tamaño. Solo se limpian las que superan 1 MB; las apps protegidas se omiten. No se borran datos ni sesiones."
+                            : "La limpieza selectiva con exclusión de apps protegidas requiere Android 11+. Puedes consultar los tamaños.");
                 });
             } catch (SecurityException e) {
                 App.handler.post(() -> {
-                    if (binding != null) showAccessGate("Usage access is off. Turn it on and return to refresh the list.", true);
+                    if (binding != null) showAccessGate("El acceso al uso está desactivado. Actívalo y vuelve para actualizar la lista.", true);
                 });
             } catch (Exception e) {
                 App.handler.post(() -> {
                     if (binding == null) return;
                     binding.codesuCacheProgress.setVisibility(View.GONE);
                     binding.codesuCacheProgressText.setVisibility(View.GONE);
-                    binding.codesuCacheTotal.setText("Could not read app cache sizes");
+                    binding.codesuCacheTotal.setText("No se pudieron leer los tamaños de caché");
                     binding.codesuCacheEmpty.setVisibility(View.VISIBLE);
                     binding.codesuCacheEmpty.setText(e.getMessage() == null
-                            ? "Storage statistics are unavailable on this device." : e.getMessage());
+                            ? "Las estadísticas de almacenamiento no están disponibles en este dispositivo." : e.getMessage());
                 });
             }
         });
@@ -132,7 +132,7 @@ public class CacheCleanerFragment extends Fragment {
         if (binding == null) return;
         binding.codesuCacheApps.setVisibility(View.GONE);
         binding.codesuCacheCleanButton.setVisibility(View.GONE);
-        binding.codesuCacheTotal.setText("Cache estimates need access");
+        binding.codesuCacheTotal.setText("Se necesita acceso para medir la caché");
         binding.codesuCacheEmpty.setText(message);
         binding.codesuCacheEmpty.setVisibility(View.VISIBLE);
         binding.codesuUsageAccessButton.setVisibility(showUsageSettings ? View.VISIBLE : View.GONE);
@@ -153,14 +153,14 @@ public class CacheCleanerFragment extends Fragment {
     private void confirmGlobalCacheClear() {
         if (binding == null || cleaning) return;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            Toast.makeText(requireContext(), "Protected selective cache cleaning requires Android 11+.", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), "La limpieza selectiva protegida requiere Android 11 o posterior.", Toast.LENGTH_LONG).show();
             return;
         }
         if (!CacheCleaner.isShizukuReady()) {
             new AlertDialog.Builder(requireContext())
-                    .setTitle("Shizuku authorization needed")
-                    .setMessage("Start Shizuku and grant CodeSu permission in the Settings tab. Then return here and tap the broom.")
-                    .setPositiveButton("OK", null)
+                    .setTitle("Se necesita autorización de Shizuku")
+                    .setMessage("Inicia Shizuku y concede permiso a CodeSu en la pestaña Ajustes. Después vuelve aquí y toca la escoba.")
+                    .setPositiveButton("Entendido", null)
                     .show();
             return;
         }
@@ -175,17 +175,17 @@ public class CacheCleanerFragment extends Fragment {
             }
         }
         if (targets == 0) {
-            Toast.makeText(requireContext(), "No unprotected app has more than 1 MB of cache.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Ninguna app no protegida supera 1 MB de caché.", Toast.LENGTH_SHORT).show();
             return;
         }
-        String message = "Recalculate cache sizes, then deep-clean apps above 1 MB. Current estimate: "
-                + CacheAppAdapter.formatBytes(estimate) + " across " + targets
-                + " apps. Protected system apps are excluded; app data and sign-ins are kept.";
+        String message = "Se volverá a medir la caché antes de limpiar las apps que superen 1 MB. Estimación actual: "
+                + CacheAppAdapter.formatBytes(estimate) + " en " + targets
+                + " apps. Se omiten las apps protegidas y se conservan los datos y las sesiones.";
         new AlertDialog.Builder(requireContext())
-                .setTitle("Deep clean app caches")
+                .setTitle("Limpieza profunda de caché")
                 .setMessage(message)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Recalculate and clean", (dialog, which) -> runGlobalCacheClear(apps))
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Medir y limpiar", (dialog, which) -> runGlobalCacheClear(apps))
                 .show();
     }
 
@@ -197,7 +197,8 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgress.setProgress(0);
         binding.codesuCacheProgress.setVisibility(View.VISIBLE);
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
-        binding.codesuCacheProgressText.setText("Recalculating cache sizes before deep clean…");
+        binding.codesuCacheResult.setVisibility(View.GONE);
+        binding.codesuCacheProgressText.setText("Midiendo la caché antes de limpiar…");
         binding.codesuCacheCleanButton.animate().rotationBy(360f).setDuration(700)
                 .setInterpolator(new AccelerateDecelerateInterpolator()).start();
 
@@ -217,8 +218,8 @@ public class CacheCleanerFragment extends Fragment {
                         binding.codesuCacheCleanButton.setEnabled(true);
                         binding.codesuCacheProgress.setVisibility(View.GONE);
                         binding.codesuCacheProgressText.setVisibility(View.GONE);
-                        binding.codesuCacheTotal.setText("Cache recalculated · no eligible apps above 1 MB");
-                        Toast.makeText(requireContext(), "Cache is up to date; no app exceeds 1 MB.",
+                        binding.codesuCacheTotal.setText("Caché actualizada · ninguna app supera 1 MB");
+                        Toast.makeText(requireContext(), "La caché está actualizada; ninguna app supera 1 MB.",
                                 Toast.LENGTH_SHORT).show();
                         loadCacheApps();
                     });
@@ -228,28 +229,32 @@ public class CacheCleanerFragment extends Fragment {
                 App.handler.post(() -> {
                     if (binding == null) return;
                     binding.codesuCacheProgress.setIndeterminate(false);
-                    binding.codesuCacheProgressText.setText("Deep cleaning " + eligibleCount + " apps…");
+                    binding.codesuCacheProgressText.setText("Limpiando " + eligibleCount + " apps…");
                 });
                 CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(
                         appContext, refreshedApps,
-                        (completed, total, pkg, cleared) -> App.handler.post(() -> {
+                        (completed, total, pkg, cleared, verifiedFreed, unmeasured) -> App.handler.post(() -> {
                             if (binding == null) return;
                             int percent = total == 0 ? 100 : (int) ((completed * 100L) / total);
                             binding.codesuCacheProgress.setProgress(percent);
                             binding.codesuCacheProgressText.setText(percent + "% · " + completed + "/" + total
-                                    + " · " + pkg);
+                                    + " apps · " + CacheAppAdapter.formatBytes(verifiedFreed) + " liberados"
+                                    + (unmeasured > 0 ? " · " + unmeasured + " sin medir" : ""));
                         }));
                 App.handler.post(() -> {
                     if (binding == null) return;
                     cleaning = false;
                     binding.codesuCacheCleanButton.setEnabled(true);
                     binding.codesuCacheProgress.setProgress(100);
-                    binding.codesuCacheProgressText.setText("100% complete · refreshing estimates…");
-                    binding.codesuCacheTotal.setText("Cleared " + result.cleared + " apps · estimated "
-                            + CacheAppAdapter.formatBytes(result.estimatedFreedBytes) + " released · "
-                            + result.failed + " skipped or denied");
-                    Toast.makeText(requireContext(), "Cache cleanup complete · " + result.cleared
-                            + " apps · ~" + CacheAppAdapter.formatBytes(result.estimatedFreedBytes) + " released",
+                    binding.codesuCacheProgressText.setText("100% · Actualizando tamaños…");
+                    String resultMessage = "Liberación verificada: " + result.cleared + " apps · "
+                            + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " liberados"
+                            + (result.unmeasuredApps > 0 ? " · medición pendiente en " + result.unmeasuredApps + " apps" : "")
+                            + (result.failed > 0 ? " · " + result.failed + " omitidas o sin permiso" : "");
+                    binding.codesuCacheResult.setText(resultMessage);
+                    binding.codesuCacheResult.setVisibility(View.VISIBLE);
+                    Toast.makeText(requireContext(), "Limpieza terminada · " + result.cleared
+                            + " apps · " + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " liberados",
                             Toast.LENGTH_LONG).show();
                     loadCacheApps();
                 });
@@ -261,7 +266,7 @@ public class CacheCleanerFragment extends Fragment {
                     binding.codesuCacheProgress.setVisibility(View.GONE);
                     binding.codesuCacheProgressText.setVisibility(View.GONE);
                     Toast.makeText(requireContext(), e.getMessage() == null
-                            ? "Cache cleanup failed. Check Shizuku authorization." : e.getMessage(), Toast.LENGTH_LONG).show();
+                            ? "No se pudo limpiar la caché. Revisa la autorización de Shizuku." : e.getMessage(), Toast.LENGTH_LONG).show();
                     loadCacheApps();
                 });
             }

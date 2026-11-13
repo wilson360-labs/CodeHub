@@ -98,11 +98,11 @@ public class SettingsFragment extends Fragment {
         }
         if (!available) {
             binding.shizukuStatus.setText("Service stopped. Start Shizuku, then return here.");
-            binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.black));
+            binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_text_primary));
             binding.shizukuPermissionButton.setText("Open Shizuku");
         } else if (granted) {
             binding.shizukuStatus.setText("Service running · CodeSu permission granted");
-            binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_accent));
+            binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_accent_text));
             binding.shizukuPermissionButton.setText("Authorized");
         } else {
             binding.shizukuStatus.setText("Service running · CodeSu permission required");

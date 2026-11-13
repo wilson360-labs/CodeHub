@@ -3,6 +3,12 @@
     <color name="codesu_accent_soft">#80DEEA</color>
     <color name="codesu_accent">#007C91</color>
     <color name="codesu_accent_dark">#005662</color>
+    <color name="codesu_accent_text">#005662</color>
+    <color name="codesu_background">#FFF3F7F8</color>
+    <color name="codesu_surface">#FFFFFFFF</color>
+    <color name="codesu_text_primary">#FF172327</color>
+    <color name="codesu_text_secondary">#FF526267</color>
+    <color name="codesu_result_surface">#FFE5F4F3</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

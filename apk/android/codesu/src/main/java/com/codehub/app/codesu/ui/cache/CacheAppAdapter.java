@@ -39,7 +39,7 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
         CacheAppInfo app = apps.get(position);
         holder.icon.setImageDrawable(app.icon);
         holder.name.setText(app.label);
-        holder.packageName.setText((app.protectedApp ? "Protected · " : app.systemApp ? "System · " : "App · ")
+        holder.packageName.setText((app.protectedApp ? "Protegida · " : app.systemApp ? "Sistema · " : "App · ")
                 + app.packageName);
         holder.itemView.setAlpha(app.protectedApp ? 0.66f : 1f);
         holder.size.setText(formatBytes(app.cacheBytes));

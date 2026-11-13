@@ -33,7 +33,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Application Theme"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -94,7 +94,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Shizuku service"
-                        android:textColor="@color/codesu_accent"
+                        android:textColor="@color/codesu_accent_text"
                         android:textSize="17sp"
                         android:textStyle="bold" />
 
@@ -138,7 +138,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Killer Engine"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -204,7 +204,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Kill Level"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -270,7 +270,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Source Mode"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -327,7 +327,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Selection Mode"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -376,7 +376,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Hide Critical Apps"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -459,7 +459,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="List UI"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -519,7 +519,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Auto Killer"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -627,7 +627,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:text="Backup &amp; Restore"
-                    android:textColor="@color/codesu_accent"
+                    android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 

@@ -20,7 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="App selection"
-            android:textColor="@color/codesu_accent_dark"
+            android:textColor="@color/codesu_accent_text"
             android:textSize="20sp"
             android:textStyle="bold" />
 

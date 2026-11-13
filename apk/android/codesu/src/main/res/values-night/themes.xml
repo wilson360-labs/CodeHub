@@ -11,6 +11,10 @@
         <item name="colorOnSecondary">@color/white</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">@color/codesu_accent_dark</item>
+        <item name="android:windowBackground">@color/codesu_background</item>
+        <item name="android:colorBackground">@color/codesu_background</item>
+        <item name="colorSurface">@color/codesu_surface</item>
+        <item name="colorOnSurface">@color/codesu_text_primary</item>
         <!-- Customize your theme here. -->
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
