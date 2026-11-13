@@ -62,7 +62,7 @@
             android:layout_width="16dp"
             android:layout_height="16dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_play"
+            android:src="@drawable/codesu_ic_play"
             android:visibility="visible" />
 
         <ImageView

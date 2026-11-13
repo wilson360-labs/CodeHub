@@ -24,7 +24,7 @@
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:layout_gravity="center"
-                app:srcCompat="@drawable/ic_info" />
+                app:srcCompat="@drawable/codesu_ic_info" />
 
             <TextView
                 android:layout_width="match_parent"

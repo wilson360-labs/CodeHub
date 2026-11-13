@@ -47,7 +47,7 @@ public class HomeRecyclerViewAdapter extends RecyclerView.Adapter<HomeRecyclerVi
         isLongClickEnable = App.settings.getBoolean(App.LONG_CLICK_TO_MENU, true);
         isShowPackageNameEnable = App.settings.getBoolean(App.SHOW_PKG_NAME, true);
         isScrollAnimationEnable = App.settings.getBoolean(App.SHOW_SCROLL_ANIMATION, true);
-        iconPause = AppCompatResources.getDrawable(App.context, R.drawable.ic_pause);
+        iconPause = AppCompatResources.getDrawable(App.context, R.drawable.codesu_ic_pause);
     }
 
     @NonNull

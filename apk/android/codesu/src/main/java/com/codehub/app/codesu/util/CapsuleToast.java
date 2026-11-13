@@ -78,7 +78,7 @@ public class CapsuleToast {
 
     private void showStatic(String message) {
         progressBar.setVisibility(View.GONE);
-        iconView.setImageResource(R.drawable.ic_info);
+        iconView.setImageResource(R.drawable.codesu_ic_info);
         iconView.setVisibility(View.VISIBLE);
         textView.setText(message);
         animateIn();

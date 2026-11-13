@@ -24,13 +24,13 @@ import java.util.List;
 
 import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.MainActivity;
-import com.codehub.app.codesu.databinding.FragmentHomeBinding;
+import com.codehub.app.codesu.databinding.CodesuFragmentHomeBinding;
 import com.codehub.app.codesu.model.AppInfo;
 import com.codehub.app.codesu.util.CapsuleToast;
 
 public class HomeFragment extends Fragment {
 
-    private FragmentHomeBinding binding;
+    private CodesuFragmentHomeBinding binding;
     private HomeViewModel homeViewModel;
     private HomeRecyclerViewAdapter adapter;
     private CardView searchLayout;
@@ -39,7 +39,7 @@ public class HomeFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
         homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
-        binding = FragmentHomeBinding.inflate(inflater, container, false);
+        binding = CodesuFragmentHomeBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 
