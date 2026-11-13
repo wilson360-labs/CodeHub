@@ -21,11 +21,11 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 
-import com.codehub.app.codesu.databinding.ActivityMainBinding;
+import com.codehub.app.codesu.databinding.CodesuActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity {
 
-    private ActivityMainBinding binding;
+    private CodesuActivityMainBinding binding;
     private ObjectAnimator logoAnimator;
 
     @Override
@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(window, false);
         window.setStatusBarColor(Color.TRANSPARENT);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        binding = CodesuActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         App.setAppThemeMode();
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
