@@ -8,8 +8,6 @@ import android.os.IBinder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.IKillAppService;
@@ -19,8 +17,6 @@ import rikka.shizuku.Shizuku;
 
 public class ShizukuPlusUtils {
 
-    private static final long TIMEOUT_SECONDS = 10;
-    private static final int SHIZUKU_REQ_CODE = 1001;
     private static volatile IKillAppService killAppService = null;
     private static volatile CountDownLatch bindLatch = null;
 
@@ -50,36 +46,8 @@ public class ShizukuPlusUtils {
 
     public static boolean checkShizuku() {
         try {
-            if (!Shizuku.pingBinder())
-                return false;
-
-            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED)
-                return true;
-
-            CountDownLatch permissionLatch = new CountDownLatch(1);
-            AtomicInteger grantResult = new AtomicInteger(PackageManager.PERMISSION_DENIED);
-
-            Shizuku.OnRequestPermissionResultListener listener = (requestCode, result) -> {
-                if (requestCode == SHIZUKU_REQ_CODE) {
-                    grantResult.set(result);
-                    permissionLatch.countDown();
-                }
-            };
-
-            Shizuku.addRequestPermissionResultListener(listener);
-            try {
-                if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED)
-                    return true;
-
-                Shizuku.requestPermission(SHIZUKU_REQ_CODE);
-                if (!permissionLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS))
-                    return false;
-
-                return grantResult.get() == PackageManager.PERMISSION_GRANTED
-                        && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
-            } finally {
-                Shizuku.removeRequestPermissionResultListener(listener);
-            }
+            return Shizuku.pingBinder()
+                    && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
         } catch (Exception e) {
             return false;
         }
@@ -95,7 +63,7 @@ public class ShizukuPlusUtils {
         bindLatch = latch;
         try {
             Shizuku.bindUserService(userServiceArgs(), userServiceConnection);
-            boolean connected = latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            boolean connected = latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
                     && killAppService != null;
             if (!connected) {
                 bindLatch = null;

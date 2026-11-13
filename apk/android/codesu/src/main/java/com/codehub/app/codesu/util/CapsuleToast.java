@@ -24,7 +24,7 @@ public class CapsuleToast {
     private CapsuleToast(Activity activity) {
         ViewGroup rootView = activity.findViewById(android.R.id.content);
         capsuleView = LayoutInflater.from(activity).inflate(R.layout.capsule_toast, rootView, false);
-        View toolbar = activity.findViewById(R.id.toolbar);
+        View toolbar = activity.findViewById(R.id.codesu_toolbar);
         if (toolbar != null) {
             int statusBarBottom = toolbar.getBottom();
             int marginInPx = (int) TypedValue.applyDimension(

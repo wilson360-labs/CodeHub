@@ -49,6 +49,10 @@ public class ExcludedFragment extends Fragment implements ExcludedRecyclerViewAd
         super.onViewCreated(view, savedInstanceState);
         binding.excludedRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.excludedRecyclerView.setItemAnimator(null);
+        boolean includeMode = App.settings.getInt(App.SELECTION_MODE, 0) == 1;
+        binding.selectionModeHint.setText(includeMode
+                ? "Include mode · only apps you mark are eligible to close."
+                : "Exclude mode · marked apps stay protected when closing apps.");
     }
 
     @Override

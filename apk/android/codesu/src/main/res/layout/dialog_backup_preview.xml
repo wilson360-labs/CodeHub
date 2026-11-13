@@ -73,7 +73,7 @@
                     android:layout_marginTop="4dp"
                     android:ellipsize="end"
                     android:maxLines="2"
-                    android:textColor="@color/purple_400"
+                    android:textColor="@color/codesu_accent"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 

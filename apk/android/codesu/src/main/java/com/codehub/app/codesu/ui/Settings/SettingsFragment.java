@@ -26,15 +26,27 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.MainActivity;
+import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.databinding.FragmentSettingsBinding;
 import com.codehub.app.codesu.util.AutoKillHelper;
 import com.codehub.app.codesu.util.BackupManager;
 import com.codehub.app.codesu.util.CapsuleToast;
+import rikka.shizuku.Shizuku;
 
 public class SettingsFragment extends Fragment {
 
+    private static final int SHIZUKU_PERMISSION_REQUEST = 7653;
+
     private FragmentSettingsBinding binding;
     private SettingsViewModel settingsViewModel;
+
+    private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != SHIZUKU_PERMISSION_REQUEST || !isAdded() || binding == null) return;
+                updateShizukuStatus();
+                CapsuleToast.showInfo(requireActivity(), grantResult == PackageManager.PERMISSION_GRANTED
+                        ? "Shizuku permission granted" : "Shizuku permission denied");
+            };
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -53,6 +65,70 @@ public class SettingsFragment extends Fragment {
                 getViewLifecycleOwner(),
                 (requestKey, result) -> settingsViewModel.reloadSettings()
         );
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
+        updateShizukuStatus();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateShizukuStatus();
+    }
+
+    @Override
+    public void onStop() {
+        Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
+        super.onStop();
+    }
+
+    private void updateShizukuStatus() {
+        if (binding == null || !isAdded()) return;
+        boolean available = false;
+        boolean granted = false;
+        try {
+            available = Shizuku.pingBinder();
+            granted = available && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
+        } catch (RuntimeException ignored) {
+            // Shizuku can become unavailable between pingBinder and permission check.
+        }
+        if (!available) {
+            binding.shizukuStatus.setText("Service stopped. Start Shizuku, then return here.");
+            binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.black));
+            binding.shizukuPermissionButton.setText("Open Shizuku");
+        } else if (granted) {
+            binding.shizukuStatus.setText("Service running · CodeSu permission granted");
+            binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_accent));
+            binding.shizukuPermissionButton.setText("Authorized");
+        } else {
+            binding.shizukuStatus.setText("Service running · CodeSu permission required");
+            binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_dark));
+            binding.shizukuPermissionButton.setText("Grant access");
+        }
+    }
+
+    private void requestShizukuAccess() {
+        if (!Shizuku.pingBinder()) {
+            Intent launch = requireContext().getPackageManager()
+                    .getLaunchIntentForPackage("moe.shizuku.privileged.api");
+            if (launch != null) startActivity(launch);
+            else CapsuleToast.showInfo(requireActivity(), "Install and start Shizuku first");
+            updateShizukuStatus();
+            return;
+        }
+        try {
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                updateShizukuStatus();
+                return;
+            }
+            Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST);
+        } catch (RuntimeException e) {
+            binding.shizukuStatus.setText("Could not request permission. Restart Shizuku and retry.");
+        }
     }
 
     @Override
@@ -182,6 +258,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void setListeners() {
+        binding.shizukuPermissionButton.setOnClickListener(v -> requestShizukuAccess());
         binding.themeSettings.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(@NonNull RadioGroup group, int checkedId) {

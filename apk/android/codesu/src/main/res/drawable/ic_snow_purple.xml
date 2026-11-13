@@ -7,7 +7,7 @@
     <path
         android:pathData="M12,12 m-2.2,0 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0"
         android:strokeWidth="2.0"
-        android:strokeColor="@color/purple_400" />
+        android:strokeColor="@color/codesu_accent" />
 
     <group
         android:pivotX="12"
@@ -16,12 +16,12 @@
         <path
             android:pathData="M12,9.5 L12,4.5"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round" />
         <path
             android:pathData="M9.5,2 L12,4.5 L14.5,2"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
     </group>
@@ -33,12 +33,12 @@
         <path
             android:pathData="M12,9.5 L12,4.5"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round" />
         <path
             android:pathData="M9.5,2 L12,4.5 L14.5,2"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
     </group>
@@ -50,12 +50,12 @@
         <path
             android:pathData="M12,9.5 L12,4.5"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round" />
         <path
             android:pathData="M9.5,2 L12,4.5 L14.5,2"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
     </group>
@@ -67,12 +67,12 @@
         <path
             android:pathData="M12,9.5 L12,4.5"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round" />
         <path
             android:pathData="M9.5,2 L12,4.5 L14.5,2"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
     </group>
@@ -84,12 +84,12 @@
         <path
             android:pathData="M12,9.5 L12,4.5"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round" />
         <path
             android:pathData="M9.5,2 L12,4.5 L14.5,2"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
     </group>
@@ -101,12 +101,12 @@
         <path
             android:pathData="M12,9.5 L12,4.5"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round" />
         <path
             android:pathData="M9.5,2 L12,4.5 L14.5,2"
             android:strokeWidth="2.0"
-            android:strokeColor="@color/purple_400"
+            android:strokeColor="@color/codesu_accent"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
     </group>
@@ -116,7 +116,7 @@
         android:pivotY="12"
         android:rotation="60">
         <path
-            android:fillColor="@color/purple_400"
+            android:fillColor="@color/codesu_accent"
             android:pathData="M12,5.5 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
     </group>
 
@@ -125,7 +125,7 @@
         android:pivotY="12"
         android:rotation="120">
         <path
-            android:fillColor="@color/purple_400"
+            android:fillColor="@color/codesu_accent"
             android:pathData="M12,5.5 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
     </group>
 
@@ -134,7 +134,7 @@
         android:pivotY="12"
         android:rotation="180">
         <path
-            android:fillColor="@color/purple_400"
+            android:fillColor="@color/codesu_accent"
             android:pathData="M12,5.5 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
     </group>
 
@@ -143,7 +143,7 @@
         android:pivotY="12"
         android:rotation="240">
         <path
-            android:fillColor="@color/purple_400"
+            android:fillColor="@color/codesu_accent"
             android:pathData="M12,5.5 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
     </group>
 
@@ -152,7 +152,7 @@
         android:pivotY="12"
         android:rotation="300">
         <path
-            android:fillColor="@color/purple_400"
+            android:fillColor="@color/codesu_accent"
             android:pathData="M12,5.5 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
     </group>
 
@@ -161,7 +161,7 @@
         android:pivotY="12"
         android:rotation="0">
         <path
-            android:fillColor="@color/purple_400"
+            android:fillColor="@color/codesu_accent"
             android:pathData="M12,5.5 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
     </group>
 

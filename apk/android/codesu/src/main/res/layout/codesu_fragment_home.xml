@@ -10,7 +10,7 @@
         android:id="@+id/kill_all_btn"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#C2185B"
+        android:background="@color/codesu_accent"
         android:text="KILL ALL"
         android:textColor="@color/white"
         android:visibility="gone"

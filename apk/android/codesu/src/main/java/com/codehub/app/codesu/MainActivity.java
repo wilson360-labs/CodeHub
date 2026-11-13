@@ -19,6 +19,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.navigation.NavController;
+import androidx.navigation.NavDestination;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.codehub.app.codesu.databinding.CodesuActivityMainBinding;
@@ -43,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
                 .findFragmentById(R.id.nav_host_fragment_activity_main);
         NavController navController = navHostFragment.getNavController();
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar, (v, windowInsets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.codesuToolbar, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(
                     v.getPaddingLeft(),
@@ -79,17 +80,41 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Navegacion manual (evita BottomNavigationView, que crashea por
-        // atributos Material no resueltos en el tema vacio del host).
+        navController.addOnDestinationChangedListener((controller, destination, arguments) ->
+                updateSelectedTab(destination));
+        updateSelectedTab(navController.getCurrentDestination());
+
+        // Navegación manual para mantener el tab bar ligero y sin el tema
+        // Material que causaba el crash anterior de BottomNavigationView.
         View.OnClickListener navListener = v -> {
             int id = v.getId();
-            if (id == R.id.nav_home) navController.navigate(R.id.navigation_home);
-            else if (id == R.id.nav_excluded) navController.navigate(R.id.navigation_excluded);
-            else if (id == R.id.nav_settings) navController.navigate(R.id.navigation_settings);
+            int destinationId = id == R.id.nav_home ? R.id.navigation_home
+                    : id == R.id.nav_excluded ? R.id.navigation_excluded
+                    : id == R.id.nav_settings ? R.id.navigation_settings : 0;
+            if (destinationId == 0 || navController.getCurrentDestination() == null
+                    || navController.getCurrentDestination().getId() == destinationId)
+                return;
+            if (!navController.popBackStack(destinationId, false))
+                navController.navigate(destinationId);
         };
         binding.navHome.setOnClickListener(navListener);
         binding.navExcluded.setOnClickListener(navListener);
         binding.navSettings.setOnClickListener(navListener);
+    }
+
+    private void updateSelectedTab(NavDestination destination) {
+        if (destination == null || binding == null) return;
+        setTabSelected(binding.navHome, destination.getId() == R.id.navigation_home);
+        setTabSelected(binding.navExcluded, destination.getId() == R.id.navigation_excluded);
+        setTabSelected(binding.navSettings, destination.getId() == R.id.navigation_settings);
+    }
+
+    private void setTabSelected(View tab, boolean selected) {
+        tab.setSelected(selected);
+        tab.setAlpha(selected ? 1f : 0.72f);
+        if (tab instanceof android.widget.TextView)
+            ((android.widget.TextView) tab).setTypeface(null,
+                    selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
     }
 
     @Override

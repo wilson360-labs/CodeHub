@@ -2,15 +2,15 @@
     <!-- Base application theme. -->
     <style name="Theme.CodeSu" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorPrimary">@color/codesu_accent_soft</item>
+        <item name="colorPrimaryVariant">@color/codesu_accent_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/purple_200</item>
-        <item name="colorSecondaryVariant">@color/purple_400</item>
+        <item name="colorSecondary">@color/codesu_accent_soft</item>
+        <item name="colorSecondaryVariant">@color/codesu_accent</item>
         <item name="colorOnSecondary">@color/white</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/purple_700</item>
+        <item name="android:statusBarColor">@color/codesu_accent_dark</item>
         <!-- Customize your theme here. -->
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>

@@ -32,7 +32,7 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:visibility="gone"
-            app:tint="@color/purple_700" />
+            app:tint="@color/codesu_accent_dark" />
 
         <TextView
             android:id="@+id/capsule_text"

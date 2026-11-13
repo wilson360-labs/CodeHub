@@ -22,7 +22,7 @@
         android:layout_height="24dp"
         android:layout_gravity="center"
         android:indeterminate="true"
-        android:indeterminateTint="@color/purple_400"
+        android:indeterminateTint="@color/codesu_accent"
         android:visibility="gone" />
 
     <TextView
