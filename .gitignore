@@ -39,6 +39,9 @@ Thumbs.db
 # APKs locales (van en Backblaze)
 *.apk
 
+# Upstream clonado de KillMyApps (dedeadend) — referencia/integración CodeSu
+vendor/
+
 # Keystores Android (JAMAS commitear el archivo .jks crudo)
 **/*.jks
 **/*.keystore

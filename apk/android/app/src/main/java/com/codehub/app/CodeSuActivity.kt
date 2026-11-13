@@ -712,8 +712,8 @@ class CodeSuActivity : Activity() {
         }
         hideCriticalCheck.isChecked = hideCriticalApps
         killHelp.text = when (killMode) {
-            CodeSuUserService.LEVEL_BACKGROUND -> "Soft · am kill; Android decide qué proceso de fondo es seguro cerrar."
-            CodeSuUserService.LEVEL_KILLER -> "Killer · fuerza el cierre; con ADB ejecuta force-stop sin requerir root."
+            CodeSuUserService.LEVEL_BACKGROUND -> "Soft · am kill + set-inactive: cierra procesos de fondo y deja el paquete en standby."
+            CodeSuUserService.LEVEL_KILLER -> "Killer · force-stop + ciclo suspend/unsuspend: congela y descongela para frenar servicios que se reactivan."
             else -> "Deep · am force-stop; detiene el paquete hasta que vuelva a abrirse."
         }
         renderListStyleControls()
@@ -773,7 +773,7 @@ class CodeSuActivity : Activity() {
         autoInfo.text = when (autoMode) {
             AutoMode.OFF -> "Desactivado · CodeSu solo cerrará apps por acción manual."
             AutoMode.SCREEN_OFF -> "Se ejecuta al apagar la pantalla si CodeHub sigue activo; usa el filtro y la selección actuales."
-            AutoMode.DAILY -> "Ejecución diaria aproximada a las ${String.format(java.util.Locale.ROOT, "%02d:%02d", autoHour, autoMinute)}; Android puede retrasarla por ahorro de batería."
+            AutoMode.DAILY -> "Alarma diaria del sistema a las ${String.format(java.util.Locale.ROOT, "%02d:%02d", autoHour, autoMinute)}; dispara incluso con ahorro de batería (Doze). Si Shizuku está apagado a esa hora, se reintenta al día siguiente."
         }
         prefs.getString("last_auto_result", null)?.let { autoInfo.append("\n$it") }
     }

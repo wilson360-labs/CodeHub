@@ -51,6 +51,10 @@ public class BootReceiver extends BroadcastReceiver {
             try { CodeHubSyncScheduler.schedule(context); } catch (Throwable ignored) {}
             try { CodeHubSyncScheduler.syncNow(context); } catch (Throwable ignored) {}
 
+            // CodeSu Auto Killer: AlarmManager borra las alarmas tras un reboot
+            // o una actualización del APK; reprograma la diaria si está activa.
+            try { CodeSuAutoKillerScheduler.rescheduleIfDue(context); } catch (Throwable ignored) {}
+
             // El detector de sismos se inicia desde MainActivity cuando ya
             // esta visible; no promover un FGS desde este receiver de fondo.
         }

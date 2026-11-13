@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 @Keep
 public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     /** Increase whenever this UserService implementation changes so Shizuku replaces stale code. */
-    public static final int USER_SERVICE_VERSION = 5;
+    public static final int USER_SERVICE_VERSION = 6;
     public static final int LEVEL_BACKGROUND = 0;
     public static final int LEVEL_FORCE_STOP = 1;
     public static final int LEVEL_KILLER = 2;
@@ -260,6 +260,16 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                     }
                     int exitCode = runAm(command, packageName);
                     if (exitCode == 0) {
+                        // Semántica de KillMyApps: Soft deja el paquete en standby
+                        // (set-inactive) y Killer congela+descongela para frenar
+                        // servicios que el force-stop podría reactivar. Su fallo
+                        // no invalida el stop principal.
+                        if (level == LEVEL_BACKGROUND) {
+                            bestEffort(new String[]{"/system/bin/am", "set-inactive", packageName, "true"});
+                        } else if (level == LEVEL_KILLER) {
+                            bestEffort(new String[]{"/system/bin/cmd", "package", "suspend", packageName});
+                            bestEffort(new String[]{"/system/bin/cmd", "package", "unsuspend", packageName});
+                        }
                         stopped.add(packageName);
                         rssBeforeKb += packageRssBeforeKb;
                         releasedRssKb += Math.max(0L, packageRssBeforeKb - waitForPackageMemoryKb(packageName));
@@ -307,9 +317,13 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
         return uid != null && uid < MIN_INSTALL_UID;
     }
 
+    /** Comando best-effort (semántica KillMyApps): su fallo no invalida el stop principal. */
+    private static void bestEffort(String[] command) {
+        try { readCommand(command); } catch (Throwable ignored) { }
+    }
+
     private static int runAm(String operation, String packageName) throws Exception {
-        java.lang.Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/am", operation, packageName});
-        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        java.lang.Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/am", operation, packageName});        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
         CountDownLatch stderrDone = new CountDownLatch(1);
         Thread drainError = new Thread(() -> {
             try (InputStream input = process.getErrorStream()) {
