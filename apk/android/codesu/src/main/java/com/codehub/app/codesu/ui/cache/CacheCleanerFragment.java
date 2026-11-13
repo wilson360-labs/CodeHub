@@ -92,13 +92,13 @@ public class CacheCleanerFragment extends Fragment {
                     long totalBytes = 0L;
                     int appsWithCache = 0;
                     for (CacheAppInfo app : apps) {
-                        if (!app.protectedApp && app.cacheBytes > 0) {
+                        if (!app.protectedApp && app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES) {
                             totalBytes += app.cacheBytes;
                             appsWithCache++;
                         }
                     }
-                    binding.codesuCacheTotal.setText("Estimated clearable cache · " + CacheAppAdapter.formatBytes(totalBytes)
-                            + " across " + appsWithCache + " apps");
+                    binding.codesuCacheTotal.setText("Deep-clean ready (>1 MB) · "
+                            + CacheAppAdapter.formatBytes(totalBytes) + " across " + appsWithCache + " apps");
                     binding.codesuCacheProgress.setVisibility(View.GONE);
                     binding.codesuCacheProgressText.setVisibility(View.GONE);
                     binding.codesuCacheEmpty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
@@ -107,7 +107,7 @@ public class CacheCleanerFragment extends Fragment {
                     binding.codesuCacheCleanButton.setVisibility(appsWithCache > 0 ? View.VISIBLE : View.GONE);
                     binding.codesuCacheCleanButton.setEnabled(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R);
                     binding.codesuCacheSafetyNote.setText(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                            ? "User and system apps are listed largest first. Protected apps remain visible but are skipped. Only cache is removed; app data and sign-ins stay intact."
+                            ? "User and system apps are listed largest first. Deep clean targets only apps above 1 MB; protected apps are skipped. App data and sign-ins stay intact."
                             : "Selective cleaning with protected-app exclusions needs Android 11+. Cache estimates are shown for review.");
                 });
             } catch (SecurityException e) {
@@ -168,22 +168,24 @@ public class CacheCleanerFragment extends Fragment {
         int targets = 0;
         long estimate = 0L;
         for (CacheAppInfo app : apps) {
-            if (app.cacheBytes > 0 && !app.protectedApp && !CacheCleaner.isProtected(app.packageName)) {
+            if (app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
+                    && !CacheCleaner.isProtected(app.packageName)) {
                 targets++;
                 estimate += app.cacheBytes;
             }
         }
         if (targets == 0) {
-            Toast.makeText(requireContext(), "No eligible app cache to clear.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "No unprotected app has more than 1 MB of cache.", Toast.LENGTH_SHORT).show();
             return;
         }
-        String message = "Clear estimated " + CacheAppAdapter.formatBytes(estimate) + " from " + targets
-                + " apps? Protected system apps are excluded. App data and sign-ins are kept; cached media may need to download again.";
+        String message = "Recalculate cache sizes, then deep-clean apps above 1 MB. Current estimate: "
+                + CacheAppAdapter.formatBytes(estimate) + " across " + targets
+                + " apps. Protected system apps are excluded; app data and sign-ins are kept.";
         new AlertDialog.Builder(requireContext())
-                .setTitle("Clean app caches")
+                .setTitle("Deep clean app caches")
                 .setMessage(message)
                 .setNegativeButton("Cancel", null)
-                .setPositiveButton("Clean cache", (dialog, which) -> runGlobalCacheClear(apps))
+                .setPositiveButton("Recalculate and clean", (dialog, which) -> runGlobalCacheClear(apps))
                 .show();
     }
 
@@ -191,19 +193,44 @@ public class CacheCleanerFragment extends Fragment {
         if (binding == null) return;
         cleaning = true;
         binding.codesuCacheCleanButton.setEnabled(false);
-        binding.codesuCacheProgress.setIndeterminate(false);
+        binding.codesuCacheProgress.setIndeterminate(true);
         binding.codesuCacheProgress.setProgress(0);
         binding.codesuCacheProgress.setVisibility(View.VISIBLE);
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
-        binding.codesuCacheProgressText.setText("Preparing safe cache cleanup…");
+        binding.codesuCacheProgressText.setText("Recalculating cache sizes before deep clean…");
         binding.codesuCacheCleanButton.animate().rotationBy(360f).setDuration(700)
                 .setInterpolator(new AccelerateDecelerateInterpolator()).start();
 
         Context appContext = requireContext().getApplicationContext();
         App.executorService.execute(() -> {
             try {
+                List<CacheAppInfo> refreshedApps = CacheCleaner.recalculateCacheSizes(appContext, apps);
+                int eligible = 0;
+                for (CacheAppInfo app : refreshedApps) {
+                    if (app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
+                            && !CacheCleaner.isProtected(app.packageName)) eligible++;
+                }
+                if (eligible == 0) {
+                    App.handler.post(() -> {
+                        if (binding == null) return;
+                        cleaning = false;
+                        binding.codesuCacheCleanButton.setEnabled(true);
+                        binding.codesuCacheProgress.setVisibility(View.GONE);
+                        binding.codesuCacheProgressText.setVisibility(View.GONE);
+                        binding.codesuCacheTotal.setText("Cache recalculated · no eligible apps above 1 MB");
+                        Toast.makeText(requireContext(), "Cache is up to date; no app exceeds 1 MB.",
+                                Toast.LENGTH_SHORT).show();
+                        loadCacheApps();
+                    });
+                    return;
+                }
+                App.handler.post(() -> {
+                    if (binding == null) return;
+                    binding.codesuCacheProgress.setIndeterminate(false);
+                    binding.codesuCacheProgressText.setText("Deep cleaning " + eligible + " apps…");
+                });
                 CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(
-                        appContext, apps,
+                        appContext, refreshedApps,
                         (completed, total, pkg, cleared) -> App.handler.post(() -> {
                             if (binding == null) return;
                             int percent = total == 0 ? 100 : (int) ((completed * 100L) / total);

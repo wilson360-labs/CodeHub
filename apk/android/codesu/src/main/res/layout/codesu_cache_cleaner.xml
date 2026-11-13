@@ -86,7 +86,7 @@
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="18dp"
         android:background="@drawable/codesu_cache_fab_background"
-        android:contentDescription="Clean eligible app caches"
+        android:contentDescription="Recalculate and deep-clean app caches above 1 MB"
         android:elevation="8dp"
         android:padding="16dp"
         android:src="@drawable/codesu_ic_broom"

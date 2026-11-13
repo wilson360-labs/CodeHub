@@ -31,6 +31,8 @@ import rikka.shizuku.Shizuku;
 /** Shizuku cache operations. It never invokes app-data clearing commands. */
 public final class CacheCleaner {
 
+    public static final long DEEP_CLEAN_MIN_CACHE_BYTES = 1024L * 1024L;
+
     private static final Set<String> PROTECTED_PACKAGES = new HashSet<>(Arrays.asList(
             "android",
             "com.codehub.app",
@@ -114,6 +116,41 @@ public final class CacheCleaner {
         return result;
     }
 
+    /** Refreshes cached-byte estimates immediately before a deep-clean operation. */
+    public static List<CacheAppInfo> recalculateCacheSizes(Context context, List<CacheAppInfo> apps)
+            throws Exception {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
+            throw new IllegalStateException("Cache estimates require Android 8.0 or newer.");
+        if (!hasUsageAccess(context))
+            throw new SecurityException("Grant Usage access to recalculate app cache sizes.");
+
+        PackageManager pm = context.getPackageManager();
+        StorageStatsManager statsManager = (StorageStatsManager)
+                context.getSystemService(Context.STORAGE_STATS_SERVICE);
+        if (statsManager == null) throw new IllegalStateException("Storage stats service unavailable.");
+        UserHandle user = Process.myUserHandle();
+        List<CacheAppInfo> refreshed = new ArrayList<>(apps.size());
+        for (CacheAppInfo app : apps) {
+            long cacheBytes = 0L;
+            try {
+                ApplicationInfo applicationInfo = pm.getApplicationInfo(app.packageName, 0);
+                StorageStats stats = statsManager.queryStatsForPackage(
+                        applicationInfo.storageUuid == null ? StorageManager.UUID_DEFAULT : applicationInfo.storageUuid,
+                        app.packageName, user);
+                cacheBytes = stats.getCacheBytes();
+            } catch (Exception ignored) {
+                // Treat unavailable/stale stats as zero so they cannot enter the deep-clean target set.
+            }
+            refreshed.add(new CacheAppInfo(app.packageName, app.label, app.icon, cacheBytes,
+                    app.systemApp, app.protectedApp));
+        }
+        Collections.sort(refreshed, (left, right) -> {
+            int byCache = Long.compare(right.cacheBytes, left.cacheBytes);
+            return byCache != 0 ? byCache : left.label.compareToIgnoreCase(right.label);
+        });
+        return refreshed;
+    }
+
     public static boolean isProtected(String packageName) {
         if (packageName == null || PROTECTED_PACKAGES.contains(packageName)) return true;
         return packageName.startsWith("com.android.providers.")
@@ -172,7 +209,8 @@ public final class CacheCleaner {
         List<CacheAppInfo> targets = new ArrayList<>();
         Set<String> protectedPackages = getProtectedPackages(context);
         for (CacheAppInfo app : apps) {
-            if (app.cacheBytes > 0 && !app.protectedApp && !protectedPackages.contains(app.packageName)
+            if (app.cacheBytes > DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
+                    && !protectedPackages.contains(app.packageName)
                     && !isProtected(app.packageName))
                 targets.add(app);
         }
