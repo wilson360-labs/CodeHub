@@ -36,6 +36,9 @@ public class MainActivity extends AppCompatActivity {
         Window window = getWindow();
         WindowCompat.setDecorFitsSystemWindows(window, false);
         window.setStatusBarColor(Color.TRANSPARENT);
+        window.setNavigationBarColor(Color.TRANSPARENT);
+        WindowCompat.getInsetsController(window, window.getDecorView())
+                .setAppearanceLightNavigationBars(false);
 
         binding = CodesuActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -52,6 +55,13 @@ public class MainActivity extends AppCompatActivity {
                     v.getPaddingRight(),
                     v.getPaddingBottom()
             );
+            return windowInsets;
+        });
+
+        // Keep CodeSu's tab bar above Android's gesture/three-button navigation area.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.navView, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), insets.bottom);
             return windowInsets;
         });
 
