@@ -224,10 +224,11 @@ public class CacheCleanerFragment extends Fragment {
                     });
                     return;
                 }
+                final int eligibleCount = eligible;
                 App.handler.post(() -> {
                     if (binding == null) return;
                     binding.codesuCacheProgress.setIndeterminate(false);
-                    binding.codesuCacheProgressText.setText("Deep cleaning " + eligible + " apps…");
+                    binding.codesuCacheProgressText.setText("Deep cleaning " + eligibleCount + " apps…");
                 });
                 CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(
                         appContext, refreshedApps,
