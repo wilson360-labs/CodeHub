@@ -115,7 +115,7 @@ public class SettingsFragment extends Fragment {
                     binding.selectionModeSettings.check(binding.includeMode.getId());
             }
         });
-        settingsViewModel.getHideCodeSu().observe(getViewLifecycleOwner(), binding.hideCodeSu::setChecked);
+        settingsViewModel.getHideKillMyApps().observe(getViewLifecycleOwner(), binding.hideKillMyApps::setChecked);
         settingsViewModel.getHideDefaultLauncher().observe(getViewLifecycleOwner(), binding.hideDefaultLauncher::setChecked);
         settingsViewModel.getHideDefaultAlarm().observe(getViewLifecycleOwner(), binding.hideDefaultAlarm::setChecked);
         settingsViewModel.getHideDefaultKeyboard().observe(getViewLifecycleOwner(), binding.hideDefaultKeyboard::setChecked);
@@ -240,10 +240,10 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        binding.hideCodeSu.setOnClickListener(new View.OnClickListener() {
+        binding.hideKillMyApps.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                settingsViewModel.setHideCodeSu(binding.hideCodeSu.isChecked());
+                settingsViewModel.setHideKillMyApps(binding.hideKillMyApps.isChecked());
             }
         });
 

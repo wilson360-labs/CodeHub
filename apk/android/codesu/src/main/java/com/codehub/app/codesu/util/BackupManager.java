@@ -259,7 +259,7 @@ public class BackupManager {
         settings.put("killLevel", prefs.getInt(App.KILLER_LEVEL, 1));
         settings.put("listMode", prefs.getInt(App.LIST_MODE, 1));
 
-        settings.put("hideCodeSu", prefs.getBoolean(App.HIDE_KILL_MY_APPS, true));
+        settings.put("hideKillMyApps", prefs.getBoolean(App.HIDE_KILL_MY_APPS, true));
         settings.put("hideDefaultLauncher", prefs.getBoolean(App.HIDE_DEFAULT_LAUNCHER, true));
         settings.put("hideDefaultAlarm", prefs.getBoolean(App.HIDE_DEFAULT_ALARM, true));
         settings.put("hideDefaultKeyboard", prefs.getBoolean(App.HIDE_DEFAULT_KEYBOARD, true));
@@ -324,7 +324,7 @@ public class BackupManager {
             addIntegerSetting(settings, settingsJson, "killLevel", App.KILLER_LEVEL, 0, 2);
             addIntegerSetting(settings, settingsJson, "listMode", App.LIST_MODE, 0, 2);
 
-            addBooleanSetting(settings, settingsJson, "hideCodeSu", App.HIDE_KILL_MY_APPS);
+            addBooleanSetting(settings, settingsJson, "hideKillMyApps", App.HIDE_KILL_MY_APPS);
             addBooleanSetting(settings, settingsJson, "hideDefaultLauncher", App.HIDE_DEFAULT_LAUNCHER);
             addBooleanSetting(settings, settingsJson, "hideDefaultAlarm", App.HIDE_DEFAULT_ALARM);
             addBooleanSetting(settings, settingsJson, "hideDefaultKeyboard", App.HIDE_DEFAULT_KEYBOARD);

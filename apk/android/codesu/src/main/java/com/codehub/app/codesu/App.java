@@ -30,7 +30,7 @@ public class App {
     public static final String KILLER_LEVEL = "killLevel";
     public static final String LIST_MODE = "listMode";
     public static final String SELECTION_MODE = "selectionMode";
-    public static final String HIDE_KILL_MY_APPS = "hideCodeSu";
+    public static final String HIDE_KILL_MY_APPS = "hideKillMyApps";
     public static final String HIDE_DEFAULT_LAUNCHER = "hideDefaultLauncher";
     public static final String HIDE_DEFAULT_ALARM = "hideDefaultAlarm";
     public static final String HIDE_DEFAULT_KEYBOARD = "hideDefaultKeyboard";

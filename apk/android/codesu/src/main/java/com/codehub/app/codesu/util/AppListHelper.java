@@ -20,9 +20,9 @@ import com.codehub.app.codesu.model.AppInfo;
 import com.codehub.app.codesu.model.PKGName;
 
 public class AppListHelper {
-    public static List<AppInfo> getAppsList(Context context, boolean forceHideCodeSu) {
+    public static List<AppInfo> getAppsList(Context context, boolean forceHideKillMyApps) {
         int listMode = App.settings.getInt(App.LIST_MODE, 1);
-        boolean hideCodeSu = App.settings.getBoolean(App.HIDE_KILL_MY_APPS, true) || forceHideCodeSu;
+        boolean hideKillMyApps = App.settings.getBoolean(App.HIDE_KILL_MY_APPS, true) || forceHideKillMyApps;
         boolean hideDefaultLauncher = App.settings.getBoolean(App.HIDE_DEFAULT_LAUNCHER, true);
         boolean hideDefaultAlarm = App.settings.getBoolean(App.HIDE_DEFAULT_ALARM, true);
         boolean hideDefaultKeyboard = App.settings.getBoolean(App.HIDE_DEFAULT_KEYBOARD, true);
@@ -65,13 +65,13 @@ public class AppListHelper {
                     || (hideDefaultKeyboard && pkgName.equals(keyboardPkg))
                     || (hideDefaultDialer && pkgName.equals(dialerPkg))
                     || (hideDefaultSms && pkgName.equals(smsPkg))
-                    || (hideCodeSu && pkgName.equals(App.context.getPackageName()));
+                    || (hideKillMyApps && pkgName.equals(App.context.getPackageName()));
         });
 
         return AppInfo.utils.applicationInfoList2AppInfoList(context, applications);
     }
 
-    public static List<AppInfo> getFilteredAppsList(Context context, boolean forceHideCodeSu) {
+    public static List<AppInfo> getFilteredAppsList(Context context, boolean forceHideKillMyApps) {
         List<PKGName> excludedList = App.database.excludedPkgDao().getAll();
         Set<String> selectionListHash = new HashSet<>();
         for (PKGName pkgName : excludedList)
@@ -79,7 +79,7 @@ public class AppListHelper {
 
         int listMode = App.settings.getInt(App.LIST_MODE, 1);
         int selectionMode = App.settings.getInt(App.SELECTION_MODE, 0);
-        boolean hideCodeSu = App.settings.getBoolean(App.HIDE_KILL_MY_APPS, true) || forceHideCodeSu;
+        boolean hideKillMyApps = App.settings.getBoolean(App.HIDE_KILL_MY_APPS, true) || forceHideKillMyApps;
         boolean hideDefaultLauncher = App.settings.getBoolean(App.HIDE_DEFAULT_LAUNCHER, true);
         boolean hideDefaultAlarm = App.settings.getBoolean(App.HIDE_DEFAULT_ALARM, true);
         boolean hideDefaultKeyboard = App.settings.getBoolean(App.HIDE_DEFAULT_KEYBOARD, true);
@@ -124,7 +124,7 @@ public class AppListHelper {
                     || (hideDefaultKeyboard && pkgName.equals(keyboardPkg))
                     || (hideDefaultDialer && pkgName.equals(dialerPkg))
                     || (hideDefaultSms && pkgName.equals(smsPkg))
-                    || (hideCodeSu && pkgName.equals(App.context.getPackageName()));
+                    || (hideKillMyApps && pkgName.equals(App.context.getPackageName()));
         });
 
         return AppInfo.utils.applicationInfoList2AppInfoList(context, applications);

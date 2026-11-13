@@ -16,7 +16,7 @@ public class SettingsViewModel extends ViewModel {
 
     private final MutableLiveData<Integer> themeMode, killerMode, listMode, selectionMode,
             screenOffAutoKillDelay, scheduledAutoKillTime, killLevel;
-    private final MutableLiveData<Boolean> hideCodeSu, hideDefaultLauncher, hideDefaultAlarm,
+    private final MutableLiveData<Boolean> hideKillMyApps, hideDefaultLauncher, hideDefaultAlarm,
             hideDefaultKeyboard, hideDefaultDialer, hideDefaultSMS, hideCriticalSystemApps,
             showAppsPkgName, clickToAppInfo, longClickToMenu, showScrollAnimation,
             screenOffAutoKill, scheduledAutoKill;
@@ -27,7 +27,7 @@ public class SettingsViewModel extends ViewModel {
         killLevel = new MutableLiveData<>();
         listMode = new MutableLiveData<>();
         selectionMode = new MutableLiveData<>();
-        hideCodeSu = new MutableLiveData<>();
+        hideKillMyApps = new MutableLiveData<>();
         hideDefaultLauncher = new MutableLiveData<>();
         hideDefaultAlarm = new MutableLiveData<>();
         hideDefaultKeyboard = new MutableLiveData<>();
@@ -51,7 +51,7 @@ public class SettingsViewModel extends ViewModel {
         killLevel.setValue(App.settings.getInt(App.KILLER_LEVEL, 1));
         listMode.setValue(App.settings.getInt(App.LIST_MODE, 1));
         selectionMode.setValue(App.settings.getInt(App.SELECTION_MODE, 0));
-        hideCodeSu.setValue(App.settings.getBoolean(App.HIDE_KILL_MY_APPS, true));
+        hideKillMyApps.setValue(App.settings.getBoolean(App.HIDE_KILL_MY_APPS, true));
         hideDefaultLauncher.setValue(App.settings.getBoolean(App.HIDE_DEFAULT_LAUNCHER, true));
         hideDefaultAlarm.setValue(App.settings.getBoolean(App.HIDE_DEFAULT_ALARM, true));
         hideDefaultKeyboard.setValue(App.settings.getBoolean(App.HIDE_DEFAULT_KEYBOARD, true));
@@ -112,9 +112,9 @@ public class SettingsViewModel extends ViewModel {
         selectionMode.setValue(mode);
     }
 
-    public void setHideCodeSu(boolean hide) {
+    public void setHideKillMyApps(boolean hide) {
         App.settings.edit().putBoolean(App.HIDE_KILL_MY_APPS, hide).apply();
-        hideCodeSu.setValue(hide);
+        hideKillMyApps.setValue(hide);
     }
 
     public void setHideDefaultLauncher(boolean hide) {
@@ -215,8 +215,8 @@ public class SettingsViewModel extends ViewModel {
         return selectionMode;
     }
 
-    public MutableLiveData<Boolean> getHideCodeSu() {
-        return hideCodeSu;
+    public MutableLiveData<Boolean> getHideKillMyApps() {
+        return hideKillMyApps;
     }
 
     public MutableLiveData<Boolean> getHideDefaultLauncher() {
