@@ -1,4 +1,4 @@
-// wil-e/tts.js — Voz TTS neural premium (Jarvis) para Wil.E.
+// wil-e/tts.js — Voz TTS neural premium (Jarvis) para JARVIS.
 // Si ELEVENLABS_API_KEY está configurada, se usa ElevenLabs (voz premium real).
 // Si no, el módulo responde { available: false } y el frontend cae a la voz
 // del navegador (speechSynthesis) de forma transparente.
@@ -23,9 +23,10 @@ module.exports = function (opts) {
     const { text, voice } = req.body || {};
     const t = String(text || '').trim();
     if (!t) return res.status(400).json({ ok: false, error: 'Falta text' });
-    if (t.length > 600) return res.status(400).json({ ok: false, error: 'Texto muy largo (máx 600 caracteres)' });
+    if (t.length > 4000) return res.status(400).json({ ok: false, error: 'Texto muy largo (máx 4000 caracteres)' });
 
-    const voiceId = String(voice || VOICE_SPANISH);
+    const requestedVoice = String(voice || '').trim();
+    const voiceId = ['jarvis', 'deep'].includes(requestedVoice.toLowerCase()) ? VOICE_DEEP : (requestedVoice || VOICE_SPANISH);
     // Estilo JARVIS (voz grave británica "Josh"): tono sereno, seco y medido.
     const settings = voiceId === VOICE_DEEP
       ? { stability: 0.85, similarity_boost: 0.8, style: 0.12, use_speaker_boost: true }

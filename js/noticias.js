@@ -2,7 +2,7 @@
    NOTICIAS — widget extraído de index.html
    ═══════════════════════════════════════════════════════════════
    Antes vivía como ~160 líneas de script inline dentro del <script>
-   gigante de index.html, mezcladas con el chat Wil.E/EMI y con los
+   gigante de index.html, mezcladas con el chat JARVIS/JARVIS y con los
    widgets de clima, sismos y seguridad. Está encapsulado en una IIFE
    para que no exponga nada global excepto toggleNewsCollapse, que
    necesita acceso desde el onclick del botón que genera.

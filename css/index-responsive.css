@@ -1279,7 +1279,7 @@ html.is-mobile .dock-sep { height: 28px; margin: 0 1px 6px; }
   html.is-mobile .dock-label { font-size: .46rem; }
 }
 
-/* ── Panel WIL.E COPILOT: tamaño inteligente basado en el viewport real ──
+/* ── Panel JARVIS: tamaño inteligente basado en el viewport real ──
    Usa --app-height/--app-width (calculadas en JS con visualViewport,
    se actualizan al aparecer el teclado, rotar o mostrarse/ocultarse la
    barra de direcciones) en vez de un tamaño fijo que se distorsiona

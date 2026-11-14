@@ -169,7 +169,7 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
 .ch-nm__draghint i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
 
 /* Arrastre activo (long-press) y posición personalizada del usuario.
-   z 5100 para que, si lo colocan encima del FAB de WIL.E (5000), el
+   z 5100 para que, si lo colocan encima del FAB de JARVIS (5000), el
    control se vea completo; el dock queda por debajo (4000). */
 #chNativeMusic.ch-nm--drag,
 #chNativeMusic.ch-nm--placed {

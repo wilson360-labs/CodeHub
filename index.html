@@ -829,7 +829,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <button class="auth-btn auth-google" type="button">
                         <i class="fab fa-google"></i> <span data-i18n-auth="authGoogle">Continuar con Google</span>
                     </button>
-                    <p class="auth-note" data-i18n-auth="authNote">Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de WIL.E y guardas tus chats.</p>
+                    <p class="auth-note" data-i18n-auth="authNote">Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de JARVIS y guardas tus chats.</p>
                 </div>
             </div>
         </div>
@@ -2422,7 +2422,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     {
                         selector: '#ai-fab',
                         icon: 'fa-solid fa-robot',
-                        title: 'WIL.E COPILOT — tu IA',
+                        title: 'JARVIS — tu IA',
                         text: 'Asistente de IA integrado. Chatea, genera imágenes, analiza PDFs, traduce y más. Di "hola" para empezar.',
                         optional: true
                     },
@@ -4331,7 +4331,7 @@ function validateForm() {
 
 
 <!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
-<button id="ai-fab" aria-label="Abrir WIL.E COPILOT" title="Habla con WIL.E COPILOT">
+<button id="ai-fab" aria-label="Abrir JARVIS" title="Habla con JARVIS">
   <span class="ai-fab-icon">
     <svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <line x1="11" y1="1" x2="11" y2="4" stroke="rgba(255,255,255,.9)" stroke-width="1.5" stroke-linecap="round"/>
@@ -4346,7 +4346,7 @@ function validateForm() {
     </svg>
   </span>
   <span class="ai-fab-text">
-    <span class="ai-fab-label">WIL.E COPILOT</span>
+    <span class="ai-fab-label">JARVIS</span>
     <span class="ai-fab-sub">Pregúntame algo</span>
   </span>
   <span class="ai-notif"></span>
@@ -4357,7 +4357,7 @@ function validateForm() {
 
 <div id="ai-img-lightbox" onclick="if(event.target===this)closeAiImgLightbox()">
   <button id="ai-img-lightbox-close" onclick="closeAiImgLightbox()" aria-label="Cerrar imagen"></button>
-  <img id="ai-img-lightbox-img" src="" alt="Imagen generada por WIL.E COPILOT (vista ampliada)">
+  <img id="ai-img-lightbox-img" src="" alt="Imagen generada por JARVIS (vista ampliada)">
 </div>
 <script>
   function openAiImgLightbox(uid) {
@@ -4377,8 +4377,8 @@ function validateForm() {
   });
 </script>
 
-<div id="ai-backdrop" aria-hidden="true" onclick="typeof closeEmiChat==='function'&&closeEmiChat()"></div>
-<div id="ai-panel" role="dialog" aria-modal="true" aria-label="WIL.E COPILOT" style="display:none">
+<div id="ai-backdrop" aria-hidden="true" onclick="typeof closeJarvisChat==='function'&&closeJarvisChat()"></div>
+<div id="ai-panel" role="dialog" aria-modal="true" aria-label="JARVIS" style="display:none">
 
   <!-- Header -->
   <div class="ai-head">
@@ -4402,20 +4402,20 @@ function validateForm() {
       </svg>
     </div>
     <div class="ai-head-info">
-      <div class="ai-head-title">WIL.E COPILOT</div>
+      <div class="ai-head-title">JARVIS</div>
       <div class="ai-head-sub">
         <span class="online-dot"></span>
         <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
       </div>
     </div>
     <div class="ai-head-actions">
-      <button class="ai-head-btn ai-menu-trigger" id="ai-menu-btn" onclick="emiMenu.openFn()" title="Menú de funciones" aria-label="Abrir menú de funciones" aria-haspopup="true">
+      <button class="ai-head-btn ai-menu-trigger" id="ai-menu-btn" onclick="jarvisMenu.openFn()" title="Menú de funciones" aria-label="Abrir menú de funciones" aria-haspopup="true">
         <i class="fas fa-bars"></i>
       </button>
-      <button class="ai-head-btn" id="ai-export-btn" onclick="exportEmiChat()" title="Exportar chat" aria-label="Exportar conversación">
+      <button class="ai-head-btn" id="ai-export-btn" onclick="exportJarvisChat()" title="Exportar chat" aria-label="Exportar conversación">
         <i class="fas fa-download"></i>
       </button>
-      <button class="ai-head-btn" id="ai-fullscreen-btn" onclick="toggleEmiFullscreen()" title="Pantalla completa" aria-label="Expandir panel">
+      <button class="ai-head-btn" id="ai-fullscreen-btn" onclick="toggleJarvisFullscreen()" title="Pantalla completa" aria-label="Expandir panel">
         <i class="fas fa-expand"></i>
       </button>
     </div>
@@ -4428,14 +4428,14 @@ function validateForm() {
   <div id="ai-msgs">
     <div class="ai-disclaimer" id="ai-disclaimer" style="display:none;">
       <i class="fas fa-circle-info"></i>
-      <span>WIL.E puede cometer errores. Verifica la información importante.</span>
+      <span>JARVIS puede cometer errores. Verifica la información importante.</span>
       <button onclick="dismissAiDisclaimer()" aria-label="Cerrar aviso"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="ai-msg-wrap ai ai-welcome">
       <div class="ai-msg-avatar">✦</div>
       <div class="ai-msg-content">
         <div class="ai-msg">
-          ¡Hola! 👋 Soy <strong>WIL.E COPILOT</strong>, asistente de <strong>Wilson.E</strong>. Puedo ayudarte con código, buscar información con imágenes o responder sobre CodeHub. ¿Qué necesitas?
+          ¡Hola! 👋 Soy <strong>JARVIS</strong>, asistente de <strong>Wilson.E</strong>. Puedo ayudarte con código, buscar información con imágenes o responder sobre CodeHub. ¿Qué necesitas?
           <button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>
         </div>
         <span class="ai-msg-time" id="ai-welcome-time"></span>
@@ -4465,10 +4465,10 @@ function validateForm() {
           oninput="this.style.height='48px';this.style.height=Math.min(this.scrollHeight,140)+'px';updateCharCount()"></textarea>
         <input type="file" id="ai-attach-input" accept="image/*,.pdf" style="display:none"
           onchange="handleAiAttach(this.files[0])">
-        <button id="emi-attach-btn" type="button" aria-label="Adjuntar imagen o PDF" title="Adjuntar imagen o PDF" onclick="document.getElementById('ai-attach-input').click()">
+        <button id="jarvis-attach-btn" type="button" aria-label="Adjuntar imagen o PDF" title="Adjuntar imagen o PDF" onclick="document.getElementById('ai-attach-input').click()">
           <i class="fas fa-paperclip"></i>
         </button>
-        <button id="emi-mic-btn" type="button" aria-label="Hablar con WIL.E" title="Hablar con WIL.E (voz a texto)" onclick="emiVoice.toggle()">
+        <button id="jarvis-mic-btn" type="button" aria-label="Hablar con JARVIS" title="Hablar con JARVIS (voz a texto)" onclick="jarvisVoice.toggle()">
           <i class="fas fa-microphone"></i>
         </button>
         <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
@@ -4476,10 +4476,10 @@ function validateForm() {
         </button>
       </div>
       <div class="ai-input-footer">
-        <span class="ai-input-hint-inline" id="ai-input-hint">⬡ WIL.E COPILOT · CodeHub</span>
+        <span class="ai-input-hint-inline" id="ai-input-hint">⬡ JARVIS · CodeHub</span>
         <div class="ai-input-actions">
-          <button type="button" class="ai-action-btn" onclick="if(typeof window.resetEmiChat==='function')window.resetEmiChat()" aria-label="Restablecer chat" title="Restablecer chat">↺</button>
-          <button type="button" class="ai-action-btn" onclick="if(typeof window.closeEmiChat==='function')window.closeEmiChat()" aria-label="Cerrar chat" title="Cerrar chat">✕</button>
+          <button type="button" class="ai-action-btn" onclick="if(typeof window.resetJarvisChat==='function')window.resetJarvisChat()" aria-label="Restablecer chat" title="Restablecer chat">↺</button>
+          <button type="button" class="ai-action-btn" onclick="if(typeof window.closeJarvisChat==='function')window.closeJarvisChat()" aria-label="Cerrar chat" title="Cerrar chat">✕</button>
           <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
         </div>
       </div>
@@ -4489,16 +4489,16 @@ function validateForm() {
   </div><!-- /.ai-body -->
 </div>
 
-<!-- Menú deslizante de funciones de WIL.E -->
-<div id="emi-drawer" class="emi-drawer" aria-hidden="true">
-  <div class="emi-drawer-scrim" onclick="emiMenu.close()"></div>
-  <aside class="emi-drawer-panel" role="dialog" aria-modal="true" aria-label="Funciones de WIL.E COPILOT">
-    <div class="emi-drawer-head">
-      <div class="emi-drawer-title">☰ WIL.E COPILOT <span class="emi-drawer-status"><i class="fas fa-circle online-dot"></i> En línea</span></div>
-      <button class="emi-drawer-close" onclick="emiMenu.close()" aria-label="Cerrar menú">✕</button>
+<!-- Menú deslizante de funciones de JARVIS -->
+<div id="jarvis-drawer" class="jarvis-drawer" aria-hidden="true">
+  <div class="jarvis-drawer-scrim" onclick="jarvisMenu.close()"></div>
+  <aside class="jarvis-drawer-panel" role="dialog" aria-modal="true" aria-label="Funciones de JARVIS">
+    <div class="jarvis-drawer-head">
+      <div class="jarvis-drawer-title">☰ JARVIS <span class="jarvis-drawer-status"><i class="fas fa-circle online-dot"></i> En línea</span></div>
+      <button class="jarvis-drawer-close" onclick="jarvisMenu.close()" aria-label="Cerrar menú">✕</button>
     </div>
-    <div class="emi-drawer-body" id="emi-drawer-body">
-      <!-- rellenado por JS (emiMenu.render) -->
+    <div class="jarvis-drawer-body" id="jarvis-drawer-body">
+      <!-- rellenado por JS (jarvisMenu.render) -->
     </div>
   </aside>
 </div>
@@ -4707,8 +4707,8 @@ function validateForm() {
     addMsg('ai', '¡Conversación reiniciada! 🔄 ¿En qué te puedo ayudar?');
     if (sugs) sugs.style.display = 'flex';
   };
-  window.resetEmiChat = resetChat;
-  window.closeEmiChat = function () { setOpen(false); };
+  window.resetJarvisChat = resetChat;
+  window.closeJarvisChat = function () { setOpen(false); };
   restoreChat();
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
   // Mobile: swipe down to close — solo desde el header/handle, nunca
@@ -4814,15 +4814,15 @@ function validateForm() {
     return 'https://codehub-98s6.onrender.com';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
-  window.updateEmiUsage = function (emi) {
+  window.updateJarvisUsage = function (emi) {
     if (!emi || !Number.isFinite(Number(emi.used)) || !Number.isFinite(Number(emi.limit))) return;
     try {
       sessionStorage.setItem('ch_chat_emi_used', String(Math.max(0, Number(emi.used))));
       sessionStorage.setItem('ch_chat_emi_limit', String(Math.max(1, Number(emi.limit))));
     } catch (e) {}
-    if (window.emiMenu && window.emiMenu.open) window.emiMenu.render();
+    if (window.jarvisMenu && window.jarvisMenu.open) window.jarvisMenu.render();
   };
-  window.refreshEmiUsage = async function () {
+  window.refreshJarvisUsage = async function () {
     try {
       const headers = {};
       if (window.CodeHubAuth && CodeHubAuth.isLogged()) {
@@ -4832,7 +4832,7 @@ function validateForm() {
       const response = await fetch(BACKEND_URL + '/api/chat/usage', { headers: headers, cache: 'no-store' });
       if (!response.ok) return;
       const body = await response.json();
-      window.updateEmiUsage(body.emi);
+      window.updateJarvisUsage(body.emi);
     } catch (e) { /* El menú conserva el último dato local y reintenta al abrirse. */ }
   };
   let _currentAbort = null;
@@ -4851,7 +4851,7 @@ function validateForm() {
     try { localStorage.setItem('ch_session_id', id); } catch(e) {}
     return id;
   })();
-  // Flag de auto-aprendizaje de Wil.E (privacidad). Enviado en cada petición de chat.
+  // Flag de auto-aprendizaje de JARVIS (privacidad). Enviado en cada petición de chat.
   window.chMemFlag = function () {
     try { return localStorage.getItem('ch_wil_mem') !== 'off'; } catch (e) { return true; }
   };
@@ -4952,10 +4952,10 @@ function validateForm() {
       }
       const finalSrc = resultUrl;
       addMsg('ai', formatAIReply('**Imagen mejorada (modo profesional)** — calidad y detalle aumentados, formato `' + ext.toUpperCase() + '`:'));
-      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + finalSrc + '" alt="Imagen mejorada por WIL.E" style="max-width:100%;border-radius:10px;">' +
+      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + finalSrc + '" alt="Imagen mejorada por JARVIS" style="max-width:100%;border-radius:10px;">' +
         '<div style="margin-top:.5rem"><a href="' + finalSrc + '" download="wil-enhance.' + ext + '" target="_blank" style="color:#a0a0ff;text-decoration:none;"><i class="fas fa-download"></i> Descargar (' + ext.toUpperCase() + ')</a></div></div>');
-      // Wil.E cuenta lo que hizo en voz en español
-      try { if (window.emiVoice && typeof window.emiVoice.speak === 'function') window.emiVoice.speak('Listo, mejoré tu imagen en modo profesional.'); } catch (e) {}
+      // JARVIS cuenta lo que hizo en voz en español
+      try { if (window.jarvisVoice && typeof window.jarvisVoice.speak === 'function') window.jarvisVoice.speak('Listo, mejoré tu imagen en modo profesional.'); } catch (e) {}
     } catch (e) {
       addMsg('ai', 'Error al mejorar la imagen. Intenta de nuevo.');
     } finally {
@@ -4994,10 +4994,10 @@ function validateForm() {
       if (d.note) return addMsg('ai', '⚠️ ' + escHtml(d.note));
       if (!d.image) return addMsg('ai', 'El servicio no devolvió la imagen editada.');
       addMsg('ai', formatAIReply('**Imagen editada con IA** — ' + escHtml(instruccion.slice(0, 90)) + ':'));
-      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + d.image + '" alt="Imagen editada por WIL.E" style="max-width:100%;border-radius:10px;">' +
+      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + d.image + '" alt="Imagen editada por JARVIS" style="max-width:100%;border-radius:10px;">' +
         '<div style="margin-top:.5rem"><button class="ai-inline-cta" onclick="var a=document.createElement(\'a\');a.href=window.__lastEdited; a.download=\'wil-edit.png\'; document.body.appendChild(a);a.click();a.remove();">Descargar</button> <button class="ai-inline-cta" onclick="attachment={ base64: window.__lastEdited, type:\'image\'}; addMsg(\'ai\',\'Nueva imagen cargada como adjunto. Puedes editarla o mejorarla.\');">Usar como adjunto</button></div></div>');
       window.__lastEdited = d.image;
-      try { if (window.emiVoice && typeof window.emiVoice.speak === 'function') window.emiVoice.speak('Listo, edité tu imagen con inteligencia artificial.'); } catch (e) {}
+      try { if (window.jarvisVoice && typeof window.jarvisVoice.speak === 'function') window.jarvisVoice.speak('Listo, edité tu imagen con inteligencia artificial.'); } catch (e) {}
     } catch (e) {
       addMsg('ai', 'Error al editar la imagen. Intenta de nuevo.');
     } finally {
@@ -5045,26 +5045,26 @@ function validateForm() {
 
       // El backend puede devolver base64 en data.image o URL en data.url
       const imgSrc = data.image || data.url || data.image_url || data.data?.[0]?.url || null;
-      history.push({ role: 'assistant', content: 'Generé una imagen con WIL.E COPILOT.' });
+      history.push({ role: 'assistant', content: 'Generé una imagen con JARVIS.' });
       persistChat();
 
       if (imgSrc) {
         const uid = 'img_' + Date.now();
         const isBase64 = imgSrc.startsWith('data:');
         const downloadHref = isBase64 ? imgSrc : imgSrc;
-        const imgPrompt = (data.refined_prompt || cleanPrompt || 'Imagen generada por WIL.E COPILOT');
+        const imgPrompt = (data.refined_prompt || cleanPrompt || 'Imagen generada por JARVIS');
 
-        // WIL.E describe lo que generó (texto) y lo lee en voz alta en español
+        // JARVIS describe lo que generó (texto) y lo lee en voz alta en español
         const desc = (data.description || '').trim();
         if (desc) {
           addMsg('ai', formatAIReply(escHtml(desc)));
-          try { if (window.emiVoice && typeof window.emiVoice.speak === 'function') window.emiVoice.speak(desc); } catch (e) {}
+          try { if (window.jarvisVoice && typeof window.jarvisVoice.speak === 'function') window.jarvisVoice.speak(desc); } catch (e) {}
         }
 
         addMsg('ai', `
           <div class="ai-gen-img-wrap">
             <img src="${imgSrc}"
-              alt="Imagen generada por WIL.E COPILOT"
+              alt="Imagen generada por JARVIS"
               class="ai-gen-img"
               id="${uid}"
               onclick="openAiImgLightbox('${uid}')"
@@ -5073,7 +5073,7 @@ function validateForm() {
               onerror="if(this.parentElement)this.parentElement.innerHTML='<span style=\'color:rgba(255,120,100,.8)\'>⚠️ No se pudo mostrar la imagen</span>'">
             <div class="ai-gen-img-footer">
               <i class="fas fa-wand-magic-sparkles"></i>
-              Creada por WIL.E COPILOT ·
+              Creada por JARVIS ·
               <a href="${downloadHref}" download="wil-imagen.png" target="_blank"
                 style="color:#a0a0ff;text-decoration:none;">
                 Descargar
@@ -5095,7 +5095,7 @@ function validateForm() {
       } else {
         addMsg('ai', '⚠️ El servicio de imágenes tuvo un problema. Intenta de nuevo en un momento.');
       }
-      console.error('[EMI imagen]', e.message);
+      console.error('[JARVIS imagen]', e.message);
     } finally {
       loading = false;
       sendBtn.disabled = false;
@@ -5124,7 +5124,7 @@ function validateForm() {
       const cmd = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ');
       const COMMANDS = {
-        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/entrenar <texto|url>` — Wil.E guarda contenido en tu memoria\n- `/memoria` — Panel visual para ver/entrenar tu memoria\n- `/edit-img <instrucción>` — Edita la imagen adjunta con IA\n- `/jarvis on` — Activa la voz estilo Jarvis de Wil.E\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo' + String.fromCharCode(10) + '- /clima <ciudad> — Clima actual de una ciudad' + String.fromCharCode(10) + '- /sismo [magnitud] — Sismos recientes (USGS; por defecto M>=4)' + String.fromCharCode(10) + '- /search <consulta> — Busqueda web con fuentes (Tavily)')),
+        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/entrenar <texto|url>` — JARVIS guarda contenido en tu memoria\n- `/memoria` — Panel visual para ver/entrenar tu memoria\n- `/edit-img <instrucción>` — Edita la imagen adjunta con IA\n- `/jarvis on` — Activa la voz estilo Jarvis de JARVIS\n- `/debug <código>` — Depura código con JARVIS\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo' + String.fromCharCode(10) + '- /clima <ciudad> — Clima actual de una ciudad' + String.fromCharCode(10) + '- /sismo [magnitud] — Sismos recientes (USGS; por defecto M>=4)' + String.fromCharCode(10) + '- /search <consulta> — Busqueda web con fuentes (Tavily)')),
         '/clear':   () => { history = []; msgs.innerHTML = ''; try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch {} addMsg('ai', 'Chat reiniciado.'); },
         '/clima':   async () => {
           if (!arg) return addMsg('ai', '🌤️ Usa: /clima <ciudad> — por ejemplo /clima Ciudad de Guatemala.');
@@ -5182,15 +5182,15 @@ function validateForm() {
           } catch (e) { tl.remove(); addMsg('ai', 'La búsqueda web no está disponible ahora mismo.'); }
         },
         '/img':     () => { if (!arg) return addMsg('ai', 'Usa: `/img <descripción de la imagen>`'); _forceImageGen = true; input.value = '🎨 genera una imagen de ' + arg; sendAI(); },
-        '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que WIL.E lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
+        '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que JARVIS lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
         '/review':  () => { if (!arg) return addMsg('ai', 'Pega código después de `/review` para el review.'); input.value = 'Haz un code review de este código, sugiere mejoras: ' + arg; sendAI(); },
         '/readme':  () => { input.value = 'Genera un README profesional para este proyecto con descripción, instalación, uso y licencia'; sendAI(); },
         '/translate':() => { if (!arg) return addMsg('ai', 'Usa: `/translate <texto a traducir>`'); input.value = 'Traduce al español (si está en otro idioma) o al inglés (si está en español): ' + arg; sendAI(); },
-        '/explain': () => { if (!arg) return addMsg('ai', 'Pega código después de `/explain` para que WIL.E lo explique.'); input.value = 'Explica este código como si fuera para un principiante, línea por línea: ' + arg; sendAI(); },
+        '/explain': () => { if (!arg) return addMsg('ai', 'Pega código después de `/explain` para que JARVIS lo explique.'); input.value = 'Explica este código como si fuera para un principiante, línea por línea: ' + arg; sendAI(); },
         '/test':    () => { if (!arg) return addMsg('ai', 'Pega código después de `/test` para generar tests.'); input.value = 'Genera tests unitarios para este código (usa el framework apropiado): ' + arg; sendAI(); },
         '/resumen': () => { if (!arg) return addMsg('ai', 'Pega texto o URL después de `/resumen` para resumir.'); input.value = 'Resume este contenido en los puntos clave: ' + arg; sendAI(); },
         '/skills':  async () => { try { const r = await fetch(BACKEND_URL + '/api/skills'); const d = await r.json(); const list = (d.skills || []).map(s => '- **' + s.name + '** — ' + (s.description || '')).join('\n'); addMsg('ai', formatAIReply('**Skills disponibles:**\n\n' + (list || 'No hay skills activos.'))); } catch { addMsg('ai', 'No pude cargar las skills.'); } },
-        '/model':   () => addMsg('ai', 'Modelo activo: **WIL.E COPILOT** (multi-proveedor: Claude, Groq, Cerebras, Gemini, Mistral, OpenRouter, Kimi)'),
+        '/model':   () => addMsg('ai', 'Modelo activo: **JARVIS** (multi-proveedor: Claude, Groq, Cerebras, Gemini, Mistral, OpenRouter, Kimi)'),
         '/enhance-img': () => {
           if (!attachment || attachment.type !== 'image') return addMsg('ai', 'Adjunta una imagen primero y luego escribe `/enhance-img` para mejorar su calidad (modo profesional).');
           if (!(window.CodeHubAuth && CodeHubAuth.isLogged())) return addMsg('ai', 'El comando `/enhance-img` requiere <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'login\')">iniciar sesión</button>.');
@@ -5201,15 +5201,15 @@ function validateForm() {
           enhanceImage(fmt);
         },
         '/entrenar': async () => {
-          if (!(window.CodeHubAuth && CodeHubAuth.isLogged())) return addMsg('ai', 'Para entrenar a Wil.E con tu memoria personal necesitas <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'login\')">iniciar sesión</button>.');
+          if (!(window.CodeHubAuth && CodeHubAuth.isLogged())) return addMsg('ai', 'Para entrenar a JARVIS con tu memoria personal necesitas <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'login\')">iniciar sesión</button>.');
           let contenido = arg.trim();
           let titulo = '';
-          if (!contenido) return addMsg('ai', 'Usa: `/entrenar <texto a recordar>` o `/entrenar url <https://ejemplo.com>` para que Wil.E recuerde algo.\n\nEjemplos:\n- `/entrenar Mi plaza favorita es la Central`\n- `/entrenar url https://en.wikipedia.org/wiki/JavaScript`');
+          if (!contenido) return addMsg('ai', 'Usa: `/entrenar <texto a recordar>` o `/entrenar url <https://ejemplo.com>` para que JARVIS recuerde algo.\n\nEjemplos:\n- `/entrenar Mi plaza favorita es la Central`\n- `/entrenar url https://en.wikipedia.org/wiki/JavaScript`');
           if (/^url\s+/i.test(contenido)) {
             titulo = 'URL';
             const u = contenido.replace(/^url\s+/i, '').trim();
             if (!/^https?:\/\//i.test(u)) return addMsg('ai', 'La URL debe empezar con `http://` o `https://`.');
-            // Wil.E procesará la URL en el chat para extraer su contenido
+            // JARVIS procesará la URL en el chat para extraer su contenido
             addMsg('ai', 'Voy a leer el contenido de esa URL y lo guardaré en tu memoria. Un momento…');
             const sess = window.CodeHubAuth && CodeHubAuth.getSession();
             const headers = { 'Content-Type': 'application/json' };
@@ -5229,7 +5229,7 @@ function validateForm() {
                 body: JSON.stringify({ text: 'Sobre lo que me pediste recordar (fuente URL):\n' + resText, title: u })
               });
               const d2 = await rr2.json().catch(() => ({}));
-              if (d2 && d2.ok) addMsg('ai', '✅ Listo. Wil.E aprendió y recordará el contenido de: `' + escHtml(typeof u === 'string' ? u.slice(0, 60) : u) + '`');
+              if (d2 && d2.ok) addMsg('ai', '✅ Listo. JARVIS aprendió y recordará el contenido de: `' + escHtml(typeof u === 'string' ? u.slice(0, 60) : u) + '`');
               else addMsg('ai', '⚠️ No pude guardar el contenido en tu memoria: ' + ((d2 && d2.error) || 'error'));
             } catch (e) {
               addMsg('ai', 'Error al procesar la URL. Intenta de nuevo.');
@@ -5246,10 +5246,10 @@ function validateForm() {
               body: JSON.stringify({ text: contenido, title: titulo })
             });
             const d = await rr.json().catch(() => ({}));
-            if (d && d.ok) addMsg('ai', '✅ Entrenado. Wil.E guardó esto en tu memoria y lo usará en el futuro: "`' + escHtml(contenido.slice(0, 80)) + '`"');
+            if (d && d.ok) addMsg('ai', '✅ Entrenado. JARVIS guardó esto en tu memoria y lo usará en el futuro: "`' + escHtml(contenido.slice(0, 80)) + '`"');
             else addMsg('ai', '⚠️ No se pudo entrenar: ' + ((d && d.error) || 'error ' + rr.status));
           } catch (e) {
-            addMsg('ai', 'Error al entrenar a Wil.E. Intenta de nuevo.');
+            addMsg('ai', 'Error al entrenar a JARVIS. Intenta de nuevo.');
           }
         },
         '/edit-img': () => {
@@ -5257,15 +5257,15 @@ function validateForm() {
         },
         '/jarvis': () => {
           const on = String(arg || '').trim().toLowerCase() === 'on';
-          if (!on) return addMsg('ai', 'Usa `/jarvis on` para activar la voz estilo Jarvis (voz británica premium, en inglés) cuando Wil.E habla. `/jarvis off` la desactiva.');
-          if (window.emiVoice && typeof window.emiVoice.setJarvis === 'function') {
-            window.emiVoice.setJarvis(on);
+          if (!on) return addMsg('ai', 'Usa `/jarvis on` para activar la voz estilo Jarvis (voz británica premium, en inglés) cuando JARVIS habla. `/jarvis off` la desactiva.');
+          if (window.jarvisVoice && typeof window.jarvisVoice.setJarvis === 'function') {
+            window.jarvisVoice.setJarvis(on);
             if (on) {
-              addMsg('ai', '🎙️ Modo Jarvis activado. Wil.E habla con voz británica premium estilo JARVIS y en inglés. Usa `/jarvis off` para volver a la voz normal.');
+              addMsg('ai', '🎙️ Modo Jarvis activado. JARVIS habla con voz británica premium estilo JARVIS y en inglés. Usa `/jarvis off` para volver a la voz normal.');
             } else {
-              addMsg('ai', '🔇 Modo Jarvis desactivado. Wil.E vuelve a tu voz normal.');
+              addMsg('ai', '🔇 Modo Jarvis desactivado. JARVIS vuelve a tu voz normal.');
             }
-            try { window.emiVoice.speak(on ? 'Greetings, sir. Jarvis protocol activated. All systems online.' : 'Modo de voz normal restaurado. ¿En qué te ayudo?'); } catch (e) {}
+            try { window.jarvisVoice.speak(on ? 'Greetings, sir. Jarvis protocol activated. All systems online.' : 'Modo de voz normal restaurado. ¿En qué te ayudo?'); } catch (e) {}
           } else {
             addMsg('ai', 'El módulo de voz no está listo todavía. Recarga la página.');
           }
@@ -5277,14 +5277,14 @@ function validateForm() {
           if (_s && _s.token) h['Authorization'] = 'Bearer ' + _s.token;
           const autoOn = window.chMemFlag ? window.chMemFlag() : true;
           addMsg('ai', '<div style="border:1px solid var(--border,rgba(160,160,255,.25));border-radius:12px;padding:.9rem;max-width:100%;min-width:0">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap"><b style="color:var(--accent,#a0a0ff)">🧠 Tu memoria con Wil.E</b> ' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap"><b style="color:var(--accent,#a0a0ff)">🧠 Tu memoria con JARVIS</b> ' +
             '<button class="ai-inline-cta" id="wilMemToggle" onclick="wilMemToggle()" title="Pausar o reanudar el auto-aprendizaje">' + (autoOn ? '📵 Pausar aprendizaje' : '🧠 Activar aprendizaje') + '</button></div>' +
             '<ul id="wilMemList" style="margin:.5rem 0;padding-left:1.2rem"><li style="color:var(--muted)">Cargando…</li></ul>' +
             '<div style="margin-top:.6rem">' +
             '<input id="memoTitle" placeholder="Título (opcional)" style="width:100%;padding:.45rem;border-radius:8px;border:1px solid var(--border);background:rgba(120,120,160,.12);color:inherit;margin-bottom:.4rem;font-size:.8rem">' +
-            '<textarea id="memoText" placeholder="Escribe lo que Wil.E debe recordar, o una URL https://..." style="width:100%;padding:.45rem;border-radius:8px;border:1px solid var(--border);background:rgba(120,120,160,.12);color:inherit;min-height:64px;font-size:.8rem" ></textarea>' +
-            '<button class="ai-inline-cta" onclick="wilETrainSave()">💾 Guardar en memoria</button> ' +
-            '<button class="ai-inline-cta" onclick="wilETrainClear()">🗑️ Borrar memoria</button>' +
+            '<textarea id="memoText" placeholder="Escribe lo que JARVIS debe recordar, o una URL https://..." style="width:100%;padding:.45rem;border-radius:8px;border:1px solid var(--border);background:rgba(120,120,160,.12);color:inherit;min-height:64px;font-size:.8rem" ></textarea>' +
+            '<button class="ai-inline-cta" onclick="jarvisTrainSave()">💾 Guardar en memoria</button> ' +
+            '<button class="ai-inline-cta" onclick="jarvisTrainClear()">🗑️ Borrar memoria</button>' +
             '</div></div>');
           window.__trainFetch = {
             url: BACKEND_URL + '/api/wil-e/memory/note',
@@ -5302,7 +5302,7 @@ function validateForm() {
       return;
     }
 
-    // Server-side WIL.E limit — no longer client-side only
+    // Server-side JARVIS limit — no longer client-side only
 
     // Ocultar sugerencias al primer mensaje
     if (sugs) sugs.style.display = 'none';
@@ -5327,7 +5327,7 @@ function validateForm() {
     input.style.height = '48px';
     input.style.overflow = 'hidden';
     updateCharCount();
-    // El PDF se mantiene adjunto entre mensajes para que EMI conserve el contexto;
+    // El PDF se mantiene adjunto entre mensajes para que JARVIS conserve el contexto;
     // las imágenes se sueltan tras enviarse.
     if (!attachment || attachment.type !== 'pdf') window.removeAiAttachment();
 
@@ -5376,8 +5376,8 @@ function validateForm() {
 
     try {
       _currentAbort = new AbortController();
-      var _modePrefix = (typeof window._emiMode === 'string' && window._emiMode !== 'auto' && window.EMI_MODE_PROMPTS)
-        ? (window.EMI_MODE_PROMPTS[window._emiMode] || '') : '';
+      var _modePrefix = (typeof window._jarvisMode === 'string' && window._jarvisMode !== 'auto' && window.JARVIS_MODE_PROMPTS)
+        ? (window.JARVIS_MODE_PROMPTS[window._jarvisMode] || '') : '';
       const body = {
         message: _modePrefix + effectiveText + deepSearchContext,
         sessionId: SESSION_ID,
@@ -5406,8 +5406,8 @@ function validateForm() {
         _currentAbort = null;
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
-            window.updateEmiUsage({ used: data.used, limit: data.limit });
+          if (res.status === 429 && data.code === 'JARVIS_DAILY_LIMIT') {
+            window.updateJarvisUsage({ used: data.used, limit: data.limit });
             typingEl.remove();
             addMsg('ai', data.used >= 30
               ? 'Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
@@ -5500,13 +5500,13 @@ function validateForm() {
         }
 
         if (streamData.emi) {
-          window.updateEmiUsage(streamData.emi);
+          window.updateJarvisUsage(streamData.emi);
           const _remaining = streamData.emi.limit - streamData.emi.used;
           if (_remaining <= 3 && _remaining > 0) addMsg('ai', '<small style="opacity:.5">📊 Te quedan ' + _remaining + ' mensajes hoy.</small>');
         }
         history.push({ role: 'assistant', content: streamReply });
         persistChat();
-        window.emiVoice?.onAssistantDone?.(streamReply.replace(/<[^>]+>/g, '').replace(/[#*`~\[\]]/g, '').trim());
+        window.jarvisVoice?.onAssistantDone?.(streamReply.replace(/<[^>]+>/g, '').replace(/[#*`~\[\]]/g, '').trim());
         if (shouldSearch) {
           const query = effectiveText.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
           setTimeout(() => addSearchResults(query), 200);
@@ -5521,8 +5521,8 @@ function validateForm() {
         _currentAbort = null;
         const data = await res.json();
         if (!res.ok) {
-          if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
-            window.updateEmiUsage({ used: data.used, limit: data.limit });
+          if (res.status === 429 && data.code === 'JARVIS_DAILY_LIMIT') {
+            window.updateJarvisUsage({ used: data.used, limit: data.limit });
             typingEl.remove();
             addMsg('ai', data.used >= 30
               ? 'Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
@@ -5532,7 +5532,7 @@ function validateForm() {
           throw new Error(data.error || 'HTTP ' + res.status);
         }
         typingEl.remove();
-        if (data.emi) window.updateEmiUsage(data.emi);
+        if (data.emi) window.updateJarvisUsage(data.emi);
         const replyText = data.reply || '¡Respuesta recibida!';
         const searchMatch = replyText.match(/\[BUSCAR_IMAGENES:([^\]]+)\]/);
         const cleanReply = formatAIReply(replyText.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, ''));
@@ -5565,7 +5565,7 @@ function validateForm() {
         }
         history.push({ role: 'assistant', content: replyText });
         persistChat();
-        window.emiVoice?.onAssistantDone?.(replyText.replace(/<[^>]+>/g, '').replace(/[#*`~\[\]]/g, '').trim());
+        window.jarvisVoice?.onAssistantDone?.(replyText.replace(/<[^>]+>/g, '').replace(/[#*`~\[\]]/g, '').trim());
       }
 
     } catch (err) {
@@ -5625,7 +5625,7 @@ function validateForm() {
         <div class="ai-msg-avatar">✦</div>
         <div class="ai-msg-content">
           <div class="ai-msg ai-typing-msg">
-            <canvas class="ai-orb" width="26" height="26" aria-label="WIL.E está pensando"></canvas>
+            <canvas class="ai-orb" width="26" height="26" aria-label="JARVIS está pensando"></canvas>
             <span class="ai-typing-phrase">Pensando…</span>
             <button class="ai-typing-stop" onclick="stopAIGeneration()" title="Detener" aria-label="Detener generación">
               <i class="fas fa-stop"></i>
@@ -5688,8 +5688,8 @@ function validateForm() {
     if (chip) { chip.style.display = 'none'; chip.innerHTML = ''; }
   };
 
-  // Guarda contenido de la UI de /memoria en la memoria personal de Wil.E
-  window.wilETrainSave = async function () {
+  // Guarda contenido de la UI de /memoria en la memoria personal de JARVIS
+  window.jarvisTrainSave = async function () {
     const tEl = document.getElementById('memoTitle');
     const mEl = document.getElementById('memoText');
     const title = tEl ? tEl.value.trim() : '';
@@ -5718,16 +5718,16 @@ function validateForm() {
     }
   };
 
-  // Borra toda la memoria personal de Wil.E
-  window.wilETrainClear = async function () {
+  // Borra toda la memoria personal de JARVIS
+  window.jarvisTrainClear = async function () {
     const cfg = window.__trainFetch || {};
     let h = {};
     try { h = cfg.headers ? JSON.parse(cfg.headers) : {}; } catch (e) {}
-    if (!confirm('¿Borrar TODA tu memoria de Wil.E? Esta acción no se puede deshacer.')) return;
+    if (!confirm('¿Borrar TODA tu memoria de JARVIS? Esta acción no se puede deshacer.')) return;
     try {
       const r = await fetch(cfg.clearUrl || (BACKEND_URL + '/api/wil-e/memory'), { method: 'DELETE', headers: h });
       const d = await r.json().catch(() => ({}));
-      if (d && d.ok) addMsg('ai', '🗑️ Tu memoria de Wil.E fue borrada.');
+      if (d && d.ok) addMsg('ai', '🗑️ Tu memoria de JARVIS fue borrada.');
       else addMsg('ai', '⚠️ No se pudo borrar la memoria.');
     } catch (e) {
       if (window.ChQueue) {
@@ -5740,7 +5740,7 @@ function validateForm() {
     }
   };
 
-  // ── MEMORIA DE WIL.E — LISTA RECARGABLE / BORRAR UN RECUERDO / TOGGLE ──
+  // ── MEMORIA DE JARVIS — LISTA RECARGABLE / BORRAR UN RECUERDO / TOGGLE ──
   window.wilMemLoadList = async function () {
     const ul = document.getElementById('wilMemList');
     const cfg = window.__trainFetch || {};
@@ -5755,18 +5755,18 @@ function validateForm() {
       ul.innerHTML = facts.length ? facts.map((f) =>
         '<li style="margin:.4rem 0;font-size:.8rem;opacity:.94;display:flex;gap:.4rem;align-items:flex-start;list-style:none">' +
         '<span style="flex:1;min-width:0"><span style="color:var(--accent,#a0a0ff);font-weight:600">' + escHtml(String(f.key).replace(/_/g, ' ')) + ':</span> ' + escHtml(String(f.value)) + '</span>' +
-        '<button class="ai-inline-cta" onclick="wilETrainDeleteKey(\'' + encodeURIComponent(String(f.key)) + '\')" title="Borrar este recuerdo" aria-label="Borrar recuerdo">🗑️</button></li>'
-      ).join('') : '<li style="color:var(--muted)">Aún no has entrenado a Wil.E. Escribe algo en el cuadro de abajo ⬇️</li>';
+        '<button class="ai-inline-cta" onclick="jarvisTrainDeleteKey(\'' + encodeURIComponent(String(f.key)) + '\')" title="Borrar este recuerdo" aria-label="Borrar recuerdo">🗑️</button></li>'
+      ).join('') : '<li style="color:var(--muted)">Aún no has entrenado a JARVIS. Escribe algo en el cuadro de abajo ⬇️</li>';
     } catch (e) {
       ul.innerHTML = '<li style="color:var(--muted)">No se pudo cargar la memoria.</li>';
     }
   };
-  window.wilETrainDeleteKey = async function (keyEnc) {
+  window.jarvisTrainDeleteKey = async function (keyEnc) {
     const cfg = window.__trainFetch || {};
     let h = {};
     try { h = cfg.headers ? JSON.parse(cfg.headers) : {}; } catch (e) {}
     const key = decodeURIComponent(String(keyEnc || ''));
-    if (!key || !confirm('¿Olvidar este recuerdo de Wil.E?')) return;
+    if (!key || !confirm('¿Olvidar este recuerdo de JARVIS?')) return;
     try {
       const r = await fetch((cfg.delUrl || (BACKEND_URL + '/api/wil-e/memory/')) + encodeURIComponent(key), { method: 'DELETE', headers: h });
       const d = await r.json().catch(() => ({}));
@@ -5787,8 +5787,8 @@ function validateForm() {
     try { localStorage.setItem('ch_wil_mem', on ? 'off' : 'on'); } catch (e) {}
     const btn = document.getElementById('wilMemToggle');
     if (btn) btn.innerHTML = on ? '🧠 Activar aprendizaje' : '📵 Pausar aprendizaje';
-    if (on) addMsg('ai', '⏸️ Aprendizaje automático pausado. Wil.E dejará de aprender hechos de tus mensajes (puedes seguir usando `/entrenar` manualmente).');
-    else addMsg('ai', '🧠 Aprendizaje automático activado. Wil.E recordará hechos y preferencias de tus mensajes.');
+    if (on) addMsg('ai', '⏸️ Aprendizaje automático pausado. JARVIS dejará de aprender hechos de tus mensajes (puedes seguir usando `/entrenar` manualmente).');
+    else addMsg('ai', '🧠 Aprendizaje automático activado. JARVIS recordará hechos y preferencias de tus mensajes.');
   };
 
   // ── ADJUNTAR IMAGEN O PDF (Chat con tu PDF) ─────────────────────
@@ -5958,7 +5958,7 @@ function validateForm() {
         toast('PDF escaneado: lo leeré como imagen (primeras ' + imgs.length + ' páginas).', 'success');
       }
     } catch (e) {
-      console.warn('[EMI PDF]', e.message);
+      console.warn('[JARVIS PDF]', e.message);
       toast('No se pudo leer el PDF', 'error');
     }
   }
@@ -6044,7 +6044,7 @@ function validateForm() {
     const m = text.match(/^[\s]*[#!]+\s*(.+)/);
     if (m) return m[1].trim().substring(0, 60);
     const first = text.split('\n').find(l => l.trim());
-    return first ? first.trim().substring(0, 60) : 'Respuesta WIL.E';
+    return first ? first.trim().substring(0, 60) : 'Respuesta JARVIS';
   }
 
   function formatAIReply(text) {
@@ -6131,7 +6131,7 @@ function validateForm() {
     if (ql.includes('contact') || ql.includes('wilson')) return '**Wilson.E** es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 3513 1808 o via el formulario de contacto. 💬';
     if (ql.includes('busca') || ql.includes('buscar') || ql.includes('imagen') || ql.includes('fondo') || ql.includes('icono'))
       return '[BUSCAR_IMAGENES: ' + q.replace(/busca|buscar|imágenes|imagen|muéstrame|muestra|fondo|fondos|icono|iconos/gi,'').trim() + ']';
-    return 'Entendido. Soy **WIL.E COPILOT** de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
+    return 'Entendido. Soy **JARVIS** de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
   }
 
   window.aiSugg = function(btn) {
@@ -6151,11 +6151,11 @@ function validateForm() {
   }, 8000);
 })();
 
-/* ── WIL.E COPILOT: modos, exportar y pantalla completa ─────────────
+/* ── JARVIS: modos, exportar y pantalla completa ─────────────
    Nota: definidas como funciones GLOBALES (fuera del IIFE) porque los
    botones del panel las invocan desde atributos onclick. */
-window._emiMode = 'auto';
-window.EMI_MODE_PROMPTS = {
+window._jarvisMode = 'auto';
+window.JARVIS_MODE_PROMPTS = {
   dev: '[MODO DEVELOPER] Actúa como ingeniero de software senior. '
      + 'Da código correcto, explica con claridad y señala posibles bugs.\n\n',
   img: '[MODO IMAGEN] El usuario puede pedirte generar o buscar imágenes. '
@@ -6166,8 +6166,8 @@ window.EMI_MODE_PROMPTS = {
      + 'preservando el tono y aclarando matices.\n\n'
 };
 
-/* Exporta la conversación del panel EMI a un archivo de texto .md */
-window.exportEmiChat = function () {
+/* Exporta la conversación del panel JARVIS a un archivo de texto .md */
+window.exportJarvisChat = function () {
   try {
     var box = document.getElementById('ai-msgs');
     if (!box) return;
@@ -6177,11 +6177,11 @@ window.exportEmiChat = function () {
       return;
     }
     var lines = [];
-    lines.push('# Conversación con WIL.E COPILOT');
+    lines.push('# Conversación con JARVIS');
     lines.push('_Generado el ' + new Date().toLocaleString('es-GT') + '_');
     lines.push('');
     wraps.forEach(function (w) {
-      var role = w.classList.contains('user') ? '**Tú**' : '**WIL.E**';
+      var role = w.classList.contains('user') ? '**Tú**' : '**JARVIS**';
       var contentEl = w.querySelector('.ai-msg') || w.querySelector('.ai-msg-content');
       var text = contentEl ? contentEl.innerText.replace(/\s+\n/g, '\n').trim() : '';
       if (!text) return;
@@ -6201,12 +6201,12 @@ window.exportEmiChat = function () {
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
     if (typeof toast === 'function') toast('Conversación exportada 📄', 'success', 2800);
   } catch (e) {
-    console.warn('exportEmiChat error:', e);
+    console.warn('exportJarvisChat error:', e);
   }
 };
 
 /* Alterna el panel a pantalla completa (ancho completo + alto). */
-window.toggleEmiFullscreen = function () {
+window.toggleJarvisFullscreen = function () {
   var panel = document.getElementById('ai-panel');
   if (!panel) return;
   var on = panel.classList.toggle('ai-fullscreen');
@@ -6217,15 +6217,15 @@ window.toggleEmiFullscreen = function () {
   if (msgs) msgs.style.maxHeight = 'none';
 };
 
-/* Cambia el modo activo de WIL.E (auto/dev/img/doc/translate). */
-window.setEmiMode = function (mode, btn) {
-  window._emiMode = mode;
+/* Cambia el modo activo de JARVIS (auto/dev/img/doc/translate). */
+window.setJarvisMode = function (mode, btn) {
+  window._jarvisMode = mode;
   document.querySelectorAll('.ai-mode-chip').forEach(function (c) {
     c.classList.toggle('active', c.getAttribute('data-mode') === mode);
   });
   if (typeof toast === 'function') {
     var label = mode === 'auto' ? '⚡ Modo Auto' : 'Modo ' + mode.charAt(0).toUpperCase() + mode.slice(1);
-    toast('WIL.E: ' + label, 'info', 1800);
+    toast('JARVIS: ' + label, 'info', 1800);
   }
   if (mode !== 'auto' && mode !== 'img') {
     var input = document.getElementById('ai-input');
@@ -6233,25 +6233,25 @@ window.setEmiMode = function (mode, btn) {
   }
 };
 
-/* ── EMI: menú deslizante de funciones (drawer) ─────────────── */
-window.emiMenu = {
+/* ── JARVIS: menú deslizante de funciones (drawer) ─────────────── */
+window.jarvisMenu = {
   open: false,
 
   get: function (id) { return document.getElementById(id); },
 
   openFn: function () {
-    var d = this.get('emi-drawer');
+    var d = this.get('jarvis-drawer');
     if (!d) return;
     d.setAttribute('aria-hidden', 'false');
     d.classList.add('is-open');
     document.body.style.overflow = 'hidden';
     this.open = true;
     this.render();
-    if (typeof window.refreshEmiUsage === 'function') window.refreshEmiUsage();
+    if (typeof window.refreshJarvisUsage === 'function') window.refreshJarvisUsage();
   },
 
   close: function () {
-    var d = this.get('emi-drawer');
+    var d = this.get('jarvis-drawer');
     if (!d) return;
     d.setAttribute('aria-hidden', 'true');
     d.classList.remove('is-open');
@@ -6266,12 +6266,12 @@ window.emiMenu = {
   /* Acciones directas */
   newChat: function () {
     this.close();
-    if (typeof window.resetEmiChat === 'function') window.resetEmiChat();
+    if (typeof window.resetJarvisChat === 'function') window.resetJarvisChat();
     if (typeof toast === 'function') toast('Nueva conversación iniciada 🗒', 'success', 2000);
   },
   clearChat: function () {
     this.close();
-    if (typeof window.resetEmiChat === 'function') window.resetEmiChat();
+    if (typeof window.resetJarvisChat === 'function') window.resetJarvisChat();
     if (typeof toast === 'function') toast('Conversación eliminada 🗑', 'info', 2000);
   },
   attach: function () {
@@ -6281,32 +6281,32 @@ window.emiMenu = {
   },
   exportFn: function () {
     this.close();
-    if (typeof window.exportEmiChat === 'function') window.exportEmiChat();
+    if (typeof window.exportJarvisChat === 'function') window.exportJarvisChat();
   },
   fullscreen: function () {
     this.close();
-    if (typeof window.toggleEmiFullscreen === 'function') window.toggleEmiFullscreen();
+    if (typeof window.toggleJarvisFullscreen === 'function') window.toggleJarvisFullscreen();
   },
   closePanel: function () {
     this.close();
-    if (typeof window.closeEmiChat === 'function') window.closeEmiChat();
+    if (typeof window.closeJarvisChat === 'function') window.closeJarvisChat();
   },
   quick: function (key) {
     this.close();
     if (typeof setQuickPrompt === 'function') setQuickPrompt(key);
   },
   setMode: function (mode) {
-    setEmiMode(mode, null);
+    setJarvisMode(mode, null);
     this.render();
-    if (typeof toast === 'function') toast('WIL.E: modo ' + (mode === 'auto' ? 'Auto' : mode), 'info', 1400);
+    if (typeof toast === 'function') toast('JARVIS: modo ' + (mode === 'auto' ? 'Auto' : mode), 'info', 1400);
   },
 
   /* Sección de contenido */
   section: function (t) {
-    return '<div class="emi-sec">' + t + '</div>';
+    return '<div class="jarvis-sec">' + t + '</div>';
   },
   item: function (icon, label, onclick, extra) {
-    return '<button class="emi-item' + (extra || '') + '" onclick="' + onclick + '"><i class="' + icon + '"></i><span>' + label + '</span></button>';
+    return '<button class="jarvis-item' + (extra || '') + '" onclick="' + onclick + '"><i class="' + icon + '"></i><span>' + label + '</span></button>';
   },
 
   _usageHtml: function () {
@@ -6326,21 +6326,21 @@ window.emiMenu = {
     var state = used >= limit
       ? '<span style="color:#ff5c5c">Límite alcanzado hoy</span>'
       : '<span style="color:#3ecf8e">' + rest + ' disponibles hoy</span>';
-    return '<div class="emi-usage">'
-      + '<div class="emi-usage-top"><span>Mensajes usados</span><b>' + used + ' / ' + limit + '</b></div>'
-      + '<div class="emi-usage-bar"><span style="width:' + pct + '%"></span></div>'
-      + '<div class="emi-usage-hint">' + state + ' · El límite se renueva cada día.</div>'
+    return '<div class="jarvis-usage">'
+      + '<div class="jarvis-usage-top"><span>Mensajes usados</span><b>' + used + ' / ' + limit + '</b></div>'
+      + '<div class="jarvis-usage-bar"><span style="width:' + pct + '%"></span></div>'
+      + '<div class="jarvis-usage-hint">' + state + ' · El límite se renueva cada día.</div>'
       + '</div>';
   },
 
   render: function () {
-    var body = this.get('emi-drawer-body');
+    var body = this.get('jarvis-drawer-body');
     if (!body) return;
     var them = localStorage.getItem('theme') || 'dark';
     var font = localStorage.getItem('cfg_font') || 'md';
     var anim = localStorage.getItem('cfg_anim') !== '0';
     var neural = localStorage.getItem('cfg_neural') === '1';
-    var mode = window._emiMode || 'auto';
+    var mode = window._jarvisMode || 'auto';
 
     var modes = [
       ['auto', '⚡', 'Asistente general'],
@@ -6351,10 +6351,10 @@ window.emiMenu = {
     ];
     var modesHtml = modes.map(function (m) {
       var on = mode === m[0];
-      return '<button class="emi-mode' + (on ? ' is-active' : '') + '" onclick="emiMenu.setMode(\'' + m[0] + '\')">'
-        + '<span class="emi-mode-ico">' + m[1] + '</span>'
-        + '<span class="emi-mode-lbl">' + m[2] + '</span>'
-        + (on ? '<span class="emi-mode-check">✓</span>' : '') + '</button>';
+      return '<button class="jarvis-mode' + (on ? ' is-active' : '') + '" onclick="jarvisMenu.setMode(\'' + m[0] + '\')">'
+        + '<span class="jarvis-mode-ico">' + m[1] + '</span>'
+        + '<span class="jarvis-mode-lbl">' + m[2] + '</span>'
+        + (on ? '<span class="jarvis-mode-check">✓</span>' : '') + '</button>';
     }).join('');
 
     var quick = [
@@ -6366,7 +6366,7 @@ window.emiMenu = {
       ['explain', 'fas fa-lightbulb', 'Explicar concepto']
     ];
     var quickHtml = quick.map(function (q) {
-      return this.item(q[1], q[2], "emiMenu.quick('" + q[0] + "')");
+      return this.item(q[1], q[2], "jarvisMenu.quick('" + q[0] + "')");
     }.bind(this)).join('');
 
     var h = '';
@@ -6374,17 +6374,17 @@ window.emiMenu = {
     // Conversación
     h += this.section('Conversación');
     h += this._usageHtml();
-    h += this.item('fas fa-plus', 'Nuevo chat', "emiMenu.newChat()");
-    h += this.item('fas fa-download', 'Exportar conversación', "emiMenu.exportFn()");
-    h += this.item('fas fa-trash', 'Borrar todo', "emiMenu.clearChat()", ' danger');
+    h += this.item('fas fa-plus', 'Nuevo chat', "jarvisMenu.newChat()");
+    h += this.item('fas fa-download', 'Exportar conversación', "jarvisMenu.exportFn()");
+    h += this.item('fas fa-trash', 'Borrar todo', "jarvisMenu.clearChat()", ' danger');
 
     // Modos
-    h += this.section('Modos de WIL.E');
+    h += this.section('Modos de JARVIS');
     h += modesHtml;
 
     // Información
     h += this.section('Información');
-    h += this.item('fas fa-paperclip', 'Adjuntar imagen o PDF', "emiMenu.attach()");
+    h += this.item('fas fa-paperclip', 'Adjuntar imagen o PDF', "jarvisMenu.attach()");
 
     // Acciones rápidas
     h += this.section('Acciones rápidas');
@@ -6392,39 +6392,39 @@ window.emiMenu = {
 
     // Ajustes
     h += this.section('Ajustes');
-    h += '<div class="emi-opt-row">';
+    h += '<div class="jarvis-opt-row">';
     h += this._pill('theme', 'dark', '🌙', them === 'dark');
     h += this._pill('theme', 'light', '☀️', them === 'light');
     h += this._pill('theme', 'system', '🖥 Auto', them === 'system');
     h += '</div>';
-    h += '<div class="emi-opt-hint">Tema</div>';
-    h += '<div class="emi-opt-row">';
+    h += '<div class="jarvis-opt-hint">Tema</div>';
+    h += '<div class="jarvis-opt-row">';
     h += this._pill('font', 'sm', 'SM', font === 'sm');
     h += this._pill('font', 'md', 'MD', font === 'md');
     h += this._pill('font', 'lg', 'LG', font === 'lg');
     h += '</div>';
-    h += '<div class="emi-opt-hint">Tamaño de letra</div>';
-    h += '<div class="emi-check"><span>💫 Animaciones / sonido</span><input type="checkbox" '
+    h += '<div class="jarvis-opt-hint">Tamaño de letra</div>';
+    h += '<div class="jarvis-check"><span>💫 Animaciones / sonido</span><input type="checkbox" '
       + (anim ? 'checked' : '') + ' onchange="toggleAnim(this)"></div>';
-    h += '<div class="emi-check"><span>🧠 Fondo neural</span><input type="checkbox" '
+    h += '<div class="jarvis-check"><span>🧠 Fondo neural</span><input type="checkbox" '
       + (neural ? 'checked' : '') + ' onchange="toggleNeural(this)"></div>';
 
     // General
     h += this.section('General');
-    h += this.item('fas fa-expand', 'Pantalla completa', "emiMenu.fullscreen()");
-    h += this.item('fas fa-times', 'Cerrar panel de chat', "emiMenu.closePanel()");
+    h += this.item('fas fa-expand', 'Pantalla completa', "jarvisMenu.fullscreen()");
+    h += this.item('fas fa-times', 'Cerrar panel de chat', "jarvisMenu.closePanel()");
 
     body.innerHTML = h;
   },
 
   _pill: function (key, val, label, active) {
-    return '<button class="emi-pill' + (active ? ' is-active' : '') + '" onclick="setCfg(\'' + key + '\',\'' + val + '\',this)">' + label + '</button>';
+    return '<button class="jarvis-pill' + (active ? ' is-active' : '') + '" onclick="setCfg(\'' + key + '\',\'' + val + '\',this)">' + label + '</button>';
   }
 };
 
 // Cerrar el drawer con Escape
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape' && window.emiMenu && window.emiMenu.open) window.emiMenu.close();
+  if (e.key === 'Escape' && window.jarvisMenu && window.jarvisMenu.open) window.jarvisMenu.close();
 });
 
 // Aviso del FAB (mantener compatibilidad con posibles referencias)
@@ -7232,7 +7232,7 @@ const i18n = {
         authGoogle: 'Continuar con Google',
         authLogout: 'Cerrar sesión',
         authRemember: 'Recordar sesión',
-        authNote: 'Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de WIL.E y guardas tus chats.',
+        authNote: 'Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de JARVIS y guardas tus chats.',
     },
     en: {
         available: 'Available',
@@ -7337,7 +7337,7 @@ const i18n = {
         authGoogle: 'Continue with Google',
         authLogout: 'Log out',
         authRemember: 'Remember me',
-        authNote: 'Your data is stored encrypted and protected. By signing up you unlock all WIL.E features and save your chats.',
+        authNote: 'Your data is stored encrypted and protected. By signing up you unlock all JARVIS features and save your chats.',
     }
 };
 
@@ -7346,7 +7346,7 @@ let currentLang = localStorage.getItem('ch_lang') || 'es';
 function applyLang(lang) {
     currentLang = lang;
     localStorage.setItem('ch_lang', lang);
-    if (window.emiVoice?.setLang) emiVoice.setLang(lang === 'en' ? 'en-US' : 'es-GT');
+    if (window.jarvisVoice?.setLang) jarvisVoice.setLang(lang === 'en' ? 'en-US' : 'es-GT');
     document.dispatchEvent(new CustomEvent('ch:langchange', { detail: { lang } }));
     const dict = i18n[lang];
     // Traducir elementos con data-i18n
@@ -8477,10 +8477,10 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/device-detect.4bdd073619.min.js" defer></script>
 <script src="/dist/assets/js/thinking-orb.5580b30c93.min.js" defer></script>
 <script src="/dist/assets/js/deep-search.0171f144d5.min.js" defer></script>
-<script src="/dist/assets/js/office-generator.8d6cdf13ee.min.js" defer></script>
+<script src="/dist/assets/js/office-generator.ba0cda1e45.min.js" defer></script>
 <script src="/dist/assets/js/ux-animations.f3b47b32a4.min.js" defer></script>
 <script src="/dist/assets/js/auth.752c57f409.min.js" defer></script>
-<script src="/dist/assets/js/emi-voice.d7c975d11a.min.js" defer></script>
+<script src="/dist/assets/js/jarvis-voice.26c476c8d2.min.js" defer></script>
 <script src="/dist/assets/js/sys-metrics.441cf23ca5.min.js" defer></script>
 <script src="/dist/assets/js/security-scan.5a8b5156fe.min.js" defer></script>
 <script src="/dist/assets/js/lazy-features.8633234919.min.js" defer></script>

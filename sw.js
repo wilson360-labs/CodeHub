@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 //  CodeHub SW — Wilson.E 2026
 //  Versión vigente: ver la constante VERSION más abajo
 //  (build-apk.yml publica la release del APK como apk-<VERSION>).
@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.59';
+const VERSION = 'codehub-v7.60';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -74,7 +74,7 @@ const PRECACHE = [
   '/js/live-update-check.js',
   '/js/remote-config.js',
   '/js/bug-reporter.js',
-  '/js/emi-voice.js',
+  '/js/jarvis-voice.js',
   '/js/ux-animations.js',
   '/js/vendor/anime.min.js',
   '/js/emailjs.min.js',
@@ -113,14 +113,14 @@ const PRECACHE = [
   '/dist/assets/js/consent-banner.65800153df.min.js',
   '/dist/assets/js/deep-search.0171f144d5.min.js',
   '/dist/assets/js/device-detect.4bdd073619.min.js',
-  '/dist/assets/js/emi-voice.d7c975d11a.min.js',
   '/dist/assets/js/haptics.ee67eff258.min.js',
+  '/dist/assets/js/jarvis-voice.26c476c8d2.min.js',
   '/dist/assets/js/lazy-features.8633234919.min.js',
   '/dist/assets/js/live-update-check.a5e996838d.min.js',
   '/dist/assets/js/morphicons-init.a38de871fc.min.js',
   '/dist/assets/js/native-music.fc771f3b3d.min.js',
   '/dist/assets/js/notifications.024f9d794c.min.js',
-  '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
+  '/dist/assets/js/office-generator.ba0cda1e45.min.js',
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
   '/dist/assets/js/prefs.853367107e.min.js',
   '/dist/assets/js/remote-config.45cfc79a3f.min.js',
@@ -652,7 +652,7 @@ self.addEventListener('sync', e => {
   if (e.tag === SYNC_TAG) {
     e.waitUntil(Promise.allSettled([syncCheckReleases(), syncCheckWeather()]));
     // Avisar a las páginas abiertas para que vacíen la cola de escrituras
-    // offline (ratings, memoria de Wil.E) recién recuperada la conexión.
+    // offline (ratings, memoria de JARVIS) recién recuperada la conexión.
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
       clients.forEach(c => c.postMessage({ type: 'CH_QUEUE_FLUSH' }));
     }).catch(() => {});

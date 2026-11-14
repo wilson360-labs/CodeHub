@@ -112,11 +112,11 @@ public class CodeHubBridge {
                 ensureTts();
                 if (tts == null) return;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "wile-utt");
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "jarvis-utt");
                 } else {
                     @SuppressWarnings("deprecation")
                     HashMap<String, String> params = new HashMap<>();
-                    params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "wile-utt");
+                    params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "jarvis-utt");
                     tts.speak(text, TextToSpeech.QUEUE_FLUSH, params);
                 }
             } catch (Exception ignored) {}

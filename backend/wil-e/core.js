@@ -1,4 +1,4 @@
-// wil-e/core.js — Orquestador de la capa de inteligencia de Wil.E.
+// wil-e/core.js — Orquestador de la capa de inteligencia de JARVIS.
 // Construye el "contexto aumentado" que se inyecta al SYSTEM prompt del chat:
 //   1. Memoria del usuario (hechos/preferencias aprendidos)
 //   2. Conocimiento RAG (fragmentos relevantes de la base de conocimiento)
@@ -14,7 +14,7 @@ async function buildContext({ userId, ownerId, message, category, topK = 3 }) {
   ]);
 
   if (mem) {
-    parts.push('[Memoria del usuario — Wil.E recuerda lo siguiente de esta persona]\n' + mem);
+    parts.push('[Memoria del usuario — JARVIS recuerda lo siguiente de esta persona]\n' + mem);
   }
   if (docs.length) {
     const kb = docs.map((d) => `## ${d.title}\n${d.chunk}`).join('\n\n');

@@ -1,6 +1,6 @@
 // wil-e/crypto.js — Cifrado de extremo a extremo (AES-256-GCM) en reposo.
 // Los datos privados de la IA (memorias y base de conocimiento) se guardan
-// cifrados. Wil.E sólo puede descifrarlos con la clave maestra (env).
+// cifrados. JARVIS sólo puede descifrarlos con la clave maestra (env).
 const crypto = require('crypto');
 
 function getKey() {

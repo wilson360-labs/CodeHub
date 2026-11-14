@@ -1,25 +1,25 @@
 /* ═══════════════════════════════════════════════════════════
-   WIL.E VOICE — Web Speech API Module
+   JARVIS VOICE — Web Speech API Module
    CodeHub by Wilson.E
    
    INTEGRACIÓN:
-   1. Copiar este archivo a /js/emi-voice.js
+   1. Copiar este archivo a /js/jarvis-voice.js
    2. Agregar en index.html ANTES del </body>:
-      <script src="js/emi-voice.js" defer></script>
+      <script src="js/jarvis-voice.js" defer></script>
    3. Agregar el botón de micrófono en el ai-input-row (ver instrucciones abajo)
    4. Agregar el CSS de este archivo al bloque <style> de index.html
    
    BOTÓN A INSERTAR en index.html — dentro de .ai-input-row,
    entre el <textarea> y el <button id="ai-send-btn">:
    
-    <button id="emi-mic-btn" type="button" aria-label="Hablar con WIL.E" title="Hablar con WIL.E (voz a texto)" onclick="emiVoice.toggle()">
+    <button id="jarvis-mic-btn" type="button" aria-label="Hablar con JARVIS" title="Hablar con JARVIS (voz a texto)" onclick="jarvisVoice.toggle()">
      <i class="fas fa-microphone"></i>
    </button>
    
    CSS A AGREGAR al bloque <style> de index.html:
    (busca la sección de .ai-send-btn y agrega debajo)
    
-   #emi-mic-btn { ... }   ← ver sección CSS al final de este archivo
+   #jarvis-mic-btn { ... }   ← ver sección CSS al final de este archivo
 ═══════════════════════════════════════════════════════════ */
 
 (function () {
@@ -43,9 +43,9 @@
     lastTranscript: '',
     speakQueue   : [],
     lang         : localStorage.getItem('ch_lang') === 'en' ? 'en-US' : 'es-GT',
-    autoSpeak    : JSON.parse(localStorage.getItem('emi_auto_speak') ?? 'false'),
-    e2e          : JSON.parse(localStorage.getItem('emi_e2e_voice') ?? 'false'),
-    jarvis       : localStorage.getItem('emi_jarvis_voice') === '1',
+    autoSpeak    : JSON.parse(localStorage.getItem('jarvis_auto_speak') ?? localStorage.getItem('emi_auto_speak') ?? 'false'),
+    e2e          : JSON.parse(localStorage.getItem('jarvis_e2e_voice') ?? localStorage.getItem('emi_e2e_voice') ?? 'false'),
+    jarvis       : (localStorage.getItem('jarvis_voice_enabled') ?? (localStorage.getItem('emi_jarvis_voice') !== '0' ? '1' : '0')) === '1',
   };
 
   /* ── Referencias DOM (se resuelven al init) ── */
@@ -55,7 +55,7 @@
      INICIALIZACIÓN
   ════════════════════════════════════════════ */
   function init() {
-    micBtn   = document.getElementById('emi-mic-btn');
+    micBtn   = document.getElementById('jarvis-mic-btn');
     inputEl  = document.getElementById('ai-input');
     statusEl = document.getElementById('ai-status');
 
@@ -63,13 +63,13 @@
 
     /* Crear el ripple visual de escucha */
     micRipple = document.createElement('span');
-    micRipple.className = 'emi-mic-ripple';
+    micRipple.className = 'jarvis-mic-ripple';
     micBtn.appendChild(micRipple);
 
     /* Mostrar tooltip si no hay soporte STT web ni nativo */
     if (!HAS_RECOGNITION && !HAS_NATIVE_STT) {
       micBtn.title = 'Tu navegador no soporta voz. Prueba un navegador moderno.';
-      micBtn.classList.add('emi-mic-unsupported');
+      micBtn.classList.add('jarvis-mic-unsupported');
       micBtn.onclick = () => showVoiceToast('Tu navegador no soporta reconocimiento de voz. Usa un navegador moderno.', 'warn');
     } else if (HAS_RECOGNITION) {
     /* Configurar SpeechRecognition */
@@ -82,7 +82,7 @@
 
     rec.onstart = () => {
       state.listening = true;
-      micBtn.classList.add('emi-mic-active');
+      micBtn.classList.add('jarvis-mic-active');
       if (statusEl) statusEl.textContent = '🎙️ Escuchando…';
       if (inputEl)  inputEl.placeholder  = 'Habla ahora…';
     };
@@ -137,10 +137,10 @@
     injectE2EToggle();
 
     /* ── Exponer en window para uso externo ── */
-    window.emiVoice = publicAPI;
+    window.jarvisVoice = publicAPI;
 
-    /* ── Hook: interceptar respuestas de WIL.E para auto-speak ── */
-    hookEmiResponses();
+    /* ── Hook: interceptar respuestas de JARVIS para auto-speak ── */
+    hookJarvisResponses();
 
     /* Sincronizar idioma cuando cambia */
     document.addEventListener('ch:langchange', (e) => {
@@ -159,7 +159,7 @@
     /* APK nativo: STT por puente Java (fiable en WebView) */
     if (HAS_NATIVE_STT) {
       state.listening = true;
-      if (micBtn) micBtn.classList.add('emi-mic-active');
+      if (micBtn) micBtn.classList.add('jarvis-mic-active');
       if (statusEl) statusEl.textContent = '🎙️ Escuchando…';
       if (inputEl)  inputEl.placeholder  = 'Habla ahora…';
       window._sttCb = {
@@ -181,7 +181,7 @@
 
   function finishNativeStt() {
     state.listening = false;
-    if (micBtn) micBtn.classList.remove('emi-mic-active');
+    if (micBtn) micBtn.classList.remove('jarvis-mic-active');
     if (statusEl) statusEl.textContent = 'Online · Listo para ayudarte';
     if (inputEl)  inputEl.placeholder  = 'Pregúntame algo, genera una imagen, depura código…';
     if (HAS_NATIVE_STT) { try { CodeHubNative.sttStop(); } catch (e) {} }
@@ -190,7 +190,7 @@
   function stopListening() {
     if (HAS_NATIVE_STT) { finishNativeStt(); return; }
     state.listening = false;
-    if (micBtn) micBtn.classList.remove('emi-mic-active');
+    if (micBtn) micBtn.classList.remove('jarvis-mic-active');
     if (statusEl) statusEl.textContent = 'Online · Listo para ayudarte';
     if (inputEl)  inputEl.placeholder  = 'Pregúntame algo, genera una imagen, depura código…';
   }
@@ -210,13 +210,13 @@
     const text = (inputEl && inputEl.value ? inputEl.value : '').trim();
     if (!text) return;
     if (typeof window.sendAI !== 'function') return;
-    /* No enviar si WIL.E sigue generando o ya hay un indicador de escritura */
+    /* No enviar si JARVIS sigue generando o ya hay un indicador de escritura */
     if (document.querySelector('.ai-typing')) return;
     try { window.sendAI(); } catch (e) {}
   }
 
   /* ════════════════════════════════════════════
-     SÍNTESIS DE VOZ (WIL.E habla)
+     SÍNTESIS DE VOZ (JARVIS habla)
   ════════════════════════════════════════════ */
   // Intenta TTS premium (ElevenLabs) vía backend; si no hay key, cae en la
   // voz del navegador de forma transparente (speechSynthesis).
@@ -235,41 +235,14 @@
     }
   }
 
-  // Traduce un texto a inglés (para el modo JARVIS) usando la IA, con fallback al original.
-  async function toEnglish(text) {
-    try {
-      if (/^[\x00-\x7F]+$/.test(text)) return text; // ya es ASCII/inglés
-      const base = (typeof window._CH_BACKEND !== 'undefined' && window._CH_BACKEND) ? window._CH_BACKEND : 'https://codehub-98s6.onrender.com';
-      const ctrl = new AbortController();
-      const to = setTimeout(() => ctrl.abort(), 20000);
-      const r = await fetch(base + '/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text.slice(0, 500)
-        }),
-        signal: ctrl.signal,
-      });
-      clearTimeout(to);
-      if (!r.ok) return text;
-      const d = await r.json().catch(() => ({}));
-      const out = (d && (d.reply || d.message || d.content)) ? String(d.reply || d.message || d.content).trim() : '';
-      if (!out || out.length > 700) return text;
-      return out;
-    } catch (e) {
-      return text;
-    }
-  }
-
   async function ttsSpeak(text) {
     try {
       const base = (typeof window._CH_BACKEND !== 'undefined' && window._CH_BACKEND) ? window._CH_BACKEND : 'https://codehub-98s6.onrender.com';
-      // Modo JARVIS: voz británica "Josh" + texto en inglés (fiel a la película).
-      let speakText = text.slice(0, 550);
+      // El backend selecciona la voz neural configurada para JARVIS.
+      const speakText = text.slice(0, 4000);
       let voiceId = state.lang.indexOf('en') === 0 ? 'pNInz6obpgDQGcFmaJgB' : 'cgSgspJ2msm6clMCkdW9'; // EN→?, ES→Antoni (multilingüe)
       if (state.jarvis) {
-        voiceId = 'onwK4e9ZLuTAKqWW03F9'; // Josh — hombre británico, estilo JARVIS
-        speakText = await toEnglish(speakText);
+        voiceId = 'jarvis'; // El backend resuelve la voz configurada para JARVIS
       }
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 30000);
@@ -287,10 +260,10 @@
       // para el botón de interrumpir
       audio.src = d.audio;
       state.speaking = true;
-      if (micBtn) micBtn.title = 'WIL.E está hablando… (clic para interrumpir)';
+      if (micBtn) micBtn.title = 'JARVIS está hablando… (clic para interrumpir)';
       const done = new Promise((res) => {
-        audio.onended = () => { state.speaking = false; if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)'; res(true); };
-        audio.onerror = () => { state.speaking = false; if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)'; res(false); };
+        audio.onended = () => { state.speaking = false; if (micBtn) micBtn.title = 'Hablar con JARVIS (voz a texto)'; res(true); };
+        audio.onerror = () => { state.speaking = false; if (micBtn) micBtn.title = 'Hablar con JARVIS (voz a texto)'; res(false); };
       });
       audio.play();
       await done;
@@ -339,11 +312,11 @@
     if (HAS_NATIVE_TTS) {
       try {
         state.speaking = true;
-        if (micBtn) micBtn.title = 'WIL.E está hablando… (clic para interrumpir)';
+        if (micBtn) micBtn.title = 'JARVIS está hablando… (clic para interrumpir)';
         CodeHubNative.ttsSpeak(clean);
         setTimeout(() => {
           state.speaking = false;
-          if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)';
+          if (micBtn) micBtn.title = 'Hablar con JARVIS (voz a texto)';
         }, 8000);
         return;
       } catch (e) { state.speaking = false; }
@@ -366,11 +339,11 @@
 
     utt.onstart = () => {
       state.speaking = true;
-      if (micBtn) micBtn.title = 'WIL.E está hablando… (clic para interrumpir)';
+      if (micBtn) micBtn.title = 'JARVIS está hablando… (clic para interrumpir)';
     };
     utt.onend = utt.onerror = () => {
       state.speaking = false;
-      if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)';
+      if (micBtn) micBtn.title = 'Hablar con JARVIS (voz a texto)';
     };
 
     SS.speak(utt);
@@ -384,9 +357,9 @@
   }
 
   /* ════════════════════════════════════════════
-     HOOK: capturar respuestas de WIL.E para auto-speak
+     HOOK: capturar respuestas de JARVIS para auto-speak
   ════════════════════════════════════════════ */
-  function hookEmiResponses() {
+  function hookJarvisResponses() {
     /* Observar mutaciones en #ai-msgs para detectar nuevos mensajes de la IA */
     const msgs = document.getElementById('ai-msgs');
     if (!msgs) return;
@@ -418,22 +391,22 @@
   ════════════════════════════════════════════ */
   function injectAutoSpeakToggle() {
     const bottomBar = document.querySelector('.ai-bottom-bar');
-    if (!bottomBar || document.getElementById('emi-speak-toggle')) return;
+    if (!bottomBar || document.getElementById('jarvis-speak-toggle')) return;
 
     const btn = document.createElement('button');
     btn.className   = 'ai-circle-btn';
-    btn.id          = 'emi-speak-toggle';
-    btn.title       = 'WIL.E te responde en voz alta';
+    btn.id          = 'jarvis-speak-toggle';
+    btn.title       = 'JARVIS te responde en voz alta';
     btn.setAttribute('aria-label', 'Toggle respuesta por voz');
     btn.innerHTML   = `
       <div class="ai-circle-icon"><i class="fas fa-volume-${state.autoSpeak ? 'high' : 'xmark'}"></i></div>
-      <span class="ai-circle-label" data-subtitle="Respuesta por voz">Voz WIL.E</span>
+      <span class="ai-circle-label" data-subtitle="Respuesta por voz">Voz JARVIS</span>
     `;
     btn.onclick = () => {
       state.autoSpeak = !state.autoSpeak;
-      localStorage.setItem('emi_auto_speak', JSON.stringify(state.autoSpeak));
+      localStorage.setItem('jarvis_auto_speak', JSON.stringify(state.autoSpeak));
       btn.querySelector('i').className = `fas fa-volume-${state.autoSpeak ? 'high' : 'xmark'}`;
-      showVoiceToast(state.autoSpeak ? '🔊 WIL.E responderá en voz alta' : '🔇 Voz de WIL.E desactivada', 'info');
+      showVoiceToast(state.autoSpeak ? '🔊 JARVIS responderá en voz alta' : '🔇 Voz de JARVIS desactivada', 'info');
     };
     /* Insertar como primer elemento */
     bottomBar.insertBefore(btn, bottomBar.firstChild);
@@ -444,12 +417,12 @@
   ════════════════════════════════════════════ */
   function injectE2EToggle() {
     const bottomBar = document.querySelector('.ai-bottom-bar');
-    if (!bottomBar || document.getElementById('emi-e2e-toggle')) return;
+    if (!bottomBar || document.getElementById('jarvis-e2e-toggle')) return;
 
     const btn = document.createElement('button');
     btn.className   = 'ai-circle-btn';
-    btn.id          = 'emi-e2e-toggle';
-    btn.title       = 'Manos libres: habla y WIL.E responde en voz alta';
+    btn.id          = 'jarvis-e2e-toggle';
+    btn.title       = 'Manos libres: habla y JARVIS responde en voz alta';
     btn.setAttribute('aria-label', 'Toggle manos libres');
     btn.innerHTML   = `
       <div class="ai-circle-icon"><i class="fas fa-headset"></i></div>
@@ -457,18 +430,18 @@
     `;
     btn.onclick = () => {
       state.e2e = !state.e2e;
-      try { localStorage.setItem('emi_e2e_voice', JSON.stringify(state.e2e)); } catch (e) {}
+      try { localStorage.setItem('jarvis_e2e_voice', JSON.stringify(state.e2e)); } catch (e) {}
       /* Manos libres implica respuesta por voz: activa auto-speak */
       if (state.e2e && !state.autoSpeak) {
         state.autoSpeak = true;
-        try { localStorage.setItem('emi_auto_speak', 'true'); } catch (e) {}
-        const sb = document.getElementById('emi-speak-toggle');
+        try { localStorage.setItem('jarvis_auto_speak', 'true'); } catch (e) {}
+        const sb = document.getElementById('jarvis-speak-toggle');
         const si = sb && sb.querySelector('i');
         if (si) si.className = 'fas fa-volume-high';
       }
       showVoiceToast(
         state.e2e
-          ? '🙌 Manos libres activado: habla y WIL.E responde en voz alta'
+          ? '🙌 Manos libres activado: habla y JARVIS responde en voz alta'
           : '✋ Manos libres desactivado',
         'info'
       );
@@ -490,16 +463,16 @@
       return;
     }
     /* Fallback: toast propio */
-    let t = document.getElementById('emi-voice-toast');
+    let t = document.getElementById('jarvis-voice-toast');
     if (!t) {
       t = document.createElement('div');
-      t.id = 'emi-voice-toast';
+      t.id = 'jarvis-voice-toast';
       document.body.appendChild(t);
     }
     t.textContent = msg;
-    t.className   = 'emi-voice-toast show ' + type;
+    t.className   = 'jarvis-voice-toast show ' + type;
     clearTimeout(t._t);
-    t._t = setTimeout(() => { t.className = 'emi-voice-toast'; }, 3000);
+    t._t = setTimeout(() => { t.className = 'jarvis-voice-toast'; }, 3000);
   }
 
   /* ════════════════════════════════════════════
@@ -517,12 +490,12 @@
     get e2e()         { return state.e2e; },
     setE2E(on) {
       state.e2e = !!on;
-      try { localStorage.setItem('emi_e2e_voice', JSON.stringify(state.e2e)); } catch (e) {}
+      try { localStorage.setItem('jarvis_e2e_voice', JSON.stringify(state.e2e)); } catch (e) {}
     },
     get jarvis()      { return state.jarvis; },
     setJarvis(on) {
       state.jarvis = !!on;
-      try { localStorage.setItem('emi_jarvis_voice', state.jarvis ? '1' : '0'); } catch (e) {}
+      try { localStorage.setItem('jarvis_voice_enabled', state.jarvis ? '1' : '0'); } catch (e) {}
     },
     setLang(lang) {
       state.lang = lang;
@@ -542,7 +515,7 @@
 
   /* ── Re-intentar init si el panel se abre después ── */
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#ai-fab') && !window.emiVoice) {
+    if (e.target.closest('#ai-fab') && !window.jarvisVoice) {
       setTimeout(init, 300);
     }
   });
@@ -555,7 +528,7 @@
    Busca: #ai-send-btn y agrega debajo de ese bloque
 ═══════════════════════════════════════════════════════════
 
-#emi-mic-btn {
+#jarvis-mic-btn {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
@@ -572,27 +545,27 @@
   position: relative;
   overflow: hidden;
 }
-#emi-mic-btn:hover {
+#jarvis-mic-btn:hover {
   background: rgba(0, 229, 255, .16);
   border-color: rgba(0, 229, 255, .5);
   transform: scale(1.06);
 }
-#emi-mic-btn.emi-mic-active {
+#jarvis-mic-btn.jarvis-mic-active {
   background: rgba(255, 69, 0, .18);
   border-color: rgba(255, 69, 0, .7);
   color: #2f80ed;
   box-shadow: 0 0 16px rgba(255, 69, 0, .35);
-  animation: emi-mic-pulse 1.4s ease-in-out infinite;
+  animation: jarvis-mic-pulse 1.4s ease-in-out infinite;
 }
-#emi-mic-btn.emi-mic-unsupported {
+#jarvis-mic-btn.jarvis-mic-unsupported {
   opacity: .38;
   cursor: not-allowed;
 }
-@keyframes emi-mic-pulse {
+@keyframes jarvis-mic-pulse {
   0%, 100% { box-shadow: 0 0 10px rgba(255, 69, 0, .3); }
   50%       { box-shadow: 0 0 22px rgba(255, 69, 0, .65); }
 }
-.emi-mic-ripple {
+.jarvis-mic-ripple {
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -601,16 +574,16 @@
   transform: scale(0);
   transition: none;
 }
-#emi-mic-btn.emi-mic-active .emi-mic-ripple {
-  animation: emi-ripple-expand 1.4s ease-out infinite;
+#jarvis-mic-btn.jarvis-mic-active .jarvis-mic-ripple {
+  animation: jarvis-ripple-expand 1.4s ease-out infinite;
 }
-@keyframes emi-ripple-expand {
+@keyframes jarvis-ripple-expand {
   0%   { opacity: .5; transform: scale(0); }
   100% { opacity: 0;  transform: scale(2); }
 }
 
 // Toast fallback (solo si no existe #toast en CodeHub)
-.emi-voice-toast {
+.jarvis-voice-toast {
   position: fixed;
   bottom: 5.5rem;
   left: 50%;
@@ -630,11 +603,11 @@
   max-width: 90vw;
   text-align: center;
 }
-.emi-voice-toast.show {
+.jarvis-voice-toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-.emi-voice-toast.error  { border-color: rgba(47,128,237,.5); color: #ff9a7a; }
-.emi-voice-toast.warn   { border-color: rgba(56,189,248,.5); color: var(--a, #38bdf8); }
+.jarvis-voice-toast.error  { border-color: rgba(47,128,237,.5); color: #ff9a7a; }
+.jarvis-voice-toast.warn   { border-color: rgba(56,189,248,.5); color: var(--a, #38bdf8); }
 
 ═══════════════════════════════════════════════════════════ */

@@ -62,7 +62,7 @@
   };
 
   window.openPdfIaChat = function () {
-    // El chat EMI (con botón 📎 para adjuntar PDF) vive en la página principal.
+    // El chat JARVIS (con botón 📎 para adjuntar PDF) vive en la página principal.
     window.open('../index.html', '_blank');
   };
 

@@ -10,7 +10,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /** Owns authenticated JARVIS HTTP calls and SSE parsing, separate from Android view lifecycle. */
-internal class WileChatRepository(private val accessToken: String) {
+internal class CodeHubApiRepository(private val accessToken: String) {
     companion object {
         const val BASE_URL = "https://codehub-98s6.onrender.com"
     }
@@ -40,7 +40,7 @@ internal class WileChatRepository(private val accessToken: String) {
                     if (!res.isSuccessful) {
                         val errorBody = res.body?.string().orEmpty()
                         val errorJson = runCatching { JSONObject(errorBody) }.getOrNull()
-                        if (errorJson?.optString("code") == "EMI_DAILY_LIMIT") {
+                        if (errorJson?.optString("code") == "JARVIS_DAILY_LIMIT") {
                             onEvent("quota", errorJson)
                         }
                         val detail = errorJson?.optString("error").orEmpty()

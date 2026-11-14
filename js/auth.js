@@ -106,7 +106,7 @@
     }
   }
 
-  // ── Límites de uso (EMI y funciones premium) ──────────────────────
+  // ── Límites de uso (JARVIS y funciones premium) ──────────────────────
   // Invitado: cuota diaria por dispositivo.
   // Registrado: sin límite (backend verificará con user_id).
   var LIMITS = {

@@ -71,7 +71,7 @@ public class ShizukuUserService extends IKillAppService.Stub {
         if (isProtectedCacheTarget(pkgName)) return -1;
         Process process = null;
         try {
-            process = new ProcessBuilder("/system/bin/pm", "clear", "--cache-only", "--user", "current", pkgName)
+            process = new ProcessBuilder("/system/bin/pm", "clear", "--user", "current", "--cache-only", pkgName)
                     .redirectErrorStream(true)
                     .start();
             // pm clear waits for PackageManager's async observer. Bound that wait

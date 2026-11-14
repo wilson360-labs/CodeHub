@@ -1,10 +1,10 @@
-// wil-e/models.js — Modelos de datos de la capa de inteligencia de Wil.E.
+// wil-e/models.js — Modelos de datos de la capa de inteligencia de JARVIS.
 // Memoria entrenable por usuario + base de conocimiento con embeddings.
 // Los campos privados (content) se guardan CIFRADOS (E2E en reposo).
 const mongoose = require('mongoose');
 const { encrypt, decrypt } = require('./crypto');
 
-// Memoria de largo plazo de un usuario: hechos que Wil.E aprende y recuerda.
+// Memoria de largo plazo de un usuario: hechos que JARVIS aprende y recuerda.
 const AIMemorySchema = new mongoose.Schema({
   userId:   { type: String, index: true },          // req.authUser?.id o 'anon:_ip'
   scope:    { type: String, enum: ['global','user','session'], default: 'user' },

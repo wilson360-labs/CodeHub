@@ -40,7 +40,7 @@
 
   // ── Arrastre (mantener presionado 350 ms y mover) ──────────────────
   // La posición se guarda en el WebView: cada teléfono puede dejar el
-  // control donde le quede cómodo, y así no se pelea con el FAB de WIL.E
+  // control donde le quede cómodo, y así no se pelea con el FAB de JARVIS
   // ni con el dock. Sin posición guardada vuelve al lugar por defecto.
   var POS_KEY = 'ch:native-music-pos';
   var savedPos = null;

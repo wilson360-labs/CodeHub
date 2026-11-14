@@ -28,7 +28,7 @@ class NativeProfileActivity : Activity() {
         intent.getStringExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN).orEmpty()
             .ifBlank { NativeAuthSessionStore.accessToken(this) }
     }
-    private val repository by lazy { WileChatRepository(token) }
+    private val repository by lazy { CodeHubApiRepository(token) }
     private var activeCall: Call? = null
     private lateinit var root: LinearLayout
     private lateinit var content: LinearLayout
@@ -84,7 +84,7 @@ class NativeProfileActivity : Activity() {
     private fun loadProfile() {
         content.removeAllViews()
         content.addView(panel("Cargando tu perfil…"))
-        activeCall = repository.get("${WileChatRepository.BASE_URL}/api/user/profile") { json, error ->
+        activeCall = repository.get("${CodeHubApiRepository.BASE_URL}/api/user/profile") { json, error ->
             runOnUiThread {
                 activeCall = null
                 if (isFinishing || isDestroyed) return@runOnUiThread
@@ -165,7 +165,7 @@ class NativeProfileActivity : Activity() {
             setLineSpacing(dp(3).toFloat(), 1f)
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(action("Cerrar sesión") {
-            activeCall = repository.post("${WileChatRepository.BASE_URL}/api/auth/logout", JSONObject()) { _, _ ->
+            activeCall = repository.post("${CodeHubApiRepository.BASE_URL}/api/auth/logout", JSONObject()) { _, _ ->
                 runOnUiThread {
                     activeCall = null
                     NativeAiChatActivity.clearHistoryForAccount(this, NativeAuthSessionStore.accountId(this))

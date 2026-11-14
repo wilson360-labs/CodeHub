@@ -109,7 +109,7 @@
     // etc.) — querySelector no distingue eso, así que lo comprobamos
     // aparte con getComputedStyle + tamaño real (offsetParent NO sirve
     // aquí: también es null en elementos position:fixed que sí están
-    // visibles, como el FAB de EMI, así que daría falsos negativos).
+    // visibles, como el FAB de JARVIS, así que daría falsos negativos).
     // Sin esto, el tour resalta/apunta a un elemento invisible (bug
     // real: el paso "Configuración" apuntaba a #cfg-btn, oculto
     // permanentemente tras mover los controles al menú hamburguesa).

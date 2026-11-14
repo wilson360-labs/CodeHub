@@ -121,7 +121,7 @@ internal object NativeAuthSessionStore {
         if (refresh.isBlank()) { clear(context); callback.onToken(null); return }
         val body = JSONObject().put("refresh_token", refresh).toString()
             .toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = Request.Builder().url("${WileChatRepository.BASE_URL}/api/auth/refresh").post(body).build()
+        val request = Request.Builder().url("${CodeHubApiRepository.BASE_URL}/api/auth/refresh").post(body).build()
         OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).build()
             .newCall(request).enqueue(object : okhttp3.Callback {
                 override fun onFailure(call: okhttp3.Call, e: java.io.IOException) = callback.onToken(access)

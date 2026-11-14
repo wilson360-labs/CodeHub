@@ -1,4 +1,4 @@
-﻿# CODEHUB â€” Documento Estructural
+# CODEHUB â€” Documento Estructural
 > **Para uso de IA asistente.** Lee este archivo ANTES de modificar cualquier archivo del proyecto.  
 > Ãšltima actualizaciÃ³n: Agosto 2026 Â· Autor: Wilson.E Â· wilson.e360labs@gmail.com
 
@@ -85,7 +85,7 @@ CodeHub/
 â”‚
 â”œâ”€â”€ js/
 â”‚   â”œâ”€â”€ (Purga Sep 2026: eliminados index-chat.js, index-emailjs.js e index-whats-new.js â€” duplicados legacy; el cÃ³digo real vive inline en index.html)
-â”‚   â”œâ”€â”€ emi-voice.js            â† ðŸŽ™ï¸ EMI Voice (micrÃ³fono + auto-speak) â€” integrado en index.html
+â”‚   â”œâ”€â”€ jarvis-voice.js            â† ðŸŽ™ï¸ JARVIS Voice (micrÃ³fono + auto-speak) â€” integrado en index.html
 â”‚   â”œâ”€â”€ opensource.js           â† LÃ³gica de /opensource (catÃ¡logo, filtros, ratings)
 â”‚   â”œâ”€â”€ tools.js                â† LÃ³gica de todas las 34 herramientas
 â”‚   â”œâ”€â”€ admin-hub.js            â† LÃ³gica completa del panel admin
@@ -95,7 +95,7 @@ CodeHub/
 â”‚   â”œâ”€â”€ theme-switcher.js       â† Cambio de tema claro/oscuro
 â”‚   â”œâ”€â”€ updater.js              â† DetecciÃ³n de updates PWA
 â”‚   â”œâ”€â”€ ux-animations.js        â† Animaciones globales (Intersection Observer)
-â”‚   â”œâ”€â”€ thinking-orb.js         â† Orb de pensamiento de EMI
+â”‚   â”œâ”€â”€ thinking-orb.js         â† Orb de pensamiento de JARVIS
 â”‚   â”œâ”€â”€ device-detect.js        â† DetecciÃ³n mÃ³vil/escritorio
 â”‚   â”œâ”€â”€ site-tour.js            â† Tour guiado del sitio
 â”‚   â”œâ”€â”€ live-update-check.js    â† Check de actualizaciones en vivo
@@ -210,7 +210,7 @@ const BACKEND = 'https://codehub-98s6.onrender.com';
 | GET | `/api/stats/supabase` | Stats de Supabase | â€” |
 | GET | `/api/stats/live` | Stats en tiempo real (WebSocket) | â€” |
 | POST | `/api/visit` | Registrar visita | â€” |
-| POST | `/api/chat` | Chatbot EMI IA | rate-limit |
+| POST | `/api/chat` | Chatbot JARVIS IA | rate-limit |
 | POST | `/api/contact` | Formulario de contacto | turnstile |
 | GET | `/api/ratings` | Ratings de apps | â€” |
 | POST | `/api/ratings` | Guardar rating | â€” |
@@ -270,7 +270,7 @@ El backend empuja en tiempo real al chat del admin (`TELEGRAM_CHAT_ID`) eventos 
 |--------|------------------|--------|
 | ðŸš¨ Rate limit superado | `ratelimit:<ruta>` | Alguien excede un limiter (`chatLimiter`/`adminLimiter`) |
 | ðŸ” Admin key invÃ¡lida | `adminfail` | Key incorrecta en un endpoint admin |
-| ðŸ’¬ Chat con EMI | `chat` | Cada chat exitoso (agrupado cada 30s) |
+| ðŸ’¬ Chat con JARVIS | `chat` | Cada chat exitoso (agrupado cada 30s) |
 | âš ï¸ Error `/api/chat` | `chatfail` | Fallo del proveedor IA (agrupado cada 30s) |
 | ðŸ“© Contacto | `contact` | Nuevo formulario de contacto (cada 30s) |
 | â­ Rating | `rating` | Nueva valoraciÃ³n de app (cada 30s) |
@@ -324,11 +324,11 @@ La pÃ¡gina mÃ¡s grande del proyecto (~5260 lÃ­neas). Contiene todo en un s
 - EmailJS
 - Cloudflare Turnstile
 - Google AdSense (Auto ads)
-- js/script.js, index-emailjs.js, index-whats-new.js, ux-animations.js, device-detect.js, thinking-orb.js, site-tour.js, emi-voice.js (defer)
+- js/script.js, index-emailjs.js, index-whats-new.js, ux-animations.js, device-detect.js, thinking-orb.js, site-tour.js, jarvis-voice.js (defer)
 
-**EMI Voice (ðŸŽ™ï¸, integrado Agosto 2026):**
-- BotÃ³n micrÃ³fono `#emi-mic-btn` en `.ai-input-row` â†’ voz a texto (Web Speech API).
-- Toggle "Voz EMI" inyectado en `.ai-bottom-bar` â†’ lee las respuestas en voz alta (auto-speak).
+**JARVIS Voice (ðŸŽ™ï¸, integrado Agosto 2026):**
+- BotÃ³n micrÃ³fono `#jarvis-mic-btn` en `.ai-input-row` â†’ voz a texto (Web Speech API).
+- Toggle "Voz JARVIS" inyectado en `.ai-bottom-bar` â†’ lee las respuestas en voz alta (auto-speak).
 - Idioma automÃ¡tico: `es-GT` / `en-US` segÃºn `ch_lang`; se sincroniza en `applyLang()` vÃ­a evento `ch:langchange`.
 - âš ï¸ Requiere `microphone=(self)` en la `Permissions-Policy` de `vercel.json`.
 
@@ -342,7 +342,7 @@ La pÃ¡gina mÃ¡s grande del proyecto (~5260 lÃ­neas). Contiene todo en un s
 **Elementos flotantes globales:**
 - `#ch-splash` â€” Splash screen inicial con canvas de partÃ­culas
 - `#config-panel` â€” Panel de configuraciÃ³n (fuente, animaciones, idioma)
-- `#ai-panel` â€” Chatbot EMI IA (slide-up panel)
+- `#ai-panel` â€” Chatbot JARVIS IA (slide-up panel)
 - `#ai-fab` â€” BotÃ³n flotante para abrir el chatbot
 - `#hub-dock` â€” Barra de accesos rÃ¡pidos flotante
 - `#ch-panel-actividad` â€” Panel lateral de actividad reciente
@@ -488,7 +488,7 @@ Clases CSS usan el prefijo `.blogger-*` por convenciÃ³n heredada.
 **Shortcuts en PWA:** `/tools`, `/opensource`, `/servicios`, `/downloader`  
 **Iconos:** Cloudinary CDN  
 **Offline page:** `offline.html`  
-**PRECACHE:** incluye los JS del chat (emi-voice.js, ux-animations.js, thinking-orb.js, site-tour.js) y css/components.css para que EMI funcione offline.
+**PRECACHE:** incluye los JS del chat (jarvis-voice.js, ux-animations.js, thinking-orb.js, site-tour.js) y css/components.css para que JARVIS funcione offline.
 
 ---
 

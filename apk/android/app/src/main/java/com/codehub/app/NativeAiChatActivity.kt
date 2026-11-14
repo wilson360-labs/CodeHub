@@ -61,7 +61,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     companion object {
         const val EXTRA_AUTH_TOKEN = "native_wile_auth_token"
         const val EXTRA_AUTH_ACCOUNT_ID = "native_wile_auth_account_id"
-        private const val API = WileChatRepository.BASE_URL
+        private const val API = CodeHubApiRepository.BASE_URL
         private const val PICK_ATTACHMENT = 7101
         private const val SPEECH_INPUT = 7102
         private const val PREFS = "native_wile_chat"
@@ -127,7 +127,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private val chatPreferences by lazy {
         getSharedPreferences(conversationPreferencesName(accountId), MODE_PRIVATE)
     }
-    private val repository by lazy { WileChatRepository(authToken) }
+    private val repository by lazy { CodeHubApiRepository(authToken) }
     private var thinkingView: View? = null
     private var thinkingLabelView: TextView? = null
     private val thinkingAnimations = mutableListOf<ObjectAnimator>()
@@ -141,7 +141,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var quotaProgress: ProgressBar
     private lateinit var attachLabel: TextView
     private lateinit var modeRow: LinearLayout
-    private lateinit var emiVoiceControls: LinearLayout
+    private lateinit var jarvisVoiceControls: LinearLayout
     private lateinit var quickActionsContainer: View
     private var followLatestOutput = true
     private var lastStreamScrollAt = 0L
@@ -171,6 +171,12 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     }
     private lateinit var tts: TextToSpeech
     private var ttsReady = false
+    private var premiumVoiceAvailable: Boolean? = null
+    private var pendingSpeech: Pair<String, String>? = null
+    private var voiceGeneration = 0
+    private var premiumVoiceCall: okhttp3.Call? = null
+    private var premiumVoicePlayer: android.media.MediaPlayer? = null
+    private var currentVoiceFile: java.io.File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -188,13 +194,14 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 chatPreferences.edit().putString(SESSION_KEY, it).apply()
             }
         activeMode = Mode.entries.firstOrNull { it.id == chatPreferences.getString(MODE_KEY, "auto") } ?: Mode.AUTO
-        readRepliesAloud = chatPreferences.getBoolean("emi_auto_speak", chatPreferences.getBoolean("read_replies", false))
-        handsFreeEnabled = chatPreferences.getBoolean("emi_e2e_voice", false)
+        readRepliesAloud = chatPreferences.getBoolean("jarvis_auto_speak", chatPreferences.getBoolean("emi_auto_speak", chatPreferences.getBoolean("read_replies", false)))
+        handsFreeEnabled = chatPreferences.getBoolean("jarvis_e2e_voice", chatPreferences.getBoolean("emi_e2e_voice", false))
         if (handsFreeEnabled) readRepliesAloud = true
         loadHistory()
         buildUi()
         renderHistory()
         tts = TextToSpeech(this, this)
+        refreshPremiumVoiceAvailability()
         refreshDailyUsage()
     }
 
@@ -240,9 +247,15 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         top.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_jarvis_core)
             contentDescription = "Icono de JARVIS"
-            setPadding(dp(4), dp(4), dp(4), dp(4))
-            background = rounded(0xFF142531.toInt(), dp(24), 0xFF347E86.toInt())
-        }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) })
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(0xFF1D5864.toInt(), 0xFF20294B.toInt())).apply {
+                shape = GradientDrawable.OVAL
+                setStroke(dp(1), 0xFF62E3D2.toInt())
+            }
+            elevation = dp(3).toFloat()
+        }, LinearLayout.LayoutParams(dp(46), dp(46)).apply { marginEnd = dp(9) })
         top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
         clearChatButton = ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_trash)
@@ -304,13 +317,17 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         root.addView(modeScroll, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         renderModes()
 
-        emiVoiceControls = LinearLayout(this).apply {
+        jarvisVoiceControls = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(11), dp(8), dp(11), dp(8))
-            background = rounded(0xFF101A27.toInt(), dp(16), 0xFF26384A.toInt())
+            setPadding(dp(12), dp(9), dp(12), dp(9))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(0xFF142633.toInt(), 0xFF101A27.toInt())).apply {
+                cornerRadius = dp(17).toFloat()
+                setStroke(dp(1), 0xFF315063.toInt())
+            }
         }
-        root.addView(emiVoiceControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
-        renderEmiVoiceControls()
+        root.addView(jarvisVoiceControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+        renderJarvisVoiceControls()
 
         messageScroll = ScrollView(this).apply {
             clipToPadding = false
@@ -502,9 +519,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             }.start()
     }
 
-    private fun renderEmiVoiceControls() {
-        if (!::emiVoiceControls.isInitialized) return
-        emiVoiceControls.removeAllViews()
+    private fun renderJarvisVoiceControls() {
+        if (!::jarvisVoiceControls.isInitialized) return
+        jarvisVoiceControls.removeAllViews()
         val heading = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         val indicator = View(this).apply {
             background = GradientDrawable().apply {
@@ -513,20 +530,20 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             }
         }
         heading.addView(indicator, LinearLayout.LayoutParams(dp(7), dp(7)))
-        heading.addView(text("JARVIS VOICE", 11f, 0xFFE2EAF5.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7) })
-        heading.addView(text("· chat por voz y texto", 11f, 0xFF8999AE.toInt()), LinearLayout.LayoutParams(0, -2, 1f))
-        heading.addView(text(if (handsFreeEnabled) "MODO ACTIVO" else if (readRepliesAloud) "ACTIVA" else "DESACTIVADA", 9f,
+        heading.addView(text("VOZ DE JARVIS", 11f, 0xFFE2EAF5.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7) })
+        heading.addView(text("· conectada al chat IA", 10f, 0xFF9BB3C4.toInt()), LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5) })
+        heading.addView(text(if (handsFreeEnabled) "VOZ + IA" else if (readRepliesAloud) "LECTURA" else "TEXTO", 9f,
             if (handsFreeEnabled || readRepliesAloud) 0xFF77E4C2.toInt() else 0xFF75839A.toInt(), true))
-        emiVoiceControls.addView(heading)
+        jarvisVoiceControls.addView(heading)
 
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         actions.addView(voiceToggle(
-            R.drawable.ic_voice_speaker, "Respuesta hablada", "Lee solo el texto de la respuesta", readRepliesAloud
+            R.drawable.ic_voice_speaker, "Leer respuestas", when (premiumVoiceAvailable) { true -> "Voz neural JARVIS en línea"; false -> "Voz del dispositivo"; else -> "Conectando voz JARVIS…" }, readRepliesAloud
         ) { toggleAutoSpeak() }, LinearLayout.LayoutParams(0, dp(50), 1f).apply { marginEnd = dp(5); topMargin = dp(7) })
         actions.addView(voiceToggle(
-            R.drawable.ic_voice_handsfree, "Manos libres", "Dicta y envía", handsFreeEnabled
+            R.drawable.ic_voice_handsfree, "Conversación por voz", "Dicta al chat IA y escucha", handsFreeEnabled
         ) { toggleHandsFree() }, LinearLayout.LayoutParams(0, dp(50), 1f).apply { marginStart = dp(5); topMargin = dp(7) })
-        emiVoiceControls.addView(actions)
+        jarvisVoiceControls.addView(actions)
     }
 
     private fun voiceToggle(icon: Int, title: String, subtitle: String, enabled: Boolean, action: () -> Unit): View =
@@ -544,7 +561,14 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 setImageResource(icon)
                 imageTintList = android.content.res.ColorStateList.valueOf(if (enabled) 0xFF8BE7C9.toInt() else 0xFFB6C4D8.toInt())
                 scaleType = ImageView.ScaleType.CENTER
-            }, LinearLayout.LayoutParams(dp(24), dp(24)))
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    if (enabled) intArrayOf(0xFF255C52.toInt(), 0xFF173B3A.toInt())
+                    else intArrayOf(0xFF263447.toInt(), 0xFF1A2636.toInt())).apply {
+                    shape = GradientDrawable.OVAL
+                    setStroke(dp(1), if (enabled) 0xFF50B99B.toInt() else 0xFF3D5067.toInt())
+                }
+                contentDescription = title
+            }, LinearLayout.LayoutParams(dp(34), dp(34)))
             val labels = LinearLayout(this@NativeAiChatActivity).apply { orientation = LinearLayout.VERTICAL }
             labels.addView(text(title, 10f, if (enabled) 0xFFE4FFF6.toInt() else 0xFFE0E8F3.toInt(), true))
             labels.addView(text(subtitle, 9f, if (enabled) 0xFF8DCCB7.toInt() else 0xFF8997AB.toInt()))
@@ -554,16 +578,16 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun persistVoicePreferences() {
         chatPreferences.edit()
-            .putBoolean("emi_auto_speak", readRepliesAloud)
+            .putBoolean("jarvis_auto_speak", readRepliesAloud)
             .putBoolean("read_replies", readRepliesAloud)
-            .putBoolean("emi_e2e_voice", handsFreeEnabled)
+            .putBoolean("jarvis_e2e_voice", handsFreeEnabled)
             .apply()
-        renderEmiVoiceControls()
+        renderJarvisVoiceControls()
     }
 
     private fun toggleAutoSpeak() {
         readRepliesAloud = !readRepliesAloud
-        if (!readRepliesAloud) handsFreeEnabled = false
+        if (!readRepliesAloud) { handsFreeEnabled = false; stopJarvisSpeech() }
         persistVoicePreferences()
     }
 
@@ -625,7 +649,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         renderHistory()
         showThinking("JARVIS está preparando una respuesta")
         scrollToBottom()
-        status.text = "Conectando con los proveedores de IA…"
+        status.text = if (handsFreeEnabled) "JARVIS · enviando tu voz a la IA en línea…" else "Conectando con los proveedores de IA…"
         setSendButtonState(true)
         streamChat(request, assistant)
     }
@@ -633,7 +657,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun streamChat(payload: JSONObject, assistant: ChatMessage) {
         var streamError: String? = null
         var providerName = ""
-        var emiStatus = ""
+        var usageStatus = ""
         activeCall = repository.streamChat(
             "$API/api/chat/stream",
             payload,
@@ -641,7 +665,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 when (event) {
                     "chunk" -> data.optString("text").takeIf { it.isNotEmpty() }?.let { chunk -> runOnUiThread {
                         finishThinking()
-                        if (assistant.text.isBlank()) status.text = "JARVIS · generando respuesta en vivo…"
+                        if (assistant.text.isBlank()) status.text = if (handsFreeEnabled) "JARVIS · respuesta de IA en vivo…" else "JARVIS · generando respuesta en vivo…"
                         assistant.text += chunk
                         val body = streamingBodyView ?: createStreamingBody().also { streamingBodyView = it }
                         body.append(chunk)
@@ -653,10 +677,10 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                     }
                     "done" -> {
                         providerName = data.optString("model").substringAfterLast('/').takeIf { it.isNotBlank() }.orEmpty()
-                        data.optJSONObject("emi")?.let { emi ->
-                            val used = emi.optInt("used")
-                            val limit = emi.optInt("limit")
-                            emiStatus = "$used/$limit hoy"
+                        data.optJSONObject("emi")?.let { usage ->
+                            val used = usage.optInt("used")
+                            val limit = usage.optInt("limit")
+                            usageStatus = "$used/$limit hoy"
                             runOnUiThread { updateDailyUsage(used, limit) }
                         }
                     }
@@ -670,15 +694,15 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 else status.text = listOf(
                     "JARVIS",
                     providerName.takeIf { it.isNotBlank() }?.let { "modelo $it" },
-                    emiStatus.takeIf { it.isNotBlank() }?.let { "$it mensajes" },
+                    usageStatus.takeIf { it.isNotBlank() }?.let { "$it mensajes" },
                 ).filterNotNull().joinToString(" · ")
                 activeCall = null
                 setSendButtonState(false)
                 persistHistory(); renderHistory()
                 streamingBodyView = null
-                if (error == null && readRepliesAloud && ttsReady && assistant.text.isNotBlank()) {
+                if (error == null && readRepliesAloud && assistant.text.isNotBlank()) {
                     speechFriendly(assistant.text).takeIf { it.isNotBlank() }?.let {
-                        tts.speak(it, TextToSpeech.QUEUE_FLUSH, null, "jarvis-reply")
+                        speakJarvis(it, "jarvis-reply")
                     }
                 }
             } },
@@ -794,7 +818,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             "/model" -> addAssistant("JARVIS · enrutamiento multi-proveedor desde el backend de CodeHub.")
             "/jarvis" -> {
                 readRepliesAloud = arg.equals("on", true)
-                if (!readRepliesAloud) handsFreeEnabled = false
+                if (!readRepliesAloud) { handsFreeEnabled = false; stopJarvisSpeech() }
                 persistVoicePreferences()
                 addAssistant(if (readRepliesAloud) "Lectura en voz alta activada. Usa /jarvis off para desactivarla." else "Lectura automática desactivada.")
             }
@@ -947,7 +971,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         messages.add(ChatMessage("assistant", text, mediaUrl))
         persistHistory(); renderHistory(); scrollToBottom()
         val spoken = speechFriendly(text)
-        if (readRepliesAloud && ttsReady && spoken.isNotBlank()) tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, "jarvis-voice-reply")
+        if (readRepliesAloud && spoken.isNotBlank()) speakJarvis(spoken, "jarvis-voice-reply")
     }
 
     private fun clearChat() {
@@ -980,7 +1004,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 3 -> loadSkills()
                 4 -> addAssistant("Prueba /help para ver comandos. Adjunta imagen o PDF, cambia de modo o usa el micrófono para dictar. /jarvis on activa la lectura en voz alta.")
                 5 -> messages.lastOrNull { it.role == "assistant" }?.text?.let(::speechFriendly)
-                    ?.takeIf { it.isNotBlank() }?.let { if (ttsReady) tts.speak(it, TextToSpeech.QUEUE_FLUSH, null, "jarvis-last") }
+                    ?.takeIf { it.isNotBlank() }?.let { speakJarvis(it, "jarvis-last") }
             }
         }.show()
     }
@@ -1014,12 +1038,16 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     @Deprecated("Use the platform document and speech pickers")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == SPEECH_INPUT && resultCode == RESULT_OK) {
-            val phrase = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty()
+        if (requestCode == SPEECH_INPUT) {
+            val phrase = if (resultCode == RESULT_OK) data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty() else ""
             if (phrase.isNotBlank()) {
                 input.setText(if (input.text.isNullOrBlank()) phrase else "${input.text} $phrase")
                 input.setSelection(input.text.length)
                 if (handsFreeEnabled) sendMessage()
+            } else if (handsFreeEnabled) {
+                handsFreeEnabled = false
+                persistVoicePreferences()
+                status.text = "Conversación por voz pausada"
             }
         }
         if (requestCode != PICK_ATTACHMENT || resultCode != RESULT_OK) return
@@ -1119,12 +1147,24 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun launchSpeechInput() {
+        if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+            if (handsFreeEnabled) { handsFreeEnabled = false; persistVoicePreferences() }
+            Toast.makeText(this, "Este dispositivo no tiene un servicio de reconocimiento de voz disponible.", Toast.LENGTH_LONG).show()
+            return
+        }
+        status.text = if (handsFreeEnabled) "JARVIS · escucha activa para el chat IA en línea…" else "Dictado listo para el chat IA"
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-GT")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "es-GT")
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Habla con JARVIS")
         }
-        runCatching { startActivityForResult(intent, SPEECH_INPUT) }.onFailure { Toast.makeText(this, "El dictado por voz no está disponible en este dispositivo.", Toast.LENGTH_SHORT).show() }
+        runCatching { startActivityForResult(intent, SPEECH_INPUT) }.onFailure {
+            if (handsFreeEnabled) { handsFreeEnabled = false; persistVoicePreferences() }
+            status.text = "Dictado por voz no disponible"
+            Toast.makeText(this, "El dictado por voz no está disponible en este dispositivo.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -1151,14 +1191,13 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             }
             welcome.addView(ImageView(this).apply {
                 setImageResource(R.drawable.ic_jarvis_core)
-                imageTintList = android.content.res.ColorStateList.valueOf(0xFFB8C3FF.toInt())
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF344274.toInt(), 0xFF202A49.toInt())).apply {
+                                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF1C6470.toInt(), 0xFF263466.toInt())).apply {
                     shape = GradientDrawable.OVAL
-                    setStroke(dp(1), 0xFF5869AA.toInt())
+                    setStroke(dp(2), 0xFF72E8DC.toInt())
                 }
-                setPadding(dp(9), dp(9), dp(9), dp(9))
-                contentDescription = "JARVIS"
-            }, LinearLayout.LayoutParams(dp(48), dp(48)))
+                setPadding(dp(7), dp(7), dp(7), dp(7))
+                contentDescription = "Símbolo luminoso de JARVIS"
+            }, LinearLayout.LayoutParams(dp(72), dp(72)))
             welcome.addView(text("Hola, soy JARVIS", 24f, Color.WHITE, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
             welcome.addView(text("Tu asistente personal de CodeHub. Habla o escribe, comparte imágenes y analiza documentos.", 14f, 0xFFB2BED0.toInt()).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f) }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             messageList.addView(welcome)
@@ -1202,7 +1241,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             actions.addView(messageAction(R.drawable.ic_jarvis_share, "Compartir") { shareAnswer(message.text) })
             actions.addView(messageAction(R.drawable.ic_voice_speaker, "Leer") {
                 val spoken = speechFriendly(message.text)
-                if (ttsReady && spoken.isNotBlank()) tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, "jarvis-message")
+                if (spoken.isNotBlank()) speakJarvis(spoken, "jarvis-message")
             })
             wrapper.addView(actions)
         }
@@ -1257,18 +1296,18 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(8), 0, dp(9), 0)
-            background = rippleActionBackground(0xFF182334.toInt(), 0xFF34445A.toInt())
+            setPadding(dp(10), 0, dp(11), 0)
+            background = rippleActionBackground(0xFF172532.toInt(), 0xFF355064.toInt())
             contentDescription = label
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
             addView(ImageView(this@NativeAiChatActivity).apply {
                 setImageResource(icon)
-                imageTintList = android.content.res.ColorStateList.valueOf(0xFFB9D3E6.toInt())
+                imageTintList = android.content.res.ColorStateList.valueOf(0xFF7CE0D2.toInt())
                 scaleType = ImageView.ScaleType.CENTER
-            }, LinearLayout.LayoutParams(dp(15), dp(15)))
-            addView(text(label, 10f, 0xFFB9C7D8.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(5) })
+            }, LinearLayout.LayoutParams(dp(18), dp(18)))
+            addView(text(label, 11f, 0xFFD7E3ED.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(6) })
             installPressFeedback(this)
         }
 
@@ -1300,7 +1339,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun smallIconAction(icon: Int, description: String, action: () -> Unit) = ImageView(this).apply {
         setImageResource(icon)
         imageTintList = android.content.res.ColorStateList.valueOf(0xFFDCE6F5.toInt())
-        background = rippleActionBackground(0xFF182334.toInt(), 0xFF34445A.toInt())
+        background = rippleActionBackground(0xFF172532.toInt(), 0xFF355064.toInt())
         contentDescription = description
         scaleType = ImageView.ScaleType.CENTER
         isClickable = true
@@ -1345,7 +1384,138 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
-    override fun onInit(statusCode: Int) { ttsReady = statusCode == TextToSpeech.SUCCESS; if (ttsReady) tts.language = Locale("es", "GT") }
+    override fun onInit(statusCode: Int) {
+        runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            if (statusCode != TextToSpeech.SUCCESS) {
+                ttsReady = false
+                renderJarvisVoiceControls()
+                status.text = "El motor de voz de Android no está disponible"
+                return@runOnUiThread
+            }
+            val spanish = listOf(Locale("es", "GT"), Locale("es", "MX"), Locale("es", "US"), Locale("es"))
+            val selected = spanish.firstOrNull { tts.isLanguageAvailable(it) >= TextToSpeech.LANG_AVAILABLE }
+                ?: Locale.getDefault().takeIf { tts.isLanguageAvailable(it) >= TextToSpeech.LANG_AVAILABLE }
+            ttsReady = selected != null && tts.setLanguage(selected) >= TextToSpeech.LANG_AVAILABLE
+            if (ttsReady) {
+                tts.setSpeechRate(1.0f)
+                tts.setPitch(1.02f)
+                tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) = Unit
+                    override fun onError(utteranceId: String?) = Unit
+                    override fun onDone(utteranceId: String?) {
+                        if (handsFreeEnabled) runOnUiThread {
+                            if (!isFinishing && !isDestroyed) startSpeechInput()
+                        }
+                    }
+                })
+                pendingSpeech?.let { (spoken, id) -> speakJarvis(spoken, id) }
+            } else {
+                status.text = "Instala o activa una voz española en los ajustes de Android"
+            }
+            renderJarvisVoiceControls()
+        }
+    }
+
+    private fun refreshPremiumVoiceAvailability() {
+        repository.get("$API/api/tts/info") { json, _ -> runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            premiumVoiceAvailable = json?.optBoolean("available") == true
+            renderJarvisVoiceControls()
+            flushPendingSpeech()
+        } }
+    }
+
+    private fun flushPendingSpeech() {
+        val pending = pendingSpeech ?: return
+        if (premiumVoiceAvailable == true || (premiumVoiceAvailable == false && ttsReady)) {
+            pendingSpeech = null
+            speakJarvis(pending.first, pending.second)
+        }
+    }
+
+    private fun speakJarvis(value: String, utteranceId: String) {
+        if (value.isBlank()) return
+        if (premiumVoiceAvailable == null || (premiumVoiceAvailable == false && !ttsReady)) {
+            pendingSpeech = value to utteranceId
+            return
+        }
+        voiceGeneration++
+        val generation = voiceGeneration
+        premiumVoiceCall?.cancel()
+        premiumVoiceCall = null
+        premiumVoicePlayer?.let { player -> runCatching { player.stop() }; player.release() }
+        premiumVoicePlayer = null
+        currentVoiceFile?.delete()
+        currentVoiceFile = null
+        if (::tts.isInitialized) tts.stop()
+        if (premiumVoiceAvailable == true) {
+            val spoken = value.take(4000)
+            status.text = "JARVIS · generando voz neural en línea…"
+            premiumVoiceCall = repository.post("$API/api/tts", JSONObject().put("text", spoken).put("voice", "jarvis")) { json, error -> runOnUiThread {
+                if (generation != voiceGeneration || isFinishing || isDestroyed) return@runOnUiThread
+                premiumVoiceCall = null
+                val audio = json?.optString("audio").orEmpty()
+                if (error == null && audio.startsWith("data:audio/")) {
+                    playPremiumVoice(audio, spoken, utteranceId, generation)
+                } else {
+                    premiumVoiceAvailable = false
+                    renderJarvisVoiceControls()
+                    status.text = "Voz JARVIS en línea no disponible · usando voz del dispositivo"
+                    speakWithAndroidTts(spoken, utteranceId, generation)
+                }
+            } }
+            return
+        }
+        speakWithAndroidTts(value, utteranceId, generation)
+    }
+
+    private fun playPremiumVoice(dataUrl: String, fallbackText: String, utteranceId: String, generation: Int) {
+        runCatching {
+            val encoded = dataUrl.substringAfter(',', "")
+            require(encoded.isNotBlank()) { "Audio vacío" }
+            val audioFile = java.io.File(cacheDir, "jarvis-voice-$generation.mp3")
+            audioFile.writeBytes(android.util.Base64.decode(encoded, android.util.Base64.DEFAULT))
+            currentVoiceFile = audioFile
+            val player = android.media.MediaPlayer()
+            premiumVoicePlayer = player
+            player.setOnPreparedListener { media ->
+                if (generation == voiceGeneration && !isFinishing && !isDestroyed) media.start()
+            }
+            player.setOnCompletionListener { media ->
+                media.release()
+                if (premiumVoicePlayer === media) premiumVoicePlayer = null
+                audioFile.delete()
+                currentVoiceFile = null
+                if (handsFreeEnabled && !isFinishing && !isDestroyed) startSpeechInput()
+            }
+            player.setOnErrorListener { media, _, _ ->
+                media.release()
+                if (premiumVoicePlayer === media) premiumVoicePlayer = null
+                audioFile.delete()
+                currentVoiceFile = null
+                if (generation == voiceGeneration) speakWithAndroidTts(fallbackText, utteranceId, generation)
+                true
+            }
+            player.setDataSource(audioFile.absolutePath)
+            player.prepareAsync()
+        }.onFailure {
+            if (generation == voiceGeneration) speakWithAndroidTts(fallbackText, utteranceId, generation)
+        }
+    }
+
+    private fun speakWithAndroidTts(value: String, utteranceId: String, generation: Int) {
+        if (!ttsReady || !::tts.isInitialized) {
+            pendingSpeech = value to utteranceId
+            return
+        }
+        if (generation != voiceGeneration) return
+        pendingSpeech = null
+        if (tts.speak(value, TextToSpeech.QUEUE_FLUSH, null, utteranceId) == TextToSpeech.ERROR) {
+            ttsReady = false
+            renderJarvisVoiceControls()
+        }
+    }
     override fun onResume() {
         super.onResume()
         brandMorphSwitcher?.removeCallbacks(brandMorphTick)
@@ -1358,6 +1528,13 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         brandMorphSwitcher?.removeCallbacks(brandMorphTick)
         brandMorphSwitcher = null
+        pendingSpeech = null
+        voiceGeneration++
+        premiumVoiceCall?.cancel()
+        premiumVoicePlayer?.let { player -> runCatching { player.stop() }; player.release() }
+        premiumVoicePlayer = null
+        currentVoiceFile?.delete()
+        currentVoiceFile = null
         activeCall?.cancel()
         finishThinking()
         if (::tts.isInitialized) { tts.stop(); tts.shutdown() }

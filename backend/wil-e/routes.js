@@ -1,4 +1,4 @@
-// wil-e/routes.js — Endpoints REST de la capa de IA de Wil.E.
+// wil-e/routes.js — Endpoints REST de la capa de IA de JARVIS.
 //   GET  /api/wil-e/kb/search?q=...  — busca en la base de conocimiento (RAG)
 //   POST /api/wil-e/kb/ingest       — ingesta privada (x-admin) para "entrenar"
 //   POST /api/wil-e/kb/clear        — limpia conocimiento (privado)
@@ -48,7 +48,7 @@ module.exports = function (opts) {
     }
   });
 
-  // ── Ingesta (entrenar a Wil.E con tus datos) — PRIVADO ────────
+  // ── Ingesta (entrenar a JARVIS con tus datos) — PRIVADO ────────
   router.post('/kb/ingest', async (req, res) => {
     try {
       if (isAdminReq && !isAdminReq(req)) {
@@ -130,7 +130,7 @@ module.exports = function (opts) {
     }
   });
 
-  // ── Nota de memoria (entrenar a Wil.E con texto libre) ─────────
+  // ── Nota de memoria (entrenar a JARVIS con texto libre) ─────────
   // Guarda texto en la memoria privada del usuario autenticado. Sin permiso
   // admin: solo afecta su propio userId (no el KB global).
   router.post('/memory/note', async (req, res) => {

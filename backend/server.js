@@ -321,20 +321,20 @@ function _verifySession(token) {
   } catch { return null; }
 }
 
-// ── Contador diario de EMI por usuario/dispositivo ───────────
+// ── Contador diario de JARVIS por usuario/dispositivo ───────────
 // F3.7: Persisted in MongoDB (survives restarts). Falls back to in-memory if DB is down.
 // Limits are now configurable via /api/admin/config
-const EMI_DAILY_LIMIT_GUEST_FALLBACK = 15;
-const EMI_DAILY_LIMIT_REGISTERED_FALLBACK = 20;
+const JARVIS_DAILY_LIMIT_GUEST_FALLBACK = 15;
+const JARVIS_DAILY_LIMIT_REGISTERED_FALLBACK = 20;
 
-async function getEmiLimit(isRegistered) {
+async function getJarvisLimit(isRegistered) {
   try {
     const cfg = await getAppConfig();
     return isRegistered
-      ? (cfg.limits.emiDailyRegistered || EMI_DAILY_LIMIT_REGISTERED_FALLBACK)
-      : (cfg.limits.emiDailyGuest || EMI_DAILY_LIMIT_GUEST_FALLBACK);
+      ? (cfg.limits.emiDailyRegistered || JARVIS_DAILY_LIMIT_REGISTERED_FALLBACK)
+      : (cfg.limits.emiDailyGuest || JARVIS_DAILY_LIMIT_GUEST_FALLBACK);
   } catch (e) {
-    return isRegistered ? EMI_DAILY_LIMIT_REGISTERED_FALLBACK : EMI_DAILY_LIMIT_GUEST_FALLBACK;
+    return isRegistered ? JARVIS_DAILY_LIMIT_REGISTERED_FALLBACK : JARVIS_DAILY_LIMIT_GUEST_FALLBACK;
   }
 }
 
@@ -456,9 +456,9 @@ async function getAppConfig() {
 }
 EmiUsage.schema.index({ key: 1, date: 1 }, { unique: true });
 
-const _emiFallback = new Map(); // fallback when DB is down
+const _jarvisFallback = new Map(); // fallback when DB is down
 
-async function getEmiUsage(key) {
+async function getJarvisUsage(key) {
   const today = new Date().toISOString().slice(0, 10);
   if (dbConnected) {
     try {
@@ -466,12 +466,12 @@ async function getEmiUsage(key) {
       return doc ? doc.count : 0;
     } catch (e) { /* fall through to memory */ }
   }
-  const entry = _emiFallback.get(key);
+  const entry = _jarvisFallback.get(key);
   if (!entry || entry.date !== today) return 0;
   return entry.count;
 }
 
-async function incrEmiUsage(key) {
+async function incrJarvisUsage(key) {
   const today = new Date().toISOString().slice(0, 10);
   if (dbConnected) {
     try {
@@ -481,8 +481,8 @@ async function incrEmiUsage(key) {
       return doc.count;
     } catch (e) { /* fall through to memory */ }
   }
-  const entry = _emiFallback.get(key);
-  if (!entry || entry.date !== today) { _emiFallback.set(key, { date: today, count: 1 }); return 1; }
+  const entry = _jarvisFallback.get(key);
+  if (!entry || entry.date !== today) { _jarvisFallback.set(key, { date: today, count: 1 }); return 1; }
   entry.count++;
   return entry.count;
 }
@@ -726,7 +726,7 @@ async function getGhRunsCached(force) {
   return out;
 }
 
-// ── WIL.E INTELLIGENCE CORE ─────────────────────────────────
+// ── JARVIS INTELLIGENCE CORE ─────────────────────────────────
 // Capa de IA: memoria entrenable + base de conocimiento (RAG) + cifrado E2E.
 const { buildContext, augmentSystem } = require('./wil-e/core');
 const { remember } = require('./wil-e/memory');
@@ -734,7 +734,7 @@ const { AIMemory } = require('./wil-e/models');
 
 let dbConnected = false;
 
-// Resuelve el "dueño" de la memoria de Wil.E por petición:
+// Resuelve el "dueño" de la memoria de JARVIS por petición:
 //  • Usuarios logueados  → su propio id (memoria persistente individual)
 //  • Invitados con sesión → 'sess:<sessionId>' (memoria aislada 24h, sin
 //    mezclar hechos entre visitantes que antes compartían 'anon')
@@ -1664,8 +1664,8 @@ async function deleteFromArchive(fileName, appId = '') {
 // ── SYSTEM prompts: base (corta) + completa ─────────────────────
 // La base se usa para consultas generales (~600 tokens vs ~2000 de la completa).
 // La completa solo se inyecta cuando el query es sobre CodeHub/servicios.
-const SYSTEM_BASE = `Eres WIL.E COPILOT — la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
-No reveles qué modelo o APIs usas. Di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
+const SYSTEM_BASE = `Eres JARVIS — la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
+No reveles qué modelo o APIs usas. Di: "Soy JARVIS, una IA propia de CodeHub."
 
 PERSONALIDAD: Directa, sin relleno. En español (o en el idioma del usuario). Corta por defecto (3-5 líneas). Emojis máx 1 por respuesta. No inventes: di que no sabes y sugiere cómo buscar.
 
@@ -1675,15 +1675,15 @@ FORMATO: Respuestas cortas. Listas con -. **Negritas** solo en términos clave. 
 
 SEGURIDAD: No ayudes con piracy, hacking ofensivo, contenido explícito, consejos médicos/legales/financieros como profesional. Enfócate en educación defensiva.`;
 
-const SYSTEM_FULL = `Eres WIL.E COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
+const SYSTEM_FULL = `Eres JARVIS — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
 
 No eres un chatbot genérico. Eres una IA con identidad propia: precisa, técnica cuando hace falta, humana cuando importa. Puedes responder sobre cualquier tema, pero tu casa es CodeHub y tu creador es Wilson.E.
 
 ━━━ IDENTIDAD ━━━
-- Nombre: WIL.E COPILOT
+- Nombre: JARVIS
 - Creada por: Wilson.E (wilson.e360labs@gmail.com)
 - Plataforma: CodeHub — wilson360-labs.vercel.app
-- NO reveles qué modelo de IA te impulsa ni qué APIs usas. Si preguntan, di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
+- NO reveles qué modelo de IA te impulsa ni qué APIs usas. Si preguntan, di: "Soy JARVIS, una IA propia de CodeHub."
 
 ━━━ PERSONALIDAD ━━━
 - Directa. Sin "¡Claro!", "¡Por supuesto!", "¡Genial!" — ve al punto.
@@ -1713,7 +1713,7 @@ Aplicaciones de código abierto verificadas contra su repositorio oficial de Git
 **Otros en CodeHub:**
 - Juegos: Snake y Tetris (Canvas API)
 - Servicios freelance detallados en /servicios
-- WIL.E COPILOT — asistente IA integrada (¡soy yo!)
+- JARVIS — asistente IA integrada (¡soy yo!)
 - App Android (APK) disponible para descarga desde la web
 - PWA con modo offline y notificaciones push
 - Clima en tiempo real widget integrado
@@ -1821,7 +1821,7 @@ Puedes responder sobre cualquier tema: ciencias, historia, matemáticas, idiomas
 // ── F1.1: Query classification → dynamic SYSTEM prompt ───────
 // Detecta si el query necesita el SYSTEM completo (CodeHub/servicios)
 // o si con la base es suficiente (~600 tokens vs ~2000).
-const CODEHUB_HINTS = /\b(codehub|wilson\.?e|wilson360|herramientas|tools|opensource|open.?source|servicios|freelance|guatemala|apk|android|emi copilot|emi\s|\/tools|\/servicios|\/opensource|\/cv)\b/i;
+const CODEHUB_HINTS = /\b(codehub|wilson\.?e|wilson360|herramientas|tools|opensource|open.?source|servicios|freelance|guatemala|apk|android|jarvis\s|\/tools|\/servicios|\/opensource|\/cv)\b/i;
 function classifySystem(msg) {
   if (CODEHUB_HINTS.test(msg)) return SYSTEM_FULL;
   return SYSTEM_BASE;
@@ -1948,7 +1948,7 @@ async function callOpenRouterModel(msgs, model, maxTokens) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app',
-      'X-Title': 'WIL.E COPILOT',
+      'X-Title': 'JARVIS',
     },
     body: JSON.stringify({
       model,
@@ -2172,7 +2172,7 @@ const userDataRouter = createUserDataRouter(supabase);
 app.use('/api/user', requireAuth, userDataRouter);
 
 // Perfil nativo de CodeHub. La identidad y fecha vienen de Supabase Auth;
-// el uso diario de WIL.E y favoritos se consulta por el ID ya autenticado.
+// el uso diario de JARVIS y favoritos se consulta por el ID ya autenticado.
 app.get('/api/user/profile', requireAuth, async (req, res) => {
   if (!req.authUser?.id) return res.status(401).json({ ok: false, error: 'Inicia sesión para ver tu perfil.' });
   let savedTools = 0;
@@ -2186,8 +2186,8 @@ app.get('/api/user/profile', requireAuth, async (req, res) => {
       }
     } catch (e) { console.warn('Perfil: no se pudieron leer favoritos:', e.message); }
   }
-  const aiMessagesToday = await getEmiUsage('u:' + req.authUser.id);
-  const aiDailyLimit = await getEmiLimit(true);
+  const aiMessagesToday = await getJarvisUsage('u:' + req.authUser.id);
+  const aiDailyLimit = await getJarvisLimit(true);
   res.json({
     ok: true,
     profile: {
@@ -2216,7 +2216,7 @@ app.use('/api/rewards', requireAuth, rewardsRouter);
 const extensionsRouter = require('./modules/extensions');
 app.use('/api/extensions', requireAuth, extensionsRouter);
 
-// ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
+// ── JARVIS INTELLIGENCE CORE — rutas ──────────────────────────
 // Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
 // Seguridad: isAdminReq compara el valor de la key contra ADMIN_KEY (nunca
 // acepta el header solo) o valida la sesión HMAC; requireUser exige sesión
@@ -2238,7 +2238,7 @@ const wilERoutes = require('./wil-e/routes')({
 // las rutas internas usan requireAuthed/isAdminReq para exijir sesión real.
 app.use('/api/wil-e', requireAuth, wilERoutes);
 
-// ── WIL.E VOZ — TTS neural premium (Jarvis) ────────────────────────
+// ── JARVIS VOZ — TTS neural premium (Jarvis) ────────────────────────
 // /api/tts y /api/tts/info. Reemplaza la voz del navegador por ElevenLabs
 // cuando ELEVENLABS_API_KEY está configurada; si no, el frontend usa fallback.
 const ttsRoutes = require('./wil-e/tts')({ authPayload: (req) => req.authUser });
@@ -2990,10 +2990,10 @@ app.get('/api/skills/:id', (req, res) => {
 // Chat IA
 app.get('/api/chat/usage', requireAuth, async (req, res) => {
   try {
-    const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+    const jarvisKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
     const [limit, used] = await Promise.all([
-      getEmiLimit(!!req.authUser),
-      getEmiUsage(emiKey),
+      getJarvisLimit(!!req.authUser),
+      getJarvisUsage(jarvisKey),
     ]);
     res.set('Cache-Control', 'no-store');
     res.json({ emi: { used, limit } });
@@ -3010,11 +3010,11 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   if (!hasAnyChatKey()) return res.status(503).json({ error: 'Sin API keys.' });
 
   // ── Límite diario server-side ─────────────────────────────────
-  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
-  const emiLimit = await getEmiLimit(!!req.authUser);
-  const emiUsed = await getEmiUsage(emiKey);
-  if (emiUsed >= emiLimit) {
-    return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+  const jarvisKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+  const jarvisLimit = await getJarvisLimit(!!req.authUser);
+  const jarvisUsed = await getJarvisUsage(jarvisKey);
+  if (jarvisUsed >= jarvisLimit) {
+    return res.status(429).json({ error: `Límite diario alcanzado (${jarvisLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: jarvisUsed });
   }
 
   // ── Imagen / PDF escaneado adjunto: valida formato/tamaño antes de gastar una llamada ──
@@ -3071,7 +3071,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       system = skill.system_prompt_inject + '\n\n' + system;
     }
   }
-  // WIL.E: contexto aumentado (memoria del usuario + base de conocimiento RAG)
+  // JARVIS: contexto aumentado (memoria del usuario + base de conocimiento RAG)
   if (dbConnected) {
     try {
       const ctx = await buildContext({
@@ -3082,20 +3082,20 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       });
       if (ctx) system = augmentSystem(system, ctx);
     } catch (e) {
-      console.warn('Wil.E contexto error:', e.message);
+      console.warn('JARVIS contexto error:', e.message);
     }
   }
-  // WIL.E: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
+  // JARVIS: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
   try {
     const live = await liveWebContext(message);
     if (live) system = system + '\n\n' + live;
   } catch (e) { /* silencioso */ }
-  // WIL.E: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
+  // JARVIS: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
   try {
     const tool = computeTool(message);
     if (tool) system = system + '\n\n' + tool;
   } catch (e) { /* silencioso */ }
-  // WIL.E: function-calling — ejecuta la herramienta detectada (web/computo/URL)
+  // JARVIS: function-calling — ejecuta la herramienta detectada (web/computo/URL)
   try {
     const dt = detectTool(message);
     if (dt) {
@@ -3118,10 +3118,10 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     ]).catch(() => {});
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
-    tgAlert('chat', () => `💬 <b>Chat con WIL.E</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
-    const emiNow = await incrEmiUsage(emiKey);
-    res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
-    // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
+    tgAlert('chat', () => `💬 <b>Chat con JARVIS</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
+    const jarvisNow = await incrJarvisUsage(jarvisKey);
+    res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: jarvisNow, limit: jarvisLimit } });
+    // JARVIS: aprende hechos del mensaje del usuario (memoria entrenable)
     const memU = memUserOf(req, sessionId);
     if (dbConnected && memU && memEnabledOf(req)) {
       if (memU.startsWith('sess:')) {
@@ -3145,7 +3145,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 });
 
 // Asistencia de CV: reutiliza el router de proveedores, pero nunca comparte
-// ni persiste el contenido en el historial general de WIL.E.
+// ni persiste el contenido en el historial general de JARVIS.
 app.post('/api/cv/assist', cvAssistLimiter, requireAuth, async (req, res) => {
   const task = typeof req.body?.task === 'string' ? req.body.task : '';
   const allowedTasks = new Set(['summary', 'experience', 'guided_draft', 'job_match', 'review']);
@@ -3200,11 +3200,11 @@ app.post('/api/cv/assist', cvAssistLimiter, requireAuth, async (req, res) => {
   if (Buffer.byteLength(JSON.stringify(profile), 'utf8') > 20000) {
     return res.status(413).json({ error: 'El contenido del CV es demasiado extenso para analizarlo de una vez.' });
   }
-  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
-  const emiLimit = await getEmiLimit(!!req.authUser);
-  const emiUsed = await getEmiUsage(emiKey);
-  if (emiUsed >= emiLimit) {
-    return res.status(429).json({ error: `Alcanzaste el límite diario de ayuda con IA (${emiLimit}).`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+  const jarvisKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+  const jarvisLimit = await getJarvisLimit(!!req.authUser);
+  const jarvisUsed = await getJarvisUsage(jarvisKey);
+  if (jarvisUsed >= jarvisLimit) {
+    return res.status(429).json({ error: `Alcanzaste el límite diario de ayuda con IA (${jarvisLimit}).`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: jarvisUsed });
   }
 
   const taskInstructions = {
@@ -3237,11 +3237,11 @@ app.post('/api/cv/assist', cvAssistLimiter, requireAuth, async (req, res) => {
     const candidate = String(completion.reply || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
     const result = JSON.parse(candidate);
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Formato de respuesta inválido');
-    const used = await incrEmiUsage(emiKey);
+    const used = await incrJarvisUsage(jarvisKey);
     // No ChatMessage insert, session history, memory, prompt logging or Telegram
     // alert here; CV content stays out of the shared chat data path.
     trackEvent('cv_ai', null, { task, model: completion.model });
-    res.json({ result, model: completion.model, emi: { used, limit: emiLimit } });
+    res.json({ result, model: completion.model, emi: { used, limit: jarvisLimit } });
   } catch (error) {
     console.warn('CV assistant provider failure:', error?.status || error?.message || 'unknown');
     res.status(502).json({ error: 'No se pudo completar la sugerencia. Tu borrador local sigue guardado.' });
@@ -4333,9 +4333,9 @@ async function refineImagePrompt(rawPrompt, w, h) {
 
 // ── Descriptor de imagen ─────────────────────────────────────────────
 // Genera una descripción natural en español de la imagen creada, para que
-// WIL.E se la "cuente" al usuario (texto + voz) de forma cálida y corta.
+// JARVIS se la "cuente" al usuario (texto + voz) de forma cálida y corta.
 async function describeImage(rawPrompt, refinedPrompt) {
-  const sysMsg = 'Eres WIL.E COPILOT, el asistente de CodeHub. El usuario te pidió generar una imagen y acaba de crearse.\n'
+  const sysMsg = 'Eres JARVIS, el asistente de CodeHub. El usuario te pidió generar una imagen y acaba de crearse.\n'
     + 'Escribe UN párrafo breve (máx. 40 palabras) en ESPAÑOL, cálido y entusiasta, describiendo QUÉ se creó basándote en esta petición.\n'
     + 'Empieza con algo como "¡Listo! Generé..." o "Aquí tienes tu imagen de...". Describe el sujeto, el estilo y la sensación general.\n'
     + 'NO menciones que eres una IA ni cómo se generó. Solo describe la imagen creada para el usuario.';
@@ -4355,7 +4355,7 @@ async function describeImage(rawPrompt, refinedPrompt) {
 // ── Búsqueda web en vivo ─────────────────────────────────────────────
 // Si la consulta parece pedir información actual/noticias, busca en la web
 // (DuckDuckGo Instant Answer + Wikipedia, gratuitos y sin clave) y devuelve
-// un contexto breve para que WIL.E responda con datos reales y recientes.
+// un contexto breve para que JARVIS responda con datos reales y recientes.
 // Devuelve string vacío si no aplica o falla.
 async function liveWebContext(message) {
   const q = String(message || '').trim();
@@ -4467,7 +4467,7 @@ function computeTool(message) {
 }
 
 // ── Function-calling (agente) ────────────────────────────────────────
-// Dispatcher de herramientas de Wil.E. Detecta la intención del mensaje y
+// Dispatcher de herramientas de JARVIS. Detecta la intención del mensaje y
 // ejecuta la herramienta adecuada (búsqueda web, cómputo, leer URL), luego
 // inyecta el resultado estructurado como contexto para que el LLM responda
 // con datos reales. Devuelve string vacío si no corresponde ninguna.
@@ -7564,11 +7564,11 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   }
 
   // ── Límite diario server-side ──
-  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
-  const emiLimit = await getEmiLimit(!!req.authUser);
-  const emiUsed = await getEmiUsage(emiKey);
-  if (emiUsed >= emiLimit) {
-    return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+  const jarvisKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+  const jarvisLimit = await getJarvisLimit(!!req.authUser);
+  const jarvisUsed = await getJarvisUsage(jarvisKey);
+  if (jarvisUsed >= jarvisLimit) {
+    return res.status(429).json({ error: `Límite diario alcanzado (${jarvisLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: jarvisUsed });
   }
 
   // ── Recuperar historial ──
@@ -7594,7 +7594,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     const skill = loadSkillJson(String(skill_id));
     if (skill && skill.system_prompt_inject) system = skill.system_prompt_inject + '\n\n' + system;
   }
-  // WIL.E: contexto aumentado (memoria del usuario + base de conocimiento RAG)
+  // JARVIS: contexto aumentado (memoria del usuario + base de conocimiento RAG)
   if (dbConnected) {
     try {
       const ctx = await buildContext({
@@ -7605,20 +7605,20 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       });
       if (ctx) system = augmentSystem(system, ctx);
     } catch (e) {
-      console.warn('Wil.E contexto error:', e.message);
+      console.warn('JARVIS contexto error:', e.message);
     }
   }
-  // WIL.E: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
+  // JARVIS: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
   try {
     const live = await liveWebContext(message);
     if (live) system = system + '\n\n' + live;
   } catch (e) { /* silencioso */ }
-  // WIL.E: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
+  // JARVIS: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
   try {
     const tool = computeTool(message);
     if (tool) system = system + '\n\n' + tool;
   } catch (e) { /* silencioso */ }
-  // WIL.E: function-calling — ejecuta la herramienta detectada (web/computo/URL)
+  // JARVIS: function-calling — ejecuta la herramienta detectada (web/computo/URL)
   try {
     const dt = detectTool(message);
     if (dt) {
@@ -7771,7 +7771,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
             name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions',
             key: process.env.OPENROUTER_API_KEY, model: m,
             label: 'openrouter/' + m.split('/').pop().replace(':free', ''),
-            extraHeaders: { 'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app', 'X-Title': 'WIL.E COPILOT' }
+            extraHeaders: { 'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app', 'X-Title': 'JARVIS' }
           });
         }
       }
@@ -7818,12 +7818,12 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       { sessionId, role: 'assistant', content: fullReply, tokens: usage.output, model: modelName },
     ]).catch(() => {});
 
-    const emiNow = await incrEmiUsage(emiKey);
+    const jarvisNow = await incrJarvisUsage(jarvisKey);
     broadcast('chat_used', { model: modelName, tokens: usage.input + usage.output });
     trackEvent('chat', null, { model: modelName, tokens: usage.input + usage.output });
-    tgAlert('chat', () => 'Chat con WIL.E (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
+    tgAlert('chat', () => 'Chat con JARVIS (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
 
-    // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
+    // JARVIS: aprende hechos del mensaje del usuario (memoria entrenable)
     const memU = memUserOf(req, sessionId);
     if (dbConnected && memU && memEnabledOf(req)) {
       if (memU.startsWith('sess:')) {
@@ -7835,7 +7835,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       }
     }
 
-    sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: emiNow, limit: emiLimit } });
+    sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: jarvisNow, limit: jarvisLimit } });
     res.end();
 
   } catch (err) {

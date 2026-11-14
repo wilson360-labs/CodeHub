@@ -1,4 +1,4 @@
-// wil-e/memory.js — Memoria entrenable de Wil.E.
+// wil-e/memory.js — Memoria entrenable de JARVIS.
 // Extrae hechos/preferencias de los mensajes del usuario, los guarda cifrados
 // y los recupera para enriquecer el contexto de futuras conversaciones.
 const { AIMemory } = require('./models');
@@ -67,7 +67,7 @@ async function remember({ userId, scope = 'user', text }) {
 
 // Guarda una nota de texto libre en la memoria del usuario (para /entrenar).
 // A diferencia de remember(), NO hace upsert: permite guardar varias notas y
-// Wil.E las recuerda como referencia/contexto cifrado.
+// JARVIS las recuerda como referencia/contexto cifrado.
 async function rememberNote({ userId, scope = 'user', text, title = '' }) {
   if (!userId || !text) return 0;
   const clean = String(text).replace(/\s+/g, ' ').trim();

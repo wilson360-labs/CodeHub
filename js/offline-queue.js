@@ -1,7 +1,7 @@
 /* js/offline-queue.js — Cola de escritura offline con IndexedDB.
  *
  * Guarda operaciones de escritura (POST/DELETE) que el usuario hace estando
- * sin conexión (votos/ratings, memoria de Wil.E) y las reenvía cuando la
+ * sin conexión (votos/ratings, memoria de JARVIS) y las reenvía cuando la
  * conexión regresa — de forma automática (evento `online`, carga de página,
  * mensaje del SW en un sync) o manual (window.ChQueue.flush()).
  *

@@ -27,7 +27,7 @@ import android.util.Base64
 class NativeAuthActivity : Activity() {
     companion object {
         const val RESULT_AUTHENTICATED = Activity.RESULT_OK
-        private const val API = WileChatRepository.BASE_URL
+        private const val API = CodeHubApiRepository.BASE_URL
         private const val TURNSTILE_URL = "https://wilson360-labs.vercel.app/native-auth-check"
     }
 
@@ -46,7 +46,7 @@ class NativeAuthActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var submit: TextView
     private lateinit var root: LinearLayout
-    private val repository by lazy { WileChatRepository("") }
+    private val repository by lazy { CodeHubApiRepository("") }
     private var registerMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {

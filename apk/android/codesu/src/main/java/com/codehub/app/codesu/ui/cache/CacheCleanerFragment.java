@@ -15,6 +15,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
+import androidx.work.Data;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import java.util.List;
@@ -23,6 +29,8 @@ import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.databinding.CodesuCacheCleanerBinding;
 import com.codehub.app.codesu.model.CacheAppInfo;
 import com.codehub.app.codesu.util.CacheCleaner;
+import com.codehub.app.codesu.worker.CacheCleanerWorker;
+import java.util.UUID;
 
 public class CacheCleanerFragment extends Fragment {
 
@@ -32,6 +40,9 @@ public class CacheCleanerFragment extends Fragment {
     private boolean loading;
     private int loadGeneration;
     private static final String CLEANER_PREFS = "codesu_cache_cleaner";
+    private static final String LAST_WORK_ID = "last_cleanup_work_id";
+    private LiveData<WorkInfo> cleanupWorkLiveData;
+    private Observer<WorkInfo> cleanupWorkObserver;
 
     @Nullable
     @Override
@@ -59,6 +70,7 @@ public class CacheCleanerFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        observeCleanupWork();
         loadCacheApps();
     }
 
@@ -67,6 +79,11 @@ public class CacheCleanerFragment extends Fragment {
         super.onDestroyView();
         loadGeneration++;
         loading = false;
+        cleaning = false;
+        if (cleanupWorkLiveData != null && cleanupWorkObserver != null)
+            cleanupWorkLiveData.removeObserver(cleanupWorkObserver);
+        cleanupWorkLiveData = null;
+        cleanupWorkObserver = null;
         binding = null;
         adapter = null;
     }
@@ -229,12 +246,12 @@ public class CacheCleanerFragment extends Fragment {
                 .setTitle("Limpieza profunda de caché")
                 .setMessage(message)
                 .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Medir y limpiar", (dialog, which) -> runGlobalCacheClear(apps))
+                .setPositiveButton("Medir y limpiar", (dialog, which) -> runGlobalCacheClear())
                 .show();
     }
 
-    private void runGlobalCacheClear(List<CacheAppInfo> apps) {
-        if (binding == null) return;
+    private void runGlobalCacheClear() {
+        if (binding == null || cleaning) return;
         cleaning = true;
         binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheRefresh.setEnabled(false);
@@ -244,108 +261,95 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgress.setVisibility(View.VISIBLE);
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
         binding.codesuCacheResult.setVisibility(View.GONE);
-        binding.codesuCacheProgressText.setText("Preparando medición de caché · 0%");
+        binding.codesuCacheProgressText.setText("Preparando limpieza segura · 0%");
         binding.codesuCacheCleanButton.animate().rotationBy(360f).setDuration(700)
                 .setInterpolator(new AccelerateDecelerateInterpolator()).start();
+        try {
+            OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(CacheCleanerWorker.class)
+                    .addTag(CacheCleanerWorker.TAG).build();
+            requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE).edit()
+                    .putString(LAST_WORK_ID, request.getId().toString()).apply();
+            WorkManager.getInstance(requireContext()).enqueue(request);
+            observeCleanupWork();
+        } catch (RuntimeException e) {
+            cleaning = false;
+            binding.codesuCacheCleanButton.setEnabled(true);
+            binding.codesuCacheRefresh.setEnabled(true);
+            binding.codesuCacheRefresh.setAlpha(1f);
+            binding.codesuCacheProgress.setVisibility(View.GONE);
+            binding.codesuCacheProgressText.setVisibility(View.GONE);
+            Toast.makeText(requireContext(), "No se pudo iniciar la limpieza en segundo plano: "
+                    + (e.getMessage() == null ? "error del sistema" : e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+    private void observeCleanupWork() {
+        if (binding == null) return;
+        if (cleanupWorkLiveData != null && cleanupWorkObserver != null)
+            cleanupWorkLiveData.removeObserver(cleanupWorkObserver);
+        String savedId = requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE)
+                .getString(LAST_WORK_ID, "");
+        if (savedId == null || savedId.isEmpty()) return;
+        try {
+            UUID workId = UUID.fromString(savedId);
+            cleanupWorkLiveData = WorkManager.getInstance(requireContext()).getWorkInfoByIdLiveData(workId);
+            cleanupWorkObserver = info -> renderCleanupWork(info);
+            cleanupWorkLiveData.observe(getViewLifecycleOwner(), cleanupWorkObserver);
+        } catch (IllegalArgumentException ignored) {
+            requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE).edit().remove(LAST_WORK_ID).apply();
+        }
+    }
 
-        Context appContext = requireContext().getApplicationContext();
-        App.executorService.execute(() -> {
-            try {
-                List<CacheAppInfo> refreshedApps = CacheCleaner.recalculateCacheSizes(appContext, apps,
-                        (completed, total, packageName) -> App.handler.post(() -> {
-                            if (binding == null) return;
-                            int percent = total == 0 ? 35 : (int) (completed * 35L / total);
-                            binding.codesuCacheProgress.setIndeterminate(false);
-                            binding.codesuCacheProgress.setProgress(percent);
-                            binding.codesuCacheProgressText.setText("Midiendo caché · " + percent + "% · "
-                                    + completed + "/" + total + " apps");
-                        }));
-                int eligible = 0;
-                for (CacheAppInfo app : refreshedApps) {
-                    if (app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
-                            && !CacheCleaner.isProtected(app.packageName)) eligible++;
-                }
-                if (eligible == 0) {
-                    App.handler.post(() -> {
-                        if (binding == null) return;
-                        cleaning = false;
-                        binding.codesuCacheCleanButton.setEnabled(true);
-                        binding.codesuCacheProgress.setVisibility(View.GONE);
-                        binding.codesuCacheProgressText.setVisibility(View.GONE);
-                        binding.codesuCacheTotal.setText("Caché actualizada · ninguna app supera 1 MB");
-                        Toast.makeText(requireContext(), "La caché está actualizada; ninguna app supera 1 MB.",
-                                Toast.LENGTH_SHORT).show();
-                        loadCacheApps();
-                    });
-                    return;
-                }
-                App.handler.post(() -> {
-                    if (binding == null) return;
-                    binding.codesuCacheProgress.setIndeterminate(false);
-                    binding.codesuCacheProgress.setProgress(40);
-                    binding.codesuCacheProgressText.setText("Caché medida · conectando con Shizuku · 40%");
-                });
-                CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(
-                        appContext, refreshedApps,
-                        (completed, total, pkg, cleared, verifiedFreed, unmeasured) -> App.handler.post(() -> {
-                            if (binding == null) return;
-                            int percent = total == 0 ? 95 : 40 + (int) ((completed * 55L) / total);
-                            binding.codesuCacheProgress.setProgress(percent);
-                            binding.codesuCacheProgressText.setText(percent + "% · limpiando " + pkg
-                                    + " · " + completed + "/" + total + " apps · "
-                                    + CacheAppAdapter.formatBytes(verifiedFreed) + " verificados"
-                                    + (unmeasured > 0 ? " · " + unmeasured + " sin medir" : ""));
-                        }));
-                App.handler.post(() -> {
-                    if (binding == null) return;
-                    cleaning = false;
-                    binding.codesuCacheCleanButton.setEnabled(true);
-                    binding.codesuCacheRefresh.setEnabled(true);
-                    binding.codesuCacheRefresh.setAlpha(1f);
-                    binding.codesuCacheProgress.setProgress(100);
-                    binding.codesuCacheProgressText.setText("100% · Actualizando tamaños…");
-                    String outcome = result.failed == 0 ? "Limpieza completada"
-                            : result.cleared == 0 ? "No se pudo ejecutar la limpieza" : "Limpieza parcial";
-                    String resultMessage = outcome + " · " + result.cleared + " apps confirmadas · "
-                            + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " liberados"
-                            + (result.unmeasuredApps > 0 ? " · medición pendiente en " + result.unmeasuredApps + " apps" : "")
-                            + (result.failed > 0 ? " · " + result.failed + " omitidas o sin permiso" : "");
-                    int attempted = result.cleared + result.failed;
-                    int successRate = attempted == 0 ? 0 : Math.round(result.cleared * 100f / attempted);
-                    int spaceRate = result.targetBytes <= 0 ? 0
-                            : Math.min(100, Math.round(result.verifiedFreedBytes * 100f / result.targetBytes));
-                    requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE).edit()
-                            .putInt("last_success_rate", successRate)
-                            .putInt("last_space_rate", spaceRate)
-                            .putLong("last_freed_bytes", result.verifiedFreedBytes)
-                            .apply();
-                    binding.codesuCacheSuccessRate.setText("Liberación confirmada · " + spaceRate + "% del objetivo · "
-                            + successRate + "% apps OK · " + result.cleared + "/" + attempted + " · "
-                            + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " verificados");
-                    binding.codesuCacheSuccessRate.setTextColor(successRate >= 80 ? 0xFF41C99A : 0xFFE7838B);
-                    binding.codesuCacheResult.setText(resultMessage);
-                    binding.codesuCacheResult.setVisibility(View.VISIBLE);
-                    String toastMessage = result.cleared == 0
-                            ? "No se eliminó caché. Revisa la autorización de Shizuku e inténtalo de nuevo."
-                            : outcome + " · " + result.cleared + " apps · "
-                                    + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " liberados";
-                    Toast.makeText(requireContext(), toastMessage, Toast.LENGTH_LONG).show();
-                    loadCacheApps();
-                });
-            } catch (Exception e) {
-                App.handler.post(() -> {
-                    if (binding == null) return;
-                    cleaning = false;
-                    binding.codesuCacheCleanButton.setEnabled(true);
-                    binding.codesuCacheRefresh.setEnabled(true);
-                    binding.codesuCacheRefresh.setAlpha(1f);
-                    binding.codesuCacheProgress.setVisibility(View.GONE);
-                    binding.codesuCacheProgressText.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), e.getMessage() == null
-                            ? "No se pudo limpiar la caché. Revisa la autorización de Shizuku." : e.getMessage(), Toast.LENGTH_LONG).show();
-                    loadCacheApps();
-                });
-            }
-        });
+    private void renderCleanupWork(WorkInfo info) {
+        if (binding == null || info == null) return;
+        WorkInfo.State state = info.getState();
+        boolean active = state == WorkInfo.State.ENQUEUED || state == WorkInfo.State.RUNNING
+                || state == WorkInfo.State.BLOCKED;
+        if (active) {
+            cleaning = true;
+            loading = false;
+            binding.codesuCacheCleanButton.setEnabled(false);
+            binding.codesuCacheRefresh.setEnabled(false);
+            binding.codesuCacheRefresh.setAlpha(0.55f);
+            binding.codesuCacheProgress.setIndeterminate(false);
+            binding.codesuCacheProgress.setVisibility(View.VISIBLE);
+            binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
+            Data progress = info.getProgress();
+            int percent = progress.getInt(CacheCleanerWorker.KEY_PERCENT, 0);
+            String phase = progress.getString(CacheCleanerWorker.KEY_PHASE);
+            String current = progress.getString(CacheCleanerWorker.KEY_CURRENT);
+            binding.codesuCacheProgress.setProgress(percent);
+            binding.codesuCacheProgressText.setText((phase == null ? "Limpieza en segundo plano" : phase)
+                    + " · " + percent + "%" + (current == null || current.isEmpty() ? "" : " · " + current));
+            binding.codesuCacheTotal.setText("La limpieza continúa aunque salgas de CodeSu");
+            return;
+        }
+        cleaning = false;
+        binding.codesuCacheCleanButton.setEnabled(true);
+        binding.codesuCacheRefresh.setEnabled(true);
+        binding.codesuCacheRefresh.setAlpha(1f);
+        if (!state.isFinished()) return;
+        String workId = info.getId().toString();
+        String lastShown = requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE)
+                .getString("last_cleanup_shown_id", "");
+        if (workId.equals(lastShown)) return;
+        Data output = info.getOutputData();
+        int cleared = output.getInt(CacheCleanerWorker.KEY_CLEARED, 0);
+        int failed = output.getInt(CacheCleanerWorker.KEY_FAILED, 0);
+        long freed = output.getLong(CacheCleanerWorker.KEY_FREED, 0L);
+        String error = output.getString(CacheCleanerWorker.KEY_ERROR);
+        String result = state == WorkInfo.State.SUCCEEDED
+                ? "Limpieza completada · " + cleared + " apps confirmadas · " + CacheAppAdapter.formatBytes(freed) + " liberados"
+                : state == WorkInfo.State.CANCELLED ? "Limpieza cancelada por el usuario"
+                : "Limpieza no completada · " + (error == null ? "Shizuku no confirmó el borrado." : error);
+        binding.codesuCacheProgress.setProgress(state == WorkInfo.State.SUCCEEDED ? 100 : 0);
+        binding.codesuCacheProgressText.setText(state == WorkInfo.State.SUCCEEDED ? "100% · Limpieza verificada" : "Limpieza detenida");
+        binding.codesuCacheResult.setText(result + (failed > 0 ? " · " + failed + " apps sin confirmar" : ""));
+        binding.codesuCacheResult.setVisibility(View.VISIBLE);
+        binding.codesuCacheProgress.setVisibility(View.GONE);
+        binding.codesuCacheProgressText.setVisibility(View.GONE);
+        requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE).edit()
+                .putString("last_cleanup_shown_id", workId).apply();
+        Toast.makeText(requireContext(), result, Toast.LENGTH_LONG).show();
+        loadCacheApps();
     }
 }

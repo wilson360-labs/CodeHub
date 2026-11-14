@@ -153,7 +153,7 @@
       "generate-image con cupo diario y caché de imágenes con budget de bytes",
       "gates de /api/chat y /api/chat/stream validan contra cualquier provider (no solo Groq/Gemini)",
       "/api/wil-e monta requireAuth (arregla RAG/memoria 401/403)",
-      "emi-voice traduce con payload/endpoints correctos; generateImage manda Authorization y sessionId",
+      "jarvis-voice traduce con payload/endpoints correctos; generateImage manda Authorization y sessionId",
       "tools.html e index.html usan auth en generación de imagen"
     ]
   },
@@ -308,7 +308,7 @@
     "type": "feature",
     "title": "Cola de escritura offline",
     "changes": [
-      "cola con IndexedDB para ratings y memoria de Wil.E sin conexión"
+      "cola con IndexedDB para ratings y memoria de JARVIS sin conexión"
     ]
   },
   {
@@ -366,7 +366,7 @@
     "version": "v6.48",
     "date": "2026-08-29",
     "type": "feature",
-    "title": "Wil.E: memoria entrenable, RAG y cifrado E2E",
+    "title": "JARVIS: memoria entrenable, RAG y cifrado E2E",
     "changes": [
       "capa de inteligencia con memoria entrenable y RAG",
       "cifrado E2E de los datos de memoria"
@@ -376,13 +376,13 @@
     "version": "v6.35",
     "date": "2026-08-25",
     "type": "feature",
-    "title": "Optimización EMI COPILOT + Caché de imágenes",
+    "title": "Optimización JARVIS COPILOT + Caché de imágenes",
     "changes": [
       "SYSTEM prompt dinámico: versión corta para queries generales, completa solo para CodeHub",
       "Historial inteligente: budget de 10k tokens, descarta mensajes antiguos",
       "max_tokens adaptativo: código 2500, creativo 1500, corto 500",
       "Caché de imágenes por prompt hash (TTL 1 hora, máx 200 entradas)",
-      "EMI usage persistido en MongoDB (sobrevive reinicios)",
+      "JARVIS usage persistido en MongoDB (sobrevive reinicios)",
       "Cohere: ahora envía últimos 4 turnos en vez de solo 1"
     ]
   },

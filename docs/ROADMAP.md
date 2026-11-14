@@ -10,7 +10,7 @@
 ## 0. Diagnóstico honesto (punto de partida)
 
 CodeHub **ya no es una webview**: tiene backend Node/Express (~80 endpoints), PWA,
-auth Google/local, chat EMI en streaming, generación de imágenes, TTS, push (clima/sismos),
+auth Google/local, chat JARVIS en streaming, generación de imágenes, TTS, push (clima/sismos),
 admin dashboard (con control de GitHub), catálogo Open Source, ratings, analytics y 34 tools.
 **Sus vulnerabilidades reales:**
 
@@ -92,9 +92,9 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
 
 ---
 
-## 4. Fase 2 — EMI 2.0 y App Hub
+## 4. Fase 2 — JARVIS 2.0 y App Hub
 
-### 4.1 EMI 2.0 (asistente real, no chatbot suelto)
+### 4.1 JARVIS 2.0 (asistente real, no chatbot suelto)
 - **Qué:**
   - Hilos/memoria por usuario (backend: colección `threads`, conectada a `/api/chat`).
   - Herramientas conectadas al chat: clima, sismos, búsqueda Google/Tavily, resumen de URLs, imagen edit — endpoints ya existen en backend.
@@ -103,13 +103,13 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
 - **Definición de hecho:** usuario logueado retoma una conversación de otra sesión; comandos ejecutan herramientas reales.
 - **Riesgo:** los endpoints de búsqueda/imagen ya tienen rate-limit — mantener los `chatLimiter`/`imageLimiter`.
 - **▶ Avance (Fase 2.2, Oct 2026):** comandos `/clima <ciudad>`, `/sismo [magnitud]` y
-  `/search <consulta>` añadidos al chat EMI (`index.html`). Son 100 % frontend y reutilizan
+  `/search <consulta>` añadidos al chat JARVIS (`index.html`). Son 100 % frontend y reutilizan
   los endpoints ya desplegados: clima vía Open-Meteo (`geocoding-api` + `api.open-meteo.com`,
   ya permitidos por la CSP), sismos vía `/api/sismos` (USGS) y búsqueda vía
   `/api/search/tavily` (respeta su `chatLimiter`). Actualizan `/help` y muestran estado
   «escribiendo» mientras cargan. `/img` ya existía. Además, **voz extremo a extremo** vía el
-  toggle «Manos libres» en `js/emi-voice.js`: al hablar, el STT rellena el input, se envía
-  solo (`maybeAutoSend`) y la respuesta se locuta con el auto-speak/TTS de WIL.E.
+  toggle «Manos libres» en `js/jarvis-voice.js`: al hablar, el STT rellena el input, se envía
+  solo (`maybeAutoSend`) y la respuesta se locuta con el auto-speak/TTS de JARVIS.
   **Parcial** (faltan los hilos/memoria en la nube, que dependen del backend).
 
 ### 4.2 App Hub / Workspace
