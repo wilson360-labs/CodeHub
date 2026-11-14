@@ -9,7 +9,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-/** Owns authenticated WIL.E HTTP calls and SSE parsing, separate from Android view lifecycle. */
+/** Owns authenticated JARVIS HTTP calls and SSE parsing, separate from Android view lifecycle. */
 internal class WileChatRepository(private val accessToken: String) {
     companion object {
         const val BASE_URL = "https://codehub-98s6.onrender.com"
@@ -31,7 +31,7 @@ internal class WileChatRepository(private val accessToken: String) {
         val call = client.newCall(apiRequest(url).post(body).build())
         call.enqueue(object : okhttp3.Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (!call.isCanceled()) onFinished("No pude conectar con WIL.E. Revisa tu conexión e inténtalo de nuevo.")
+                if (!call.isCanceled()) onFinished("No pude conectar con JARVIS. Revisa tu conexión e inténtalo de nuevo.")
             }
 
             override fun onResponse(call: Call, response: okhttp3.Response) {
@@ -44,7 +44,7 @@ internal class WileChatRepository(private val accessToken: String) {
                             onEvent("quota", errorJson)
                         }
                         val detail = errorJson?.optString("error").orEmpty()
-                        failure = detail.ifBlank { "WIL.E respondió con un error HTTP ${res.code}." }
+                        failure = detail.ifBlank { "JARVIS respondió con un error HTTP ${res.code}." }
                     } else {
                         val source = res.body?.source()
                         if (source == null) failure = "El servidor respondió sin contenido."

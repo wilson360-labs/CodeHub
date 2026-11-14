@@ -56,7 +56,7 @@ import java.util.UUID
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
-/** Native WIL.E COPILOT client. AI routing, tools, limits and memory remain server-owned. */
+/** Native JARVIS assistant client. AI routing, tools, limits and memory remain server-owned. */
 class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     companion object {
         const val EXTRA_AUTH_TOKEN = "native_wile_auth_token"
@@ -143,6 +143,8 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var modeRow: LinearLayout
     private lateinit var emiVoiceControls: LinearLayout
     private lateinit var quickActionsContainer: View
+    private var followLatestOutput = true
+    private var lastStreamScrollAt = 0L
     private lateinit var micButton: ImageView
     private lateinit var micHalo: View
     private lateinit var clearChatButton: ImageView
@@ -153,10 +155,10 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private var dailyUsed = 0
     private var dailyLimit = 0
     private val brandMorphPhrases = listOf(
-        "CodeHub",
-        "Developer",
-        "Full Stack",
-        "Freelancer",
+        "JARVIS",
+        "Asistente personal",
+        "Voz y texto",
+        "CodeHub AI",
         "Guatemala"
     )
     private val brandMorphTick = object : Runnable {
@@ -234,7 +236,13 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             brandMorphSwitcher = this
         }
         brand.addView(morphLine, LinearLayout.LayoutParams(-1, -2))
-        brand.addView(text("WIL.E COPILOT · IA personal", 10.5f, 0xFF98A8BF.toInt()))
+        brand.addView(text("JARVIS · asistente personal", 10.5f, 0xFF98A8BF.toInt()))
+        top.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_jarvis_core)
+            contentDescription = "Icono de JARVIS"
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            background = rounded(0xFF142531.toInt(), dp(24), 0xFF347E86.toInt())
+        }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) })
         top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
         clearChatButton = ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_trash)
@@ -266,7 +274,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         }, LinearLayout.LayoutParams(dp(42), dp(48)))
         root.addView(top)
 
-        status = text("WIL.E · enrutamiento y herramientas de CodeHub", 11f, 0xFF8E9BB0.toInt()).apply {
+        status = text("JARVIS · IA conectada a CodeHub", 11f, 0xFF8E9BB0.toInt()).apply {
             setPadding(dp(10), dp(7), dp(10), dp(7))
             background = rounded(0xFF111A27.toInt(), dp(12), 0xFF222E40.toInt())
         }
@@ -308,6 +316,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             clipToPadding = false
             isFillViewport = false
             overScrollMode = View.OVER_SCROLL_NEVER
+            setOnScrollChangeListener { view, _, scrollY, _, _ ->
+                val scroll = view as ScrollView
+                val child = scroll.getChildAt(0) ?: return@setOnScrollChangeListener
+                followLatestOutput = child.bottom - (scrollY + scroll.height) <= dp(56)
+            }
         }
         messageList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -317,9 +330,15 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         root.addView(messageScroll, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(5) })
 
         val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        listOf("Depurar", "Code review", "Explicar", "README").forEachIndexed { index, title ->
+        listOf("Depurar", "Code review", "Explicar", "README", "Crear CV").forEachIndexed { index, title ->
             quick.addView(chip(title) {
-                val prompts = listOf("Ayúdame a depurar este problema: ", "Haz un code review de este código: ", "Explícame esto paso a paso: ", "Genera un README profesional para este proyecto")
+                val prompts = listOf(
+                    "Ayúdame a depurar este problema: ",
+                    "Haz un code review de este código: ",
+                    "Explícame esto paso a paso: ",
+                    "Genera un README profesional para este proyecto",
+                    "Quiero crear mi CV profesional. Guíame preguntándome por el puesto objetivo, experiencia, formación, habilidades y logros. No inventes información."
+                )
                 input.setText(prompts[index])
                 input.setSelection(input.text.length)
                 input.requestFocus()
@@ -494,15 +513,15 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             }
         }
         heading.addView(indicator, LinearLayout.LayoutParams(dp(7), dp(7)))
-        heading.addView(text("EMI.VOICE", 11f, 0xFFE2EAF5.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7) })
-        heading.addView(text("· voz nativa", 11f, 0xFF8999AE.toInt()), LinearLayout.LayoutParams(0, -2, 1f))
+        heading.addView(text("JARVIS VOICE", 11f, 0xFFE2EAF5.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7) })
+        heading.addView(text("· chat por voz y texto", 11f, 0xFF8999AE.toInt()), LinearLayout.LayoutParams(0, -2, 1f))
         heading.addView(text(if (handsFreeEnabled) "MODO ACTIVO" else if (readRepliesAloud) "ACTIVA" else "DESACTIVADA", 9f,
             if (handsFreeEnabled || readRepliesAloud) 0xFF77E4C2.toInt() else 0xFF75839A.toInt(), true))
         emiVoiceControls.addView(heading)
 
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         actions.addView(voiceToggle(
-            R.drawable.ic_voice_speaker, "Respuesta por voz", "WIL.E lee la respuesta", readRepliesAloud
+            R.drawable.ic_voice_speaker, "Respuesta hablada", "Lee solo el texto de la respuesta", readRepliesAloud
         ) { toggleAutoSpeak() }, LinearLayout.LayoutParams(0, dp(50), 1f).apply { marginEnd = dp(5); topMargin = dp(7) })
         actions.addView(voiceToggle(
             R.drawable.ic_voice_handsfree, "Manos libres", "Dicta y envía", handsFreeEnabled
@@ -604,7 +623,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         messages.add(assistant)
         persistHistory()
         renderHistory()
-        showThinking("WIL.E está preparando una respuesta")
+        showThinking("JARVIS está preparando una respuesta")
         scrollToBottom()
         status.text = "Conectando con los proveedores de IA…"
         setSendButtonState(true)
@@ -622,13 +641,13 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 when (event) {
                     "chunk" -> data.optString("text").takeIf { it.isNotEmpty() }?.let { chunk -> runOnUiThread {
                         finishThinking()
-                        if (assistant.text.isBlank()) status.text = "WIL.E · generando respuesta en vivo…"
+                        if (assistant.text.isBlank()) status.text = "JARVIS · generando respuesta en vivo…"
                         assistant.text += chunk
                         val body = streamingBodyView ?: createStreamingBody().also { streamingBodyView = it }
                         body.append(chunk)
-                        scrollToBottom()
+                        scrollStreamingIfNeeded()
                     } }
-                    "error" -> streamError = data.optString("error").ifBlank { "WIL.E no pudo responder." }
+                    "error" -> streamError = data.optString("error").ifBlank { "JARVIS no pudo responder." }
                     "quota" -> runOnUiThread {
                         updateDailyUsage(data.optInt("used"), data.optInt("limit"))
                     }
@@ -649,7 +668,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 if (assistant.text.isBlank()) assistant.text = error ?: "No llegó una respuesta. Intenta de nuevo."
                 if (error != null) status.text = error
                 else status.text = listOf(
-                    "WIL.E",
+                    "JARVIS",
                     providerName.takeIf { it.isNotBlank() }?.let { "modelo $it" },
                     emiStatus.takeIf { it.isNotBlank() }?.let { "$it mensajes" },
                 ).filterNotNull().joinToString(" · ")
@@ -658,7 +677,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 persistHistory(); renderHistory()
                 streamingBodyView = null
                 if (error == null && readRepliesAloud && ttsReady && assistant.text.isNotBlank()) {
-                    tts.speak(assistant.text, TextToSpeech.QUEUE_FLUSH, null, "wile-reply")
+                    speechFriendly(assistant.text).takeIf { it.isNotBlank() }?.let {
+                        tts.speak(it, TextToSpeech.QUEUE_FLUSH, null, "jarvis-reply")
+                    }
                 }
             } },
         )
@@ -714,7 +735,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         val spinner = ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
             isIndeterminate = true
             indeterminateTintList = android.content.res.ColorStateList.valueOf(0xFF67D8E8.toInt())
-            contentDescription = "WIL.E está generando una respuesta"
+            contentDescription = "JARVIS está generando una respuesta"
         }
         row.addView(spinner, LinearLayout.LayoutParams(dp(18), dp(18)))
         val labelView = text(label, 12f, 0xFFD4E2EE.toInt(), true)
@@ -770,7 +791,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         when (cmd) {
             "/help" -> addAssistant("Comandos disponibles: /debug, /review, /readme, /translate, /explain, /test, /resumen, /img, /enhance-img, /edit-img, /search, /sismo, /clima, /skills, /memoria, /entrenar, /model y /clear.")
             "/clear", "/new" -> clearChat()
-            "/model" -> addAssistant("WIL.E COPILOT · enrutamiento multi-proveedor desde el backend de CodeHub.")
+            "/model" -> addAssistant("JARVIS · enrutamiento multi-proveedor desde el backend de CodeHub.")
             "/jarvis" -> {
                 readRepliesAloud = arg.equals("on", true)
                 if (!readRepliesAloud) handsFreeEnabled = false
@@ -874,7 +895,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             activeCall = null; setBusy(false)
             val image = json?.optString("image").orEmpty().ifBlank { json?.optString("url").orEmpty() }
             if (image.isBlank()) addAssistant(error ?: json?.optString("error").orEmpty().ifBlank { "No se pudo generar la imagen." })
-            else { addAssistant("Imagen generada: $prompt", image); status.text = "Imagen generada · ${json?.optString("provider", "WIL.E")}" }
+            else { addAssistant("Imagen generada: $prompt", image); status.text = "Imagen generada · ${json?.optString("provider", "JARVIS")}" }
         } }
     }
 
@@ -888,13 +909,13 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             val result = json?.optString("image").orEmpty()
             if (result.isBlank()) addAssistant(error ?: json?.optString("error")?.takeIf { it.isNotBlank() }
                 ?: json?.optString("note")?.takeIf { it.isNotBlank() } ?: "No se pudo procesar la imagen.")
-            else addAssistant("Imagen procesada · ${json?.optString("provider", "WIL.E")}", result)
+            else addAssistant("Imagen procesada · ${json?.optString("provider", "JARVIS")}", result)
         } }
     }
 
     private fun loadMemory() = simpleGet("$API/api/wil-e/memory") { json ->
         if (json.has("error")) {
-            addAssistant("La memoria personal requiere una sesión activa de CodeHub. Abre tu cuenta en la web dentro de la app y vuelve a WIL.E.")
+            addAssistant("La memoria personal requiere una sesión activa de CodeHub. Abre tu cuenta en la app y vuelve a JARVIS.")
             return@simpleGet
         }
         val facts = json.optJSONArray("facts") ?: JSONArray()
@@ -925,7 +946,8 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun addAssistant(text: String, mediaUrl: String? = null) {
         messages.add(ChatMessage("assistant", text, mediaUrl))
         persistHistory(); renderHistory(); scrollToBottom()
-        if (readRepliesAloud && ttsReady && text.isNotBlank()) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "emi-voice-reply")
+        val spoken = speechFriendly(text)
+        if (readRepliesAloud && ttsReady && spoken.isNotBlank()) tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, "jarvis-voice-reply")
     }
 
     private fun clearChat() {
@@ -950,32 +972,33 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun showMenu() {
         val options = arrayOf("Nuevo chat", "Exportar conversación", "Copiar última respuesta", "Skills", "Ayuda", "Leer última respuesta")
-        AlertDialog.Builder(this).setTitle("WIL.E COPILOT").setItems(options) { _, which ->
+        AlertDialog.Builder(this).setTitle("JARVIS").setItems(options) { _, which ->
             when (which) {
                 0 -> clearChat()
                 1 -> exportConversation()
                 2 -> copyLastAnswer()
                 3 -> loadSkills()
                 4 -> addAssistant("Prueba /help para ver comandos. Adjunta imagen o PDF, cambia de modo o usa el micrófono para dictar. /jarvis on activa la lectura en voz alta.")
-                5 -> messages.lastOrNull { it.role == "assistant" }?.text?.takeIf { it.isNotBlank() }?.let { if (ttsReady) tts.speak(it, TextToSpeech.QUEUE_FLUSH, null, "wile-last") }
+                5 -> messages.lastOrNull { it.role == "assistant" }?.text?.let(::speechFriendly)
+                    ?.takeIf { it.isNotBlank() }?.let { if (ttsReady) tts.speak(it, TextToSpeech.QUEUE_FLUSH, null, "jarvis-last") }
             }
         }.show()
     }
 
     private fun exportConversation() {
         val content = buildString {
-            append("# Conversación con WIL.E COPILOT\n\n")
-            messages.forEach { append(if (it.role == "user") "## Tú\n\n" else "## WIL.E\n\n"); append(it.text).append("\n\n") }
+            append("# Conversación con JARVIS\n\n")
+            messages.forEach { append(if (it.role == "user") "## Tú\n\n" else "## JARVIS\n\n"); append(it.text).append("\n\n") }
         }
-        val send = Intent(Intent.ACTION_SEND).setType("text/markdown").putExtra(Intent.EXTRA_SUBJECT, "Chat con WIL.E").putExtra(Intent.EXTRA_TEXT, content)
-        startActivity(Intent.createChooser(send, "Exportar conversación"))
+        val send = Intent(Intent.ACTION_SEND).setType("text/markdown").putExtra(Intent.EXTRA_SUBJECT, "Chat con JARVIS").putExtra(Intent.EXTRA_TEXT, content)
+        startActivity(Intent.createChooser(send, "Compartir conversación"))
     }
 
     private fun copyLastAnswer() {
         val answer = messages.lastOrNull { it.role == "assistant" }?.text
         if (answer.isNullOrBlank()) { Toast.makeText(this, "Todavía no hay una respuesta", Toast.LENGTH_SHORT).show(); return }
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("WIL.E", answer))
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("JARVIS", answer))
         Toast.makeText(this, "Respuesta copiada", Toast.LENGTH_SHORT).show()
     }
 
@@ -1099,7 +1122,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-GT")
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Habla con WIL.E")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Habla con JARVIS")
         }
         runCatching { startActivityForResult(intent, SPEECH_INPUT) }.onFailure { Toast.makeText(this, "El dictado por voz no está disponible en este dispositivo.", Toast.LENGTH_SHORT).show() }
     }
@@ -1127,17 +1150,17 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 background = rounded(0xFF131D2C.toInt(), dp(24), 0xFF283850.toInt())
             }
             welcome.addView(ImageView(this).apply {
-                setImageResource(R.drawable.ic_wile_spark)
+                setImageResource(R.drawable.ic_jarvis_core)
                 imageTintList = android.content.res.ColorStateList.valueOf(0xFFB8C3FF.toInt())
                 background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF344274.toInt(), 0xFF202A49.toInt())).apply {
                     shape = GradientDrawable.OVAL
                     setStroke(dp(1), 0xFF5869AA.toInt())
                 }
                 setPadding(dp(9), dp(9), dp(9), dp(9))
-                contentDescription = "WIL.E"
+                contentDescription = "JARVIS"
             }, LinearLayout.LayoutParams(dp(48), dp(48)))
-            welcome.addView(text("Hola, soy WIL.E", 24f, Color.WHITE, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
-            welcome.addView(text("Tu copiloto de CodeHub. Pregunta, comparte una imagen o trabaja con un PDF.", 14f, 0xFFB2BED0.toInt()).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f) }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            welcome.addView(text("Hola, soy JARVIS", 24f, Color.WHITE, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+            welcome.addView(text("Tu asistente personal de CodeHub. Habla o escribe, comparte imágenes y analiza documentos.", 14f, 0xFFB2BED0.toInt()).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f) }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             messageList.addView(welcome)
         }
         messages.forEach { message -> addMessageCard(message) }
@@ -1151,7 +1174,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setPadding(dp(13), dp(11), dp(13), dp(11))
             background = rounded(if (isUser) 0xFF252C50.toInt() else 0xFF141C29.toInt(), dp(18), if (isUser) 0xFF414B7A.toInt() else 0xFF283449.toInt())
         }
-        wrapper.addView(text(if (isUser) "TÚ" else "WIL.E", 10f, if (isUser) 0xFFAEB8FF.toInt() else 0xFF82D9E8.toInt(), true))
+        wrapper.addView(text(if (isUser) "TÚ" else "JARVIS", 10f, if (isUser) 0xFFAEB8FF.toInt() else 0xFF82D9E8.toInt(), true))
         if (message.text.isNotBlank()) {
             val body = TextView(this).apply {
                 text = message.text
@@ -1175,8 +1198,12 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         }
         if (!isUser && message.text.isNotBlank()) {
             val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END }
-            actions.addView(text("Copiar", 11f, 0xFF9AAAC0.toInt()).apply { setPadding(dp(10), dp(9), dp(5), dp(2)); setOnClickListener { copy(message.text) } })
-            actions.addView(text("Leer", 11f, 0xFF9AAAC0.toInt()).apply { setPadding(dp(10), dp(9), dp(5), dp(2)); setOnClickListener { if (ttsReady) tts.speak(message.text, TextToSpeech.QUEUE_FLUSH, null, "wile-message") } })
+            actions.addView(messageAction(R.drawable.ic_jarvis_copy, "Copiar") { copy(message.text) })
+            actions.addView(messageAction(R.drawable.ic_jarvis_share, "Compartir") { shareAnswer(message.text) })
+            actions.addView(messageAction(R.drawable.ic_voice_speaker, "Leer") {
+                val spoken = speechFriendly(message.text)
+                if (ttsReady && spoken.isNotBlank()) tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, "jarvis-message")
+            })
             wrapper.addView(actions)
         }
         val params = LinearLayout.LayoutParams(if (isUser) (resources.displayMetrics.widthPixels * .86f).toInt() else -1, -2).apply {
@@ -1205,13 +1232,58 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun scrollStreamingIfNeeded() {
+        if (!followLatestOutput) return
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastStreamScrollAt < 70L) return
+        lastStreamScrollAt = now
+        scrollToBottom()
+    }
+
     private fun scrollToBottom() { if (::messageScroll.isInitialized) messageScroll.post { messageScroll.fullScroll(View.FOCUS_DOWN) } }
+
+    private fun speechFriendly(value: String): String = value
+        .replace(Regex("(?s)```.*?```"), " código omitido ")
+        .replace(Regex("!\\[[^]]*]\\([^)]*\\)"), " imagen adjunta ")
+        .replace(Regex("\\[([^]]+)]\\([^)]*\\)")) { match -> match.groupValues[1] }
+        .replace(Regex("https?://\\S+"), " enlace ")
+        .replace(Regex("(?m)^\\s*[-*•]\\s*"), "")
+        .replace(Regex("[\\p{So}\\p{Sk}\\uFE0F\\u200D]"), " ")
+        .replace(Regex("[`*_~>#]"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+    private fun messageAction(icon: Int, label: String, action: () -> Unit): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), 0, dp(9), 0)
+            background = rippleActionBackground(0xFF182334.toInt(), 0xFF34445A.toInt())
+            contentDescription = label
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+            addView(ImageView(this@NativeAiChatActivity).apply {
+                setImageResource(icon)
+                imageTintList = android.content.res.ColorStateList.valueOf(0xFFB9D3E6.toInt())
+                scaleType = ImageView.ScaleType.CENTER
+            }, LinearLayout.LayoutParams(dp(15), dp(15)))
+            addView(text(label, 10f, 0xFFB9C7D8.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(5) })
+            installPressFeedback(this)
+        }
+
+    private fun shareAnswer(value: String) {
+        val share = Intent(Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, "Respuesta de JARVIS")
+            .putExtra(Intent.EXTRA_TEXT, value)
+        startActivity(Intent.createChooser(share, "Compartir respuesta"))
+    }
     private fun setBusy(busy: Boolean, label: String = "") {
         if (::status.isInitialized && label.isNotBlank()) status.text = label
-        if (busy) showThinking(label.ifBlank { "WIL.E está trabajando" }) else finishThinking()
+        if (busy) showThinking(label.ifBlank { "JARVIS está trabajando" }) else finishThinking()
         if (::sendButton.isInitialized) setSendButtonState(busy)
     }
-    private fun copy(value: String) { (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("WIL.E", value)); Toast.makeText(this, "Copiado", Toast.LENGTH_SHORT).show() }
+    private fun copy(value: String) { (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("JARVIS", value)); Toast.makeText(this, "Copiado", Toast.LENGTH_SHORT).show() }
     private fun enc(value: String) = URLEncoder.encode(value, "UTF-8")
 
     private fun clearLegacyUnscopedHistoryOnce() {

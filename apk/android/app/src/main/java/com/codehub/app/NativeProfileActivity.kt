@@ -141,7 +141,7 @@ class NativeProfileActivity : Activity() {
         }
         val usageHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         usageHeader.addView(text("✦", 23f, indigo, true), LinearLayout.LayoutParams(dp(38), -2))
-        usageHeader.addView(text("WIL.E hoy", 14f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
+        usageHeader.addView(text("JARVIS hoy", 14f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
         usageHeader.addView(text("$used / $limit", 13f, cyan, true))
         usage.addView(usageHeader)
         val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -161,7 +161,7 @@ class NativeProfileActivity : Activity() {
         val createdAt = profile.optString("createdAt").take(10).ifBlank { "Disponible al crear tu cuenta" }
         content.addView(statCard("◷", "Miembro desde", createdAt, "Tu perfil se crea al registrarte"),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-        content.addView(text("Las métricas de WIL.E se reinician cada día. Tus datos pertenecen a esta cuenta y no se comparten con otros usuarios.", 11f, muted).apply {
+        content.addView(text("Las métricas de JARVIS se reinician cada día. Tus datos pertenecen a esta cuenta y no se comparten con otros usuarios.", 11f, muted).apply {
             setLineSpacing(dp(3).toFloat(), 1f)
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(action("Cerrar sesión") {

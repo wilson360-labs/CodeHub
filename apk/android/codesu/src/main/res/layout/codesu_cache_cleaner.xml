@@ -34,14 +34,53 @@
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
-                android:text="Limpiador de caché"
-                android:textColor="@color/codesu_text_primary"
-                android:textSize="21sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Clear · Anti-bloatware"
+                    android:textColor="@color/codesu_text_primary"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/codesu_cache_refresh"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:background="@drawable/codesu_cache_refresh_background"
+                    android:clickable="true"
+                    android:contentDescription="Actualizar la lista de caché"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="100dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="11dp">
+
+                    <ImageView
+                        android:id="@+id/codesu_cache_refresh_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription=""
+                        android:src="@drawable/codesu_ic_refresh"
+                        app:tint="@color/codesu_accent_text" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="Actualizar"
+                        android:textColor="@color/codesu_accent_text"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/codesu_cache_total"
@@ -52,6 +91,15 @@
                 android:textColor="@color/codesu_text_primary"
                 android:textSize="17sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/codesu_cache_success_rate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Tasa de éxito: disponible después de la primera limpieza"
+                android:textColor="@color/codesu_text_secondary"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/codesu_cache_result"
@@ -71,7 +119,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="7dp"
-                android:text="Limpieza profunda para cachés mayores de 1 MB. Se conservan los datos y las sesiones."
+                android:text="Recomendable: caché >1 MB en apps no protegidas. No recomendable: servicios sensibles. Solo caché; nunca datos ni sesiones."
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="12sp" />
 

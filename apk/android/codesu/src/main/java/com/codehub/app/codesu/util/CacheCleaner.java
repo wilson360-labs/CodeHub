@@ -21,6 +21,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.codehub.app.codesu.model.CacheAppInfo;
 import rikka.shizuku.Shizuku;
@@ -63,6 +71,10 @@ public final class CacheCleaner {
     }
 
     public static List<CacheAppInfo> loadInstalledApps(Context context) throws Exception {
+        return loadInstalledApps(context, null);
+    }
+
+    public static List<CacheAppInfo> loadInstalledApps(Context context, MeasurementProgressListener listener) throws Exception {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
             throw new IllegalStateException("La medición de caché requiere Android 8.0 o posterior.");
         if (!hasUsageAccess(context))
@@ -84,27 +96,41 @@ public final class CacheCleaner {
         UserHandle user = Process.myUserHandle();
         Set<String> protectedPackages = getProtectedPackages(context);
         List<CacheAppInfo> result = new ArrayList<>(installed.size());
-        for (ApplicationInfo app : installed) {
-            String pkg = app.packageName;
-
-            long cacheBytes = 0L;
-            try {
-                StorageStats stats = statsManager.queryStatsForPackage(
-                        app.storageUuid == null ? StorageManager.UUID_DEFAULT : app.storageUuid, pkg, user);
-                cacheBytes = stats.getCacheBytes();
-            } catch (Exception ignored) {
-                // Some OEM/system packages do not expose stats; keep them listed at zero.
+        ExecutorService workers = Executors.newFixedThreadPool(Math.min(4, Math.max(1, installed.size())));
+        CompletionService<CacheAppInfo> completion = new ExecutorCompletionService<>(workers);
+        try {
+            for (ApplicationInfo app : installed) {
+                completion.submit(() -> {
+                    String pkg = app.packageName;
+                    long cacheBytes = 0L;
+                    try {
+                        StorageStats stats = statsManager.queryStatsForPackage(
+                                app.storageUuid == null ? StorageManager.UUID_DEFAULT : app.storageUuid, pkg, user);
+                        cacheBytes = stats.getCacheBytes();
+                    } catch (Exception ignored) {
+                        // Some OEM/system packages do not expose stats; keep them listed at zero.
+                    }
+                    String label;
+                    try { label = pm.getApplicationLabel(app).toString(); }
+                    catch (RuntimeException e) { label = pkg; }
+                    android.graphics.drawable.Drawable icon;
+                    try { icon = pm.getApplicationIcon(app); }
+                    catch (RuntimeException e) { icon = null; }
+                    return new CacheAppInfo(pkg, label, icon, cacheBytes,
+                            (app.flags & ApplicationInfo.FLAG_SYSTEM) != 0,
+                            protectedPackages.contains(pkg) || isProtected(pkg));
+                });
             }
-
-            String label;
-            try {
-                label = pm.getApplicationLabel(app).toString();
-            } catch (RuntimeException e) {
-                label = pkg;
+            for (int completed = 1; completed <= installed.size(); completed++) {
+                try { result.add(completion.take().get()); }
+                catch (ExecutionException e) { /* Skip a package whose metadata cannot be read. */ }
+                if (listener != null) listener.onProgress(completed, installed.size(), "");
             }
-            result.add(new CacheAppInfo(pkg, label, pm.getApplicationIcon(app), cacheBytes,
-                    (app.flags & ApplicationInfo.FLAG_SYSTEM) != 0,
-                    protectedPackages.contains(pkg) || isProtected(pkg)));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("La lectura de caché fue interrumpida.", e);
+        } finally {
+            workers.shutdownNow();
         }
         Collections.sort(result, (left, right) -> {
             int byCache = Long.compare(right.cacheBytes, left.cacheBytes);
@@ -134,8 +160,14 @@ public final class CacheCleaner {
         if (statsManager == null) throw new IllegalStateException("Las estadísticas de almacenamiento no están disponibles.");
         UserHandle user = Process.myUserHandle();
         List<CacheAppInfo> refreshed = new ArrayList<>(apps.size());
-        int completed = 0;
+        List<CacheAppInfo> candidates = new ArrayList<>();
         for (CacheAppInfo app : apps) {
+            if (isDeepCleanCandidate(app)) candidates.add(app);
+            else refreshed.add(app);
+        }
+        if (candidates.isEmpty()) return refreshed;
+        int completed = 0;
+        for (CacheAppInfo app : candidates) {
             long cacheBytes = 0L;
             try {
                 ApplicationInfo applicationInfo = pm.getApplicationInfo(app.packageName, 0);
@@ -149,7 +181,7 @@ public final class CacheCleaner {
             refreshed.add(new CacheAppInfo(app.packageName, app.label, app.icon, cacheBytes,
                     app.systemApp, app.protectedApp));
             completed++;
-            if (listener != null) listener.onProgress(completed, apps.size(), app.packageName);
+            if (listener != null) listener.onProgress(completed, candidates.size(), app.packageName);
         }
         Collections.sort(refreshed, (left, right) -> {
             int byCache = Long.compare(right.cacheBytes, left.cacheBytes);
@@ -216,39 +248,92 @@ public final class CacheCleaner {
         List<CacheAppInfo> targets = new ArrayList<>();
         Set<String> protectedPackages = getProtectedPackages(context);
         for (CacheAppInfo app : apps) {
-            if (app.cacheBytes > DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
-                    && !protectedPackages.contains(app.packageName)
-                    && !isProtected(app.packageName))
+            if (isDeepCleanCandidate(app) && !protectedPackages.contains(app.packageName))
                 targets.add(app);
         }
-        if (targets.isEmpty()) return new ClearResult(0, 0, 0L, 0);
+        if (targets.isEmpty()) return new ClearResult(0, 0, 0L, 0, 0L);
+        long targetBytes = 0L;
+        for (CacheAppInfo target : targets) targetBytes += target.cacheBytes;
 
         int success = 0;
         int failure = 0;
         long verifiedFreed = 0L;
         int unmeasured = 0;
-        int completed = 0;
-        for (CacheAppInfo target : targets) {
-            boolean cleared = ShizukuPlusUtils.clearAppCache(target.packageName) == 1;
-            completed++;
-            // Report each completed system request before querying storage stats,
-            // which can itself be slow on OEM package managers.
-            if (listener != null)
-                listener.onProgress(completed, targets.size(), target.packageName, cleared,
-                        verifiedFreed, unmeasured);
-            if (cleared) {
-                success++;
-                try {
-                    long afterBytes = queryCacheBytes(context, target.packageName);
-                    verifiedFreed += Math.max(0L, target.cacheBytes - afterBytes);
-                } catch (Exception ignored) {
-                    unmeasured++;
-                }
-            } else {
-                failure++;
+        AtomicInteger clearedRequests = new AtomicInteger();
+        AtomicInteger liveUnmeasured = new AtomicInteger();
+        AtomicLong liveVerifiedFreed = new AtomicLong();
+        Object progressLock = new Object();
+        ExecutorService workers = Executors.newFixedThreadPool(Math.min(3, targets.size()));
+        CompletionService<CacheClearTaskResult> completion = new ExecutorCompletionService<>(workers);
+        try {
+            for (CacheAppInfo target : targets) {
+                completion.submit(() -> {
+                    boolean cleared = ShizukuPlusUtils.clearAppCache(target.packageName) == 1;
+                    synchronized (progressLock) {
+                        int requestNumber = clearedRequests.incrementAndGet();
+                        // Move the visible progress as soon as Shizuku confirms each
+                        // request; StorageStats verification can be slower on OEMs.
+                        if (listener != null)
+                            listener.onProgress(requestNumber, targets.size(), target.packageName, cleared,
+                                    liveVerifiedFreed.get(), liveUnmeasured.get());
+                    }
+                    long freed = 0L;
+                    boolean measured = true;
+                    if (cleared) {
+                        try {
+                            freed = Math.max(0L, target.cacheBytes - queryCacheBytes(context, target.packageName));
+                            liveVerifiedFreed.addAndGet(freed);
+                        } catch (Exception ignored) {
+                            measured = false;
+                            liveUnmeasured.incrementAndGet();
+                        }
+                    }
+                    return new CacheClearTaskResult(target.packageName, cleared, freed, measured);
+                });
             }
+            for (int i = 0; i < targets.size(); i++) {
+                CacheClearTaskResult result;
+                try {
+                    Future<CacheClearTaskResult> future = completion.take();
+                    result = future.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("La limpieza fue interrumpida.", e);
+                } catch (ExecutionException e) {
+                    synchronized (progressLock) {
+                        int requestNumber = clearedRequests.incrementAndGet();
+                        if (listener != null)
+                            listener.onProgress(requestNumber, targets.size(), "app", false,
+                                    liveVerifiedFreed.get(), liveUnmeasured.get());
+                    }
+                    result = new CacheClearTaskResult("app", false, 0L, false);
+                }
+                if (result.cleared) success++; else failure++;
+                verifiedFreed += result.verifiedFreed;
+                if (result.cleared && !result.measured) unmeasured++;
+            }
+        } finally {
+            workers.shutdownNow();
         }
-        return new ClearResult(success, failure, verifiedFreed, unmeasured);
+        return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes);
+    }
+
+    private static boolean isDeepCleanCandidate(CacheAppInfo app) {
+        return app != null && app.cacheBytes > DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
+                && !isProtected(app.packageName);
+    }
+
+    private static final class CacheClearTaskResult {
+        final String packageName;
+        final boolean cleared;
+        final long verifiedFreed;
+        final boolean measured;
+        CacheClearTaskResult(String packageName, boolean cleared, long verifiedFreed, boolean measured) {
+            this.packageName = packageName;
+            this.cleared = cleared;
+            this.verifiedFreed = verifiedFreed;
+            this.measured = measured;
+        }
     }
 
     private static long queryCacheBytes(Context context, String packageName) throws Exception {
@@ -277,11 +362,13 @@ public final class CacheCleaner {
         public final int failed;
         public final long verifiedFreedBytes;
         public final int unmeasuredApps;
-        ClearResult(int cleared, int failed, long verifiedFreedBytes, int unmeasuredApps) {
+        public final long targetBytes;
+        ClearResult(int cleared, int failed, long verifiedFreedBytes, int unmeasuredApps, long targetBytes) {
             this.cleared = cleared;
             this.failed = failed;
             this.verifiedFreedBytes = verifiedFreedBytes;
             this.unmeasuredApps = unmeasuredApps;
+            this.targetBytes = targetBytes;
         }
     }
 

@@ -14,7 +14,7 @@ import android.widget.RemoteViews;
  * Los widgets son interfaces estáticos que no hacen trabajo en segundo
  * plano; mantienen la misma URL base del resto de la app.
  *
- * Pinta un grid 2x2 con las 4 secciones principales (WIL.E, Clima,
+ * Pinta un grid 2x2 con las 4 secciones principales (JARVIS, Clima,
  * Catálogo Open Source y Herramientas), cada una con su icono del set
  * de shortcuts y un deep link del dominio propio que abre MainActivity
  * en la sección correcta.

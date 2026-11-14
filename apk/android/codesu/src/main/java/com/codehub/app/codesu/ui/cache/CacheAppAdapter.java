@@ -14,6 +14,7 @@ import java.util.List;
 
 import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.model.CacheAppInfo;
+import com.codehub.app.codesu.util.CacheCleaner;
 
 final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder> {
     private final List<CacheAppInfo> apps = new ArrayList<>();
@@ -41,7 +42,13 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
         holder.name.setText(app.label);
         holder.packageName.setText((app.protectedApp ? "Protegida · " : app.systemApp ? "Sistema · " : "App · ")
                 + app.packageName);
-        holder.itemView.setAlpha(app.protectedApp ? 0.66f : 1f);
+        boolean recommended = app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES
+                && !app.protectedApp && !CacheCleaner.isProtected(app.packageName);
+        holder.advice.setText(recommended ? "RECOMENDABLE · limpieza segura" : app.protectedApp
+                || CacheCleaner.isProtected(app.packageName) ? "NO RECOMENDABLE · app protegida"
+                : "NO RECOMENDABLE · menos de 1 MB");
+        holder.advice.setTextColor(recommended ? 0xFF41C99A : 0xFFE7838B);
+        holder.itemView.setAlpha(app.protectedApp ? 0.72f : 1f);
         holder.size.setText(formatBytes(app.cacheBytes));
     }
 
@@ -59,6 +66,7 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
         final ImageView icon;
         final TextView name;
         final TextView packageName;
+        final TextView advice;
         final TextView size;
 
         Holder(@NonNull View itemView) {
@@ -66,6 +74,7 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
             icon = itemView.findViewById(R.id.codesu_cache_app_icon);
             name = itemView.findViewById(R.id.codesu_cache_app_name);
             packageName = itemView.findViewById(R.id.codesu_cache_app_package);
+            advice = itemView.findViewById(R.id.codesu_cache_app_advice);
             size = itemView.findViewById(R.id.codesu_cache_app_size);
         }
     }

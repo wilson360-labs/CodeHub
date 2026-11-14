@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Widget de accesos rápidos de CodeHub (pantalla de inicio).
-  Grid 2x2 con acceso a: WIL.E, Clima, Catálogo Open Source y Herramientas.
+  Grid 2x2 con acceso a: JARVIS, Clima, Catálogo Open Source y Herramientas.
   Solo se usan clases que RemoteViews puede inflar en el proceso del
   launcher (LinearLayout/FrameLayout/TextView/ImageButton/ProgressBar),
   y cada celda abre MainActivity con un deep link del dominio propio.
@@ -39,7 +39,7 @@
                     android:id="@+id/quick_icon_wile"
                     android:layout_width="42dp"
                     android:layout_height="42dp"
-                    android:src="@drawable/ic_shortcut_chat"
+                    android:src="@drawable/ic_jarvis_core"
                     android:background="@android:color/transparent"
                     android:scaleType="fitCenter"
                     android:importantForAccessibility="no"

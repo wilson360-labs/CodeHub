@@ -1206,7 +1206,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Open the Kotlin WIL.E screen and reuse the current WebView auth session when present. */
+    /** Open the Kotlin JARVIS screen and reuse the current WebView auth session when present. */
     private void openNativeCopilot() {
         launchNativeWithAccountSession(NativeAiChatActivity.class, NATIVE_COPILOT_REQUEST);
     }

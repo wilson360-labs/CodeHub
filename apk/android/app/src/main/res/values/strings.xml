@@ -2,11 +2,11 @@
 <resources>
     <string name="app_name">CodeHub</string>
     <string name="widget_weather_description">Clima de CodeHub — muestra tu temperatura, condición y ciudad actual, y abre la app al tocarlo.</string>
-    <string name="widget_quick_description">Accesos rápidos de CodeHub — WIL.E, Clima, Catálogo Open Source y Herramientas en un toque.</string>
+    <string name="widget_quick_description">Accesos rápidos de CodeHub — JARVIS, Clima, Catálogo Open Source y Herramientas en un toque.</string>
 
     <!-- Atajos dinámicos (long-press del icono) -->
-    <string name="shortcut_wile_short">WIL.E</string>
-    <string name="shortcut_wile_long">Hablar con WIL.E</string>
+    <string name="shortcut_wile_short">JARVIS</string>
+    <string name="shortcut_wile_long">Hablar con JARVIS</string>
     <string name="shortcut_weather_short">Clima</string>
     <string name="shortcut_weather_long">Ver el clima y el mapa</string>
     <string name="shortcut_catalog_short">Apps</string>

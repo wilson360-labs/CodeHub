@@ -122,7 +122,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addEntranceTarget(content, actionPair(codeBeatCard, codeStreamCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        copilotCard = featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
+        copilotCard = featureCard(R.drawable.ic_jarvis_core, "JARVIS", "Asistente personal de voz y texto", cyan) {
             listener.onOpenCopilot()
         }
         addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
@@ -202,7 +202,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         tourSteps += Triple(heroCard, "CodeHub y tu perfil", "Esta portada reúne tus accesos. El botón de la tarjeta abre tu perfil web y tus proyectos.")
         tourSteps += Triple(codeBeatCard, "CodeBeat", "Música y extensiones para tu flujo de trabajo.")
         tourSteps += Triple(codeStreamCard, "CodeStream", "Videos, música y Shorts dentro de la app.")
-        tourSteps += Triple(copilotCard, "WIL.E COPILOT", "Asistente IA nativo para depurar, revisar código y generar README.")
+        tourSteps += Triple(copilotCard, "JARVIS", "Tu asistente personal de voz y texto para depurar, revisar código y trabajar con documentos.")
         tourSteps += Triple(cvCard, "Crear mi CV", "Abre el generador guiado con IA para construir y mejorar tu currículum.")
         tourSteps += Triple(weatherCard, "Clima", "Pronóstico y alertas para tu ubicación.")
         tourSteps += Triple(toolsCard, "Herramientas", "Utilidades y servicios de CodeHub.")

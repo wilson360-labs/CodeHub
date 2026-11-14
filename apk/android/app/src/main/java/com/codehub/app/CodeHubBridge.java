@@ -103,7 +103,7 @@ public class CodeHubBridge {
         }
     }
 
-    // WIL.E hable en voz alta (TTS nativo de Android) en español.
+    // JARVIS hable en voz alta (TTS nativo de Android) en español.
     @JavascriptInterface
     public void ttsSpeak(final String text) {
         activity.runOnUiThread(() -> {
