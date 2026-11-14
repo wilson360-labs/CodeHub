@@ -193,19 +193,27 @@ public class CacheCleanerFragment extends Fragment {
         if (binding == null) return;
         cleaning = true;
         binding.codesuCacheCleanButton.setEnabled(false);
-        binding.codesuCacheProgress.setIndeterminate(true);
+        binding.codesuCacheProgress.setIndeterminate(false);
         binding.codesuCacheProgress.setProgress(0);
         binding.codesuCacheProgress.setVisibility(View.VISIBLE);
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
         binding.codesuCacheResult.setVisibility(View.GONE);
-        binding.codesuCacheProgressText.setText("Midiendo la caché antes de limpiar…");
+        binding.codesuCacheProgressText.setText("Preparando medición de caché · 0%");
         binding.codesuCacheCleanButton.animate().rotationBy(360f).setDuration(700)
                 .setInterpolator(new AccelerateDecelerateInterpolator()).start();
 
         Context appContext = requireContext().getApplicationContext();
         App.executorService.execute(() -> {
             try {
-                List<CacheAppInfo> refreshedApps = CacheCleaner.recalculateCacheSizes(appContext, apps);
+                List<CacheAppInfo> refreshedApps = CacheCleaner.recalculateCacheSizes(appContext, apps,
+                        (completed, total, packageName) -> App.handler.post(() -> {
+                            if (binding == null) return;
+                            int percent = total == 0 ? 35 : (int) (completed * 35L / total);
+                            binding.codesuCacheProgress.setIndeterminate(false);
+                            binding.codesuCacheProgress.setProgress(percent);
+                            binding.codesuCacheProgressText.setText("Midiendo caché · " + percent + "% · "
+                                    + completed + "/" + total + " apps");
+                        }));
                 int eligible = 0;
                 for (CacheAppInfo app : refreshedApps) {
                     if (app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
@@ -225,20 +233,21 @@ public class CacheCleanerFragment extends Fragment {
                     });
                     return;
                 }
-                final int eligibleCount = eligible;
                 App.handler.post(() -> {
                     if (binding == null) return;
                     binding.codesuCacheProgress.setIndeterminate(false);
-                    binding.codesuCacheProgressText.setText("Limpiando " + eligibleCount + " apps…");
+                    binding.codesuCacheProgress.setProgress(40);
+                    binding.codesuCacheProgressText.setText("Caché medida · conectando con Shizuku · 40%");
                 });
                 CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(
                         appContext, refreshedApps,
                         (completed, total, pkg, cleared, verifiedFreed, unmeasured) -> App.handler.post(() -> {
                             if (binding == null) return;
-                            int percent = total == 0 ? 100 : (int) ((completed * 100L) / total);
+                            int percent = total == 0 ? 95 : 40 + (int) ((completed * 55L) / total);
                             binding.codesuCacheProgress.setProgress(percent);
-                            binding.codesuCacheProgressText.setText(percent + "% · " + completed + "/" + total
-                                    + " apps · " + CacheAppAdapter.formatBytes(verifiedFreed) + " liberados"
+                            binding.codesuCacheProgressText.setText(percent + "% · limpiando " + pkg
+                                    + " · " + completed + "/" + total + " apps · "
+                                    + CacheAppAdapter.formatBytes(verifiedFreed) + " verificados"
                                     + (unmeasured > 0 ? " · " + unmeasured + " sin medir" : ""));
                         }));
                 App.handler.post(() -> {

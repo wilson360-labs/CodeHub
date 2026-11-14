@@ -923,20 +923,24 @@ app.use('/api/auth', authLimiter);
 // ligado a PKCE antes del deep link, para no exponer el token en la URL de retorno.
 const mobileAuthChallenges = new Map();
 const mobileAuthCodes = new Map();
+const mobileAuthGrants = new Map();
 setInterval(() => {
   const now = Date.now();
   for (const [key, value] of mobileAuthChallenges) if (value.expiresAt < now) mobileAuthChallenges.delete(key);
   for (const [key, value] of mobileAuthCodes) if (value.expiresAt < now) mobileAuthCodes.delete(key);
+  for (const [key, value] of mobileAuthGrants) if (value.expiresAt < now) mobileAuthGrants.delete(key);
 }, 60 * 1000).unref();
 
 app.post('/api/auth/mobile-challenge/start', (req, res) => {
   const state = String(req.body?.state || '');
   const challenge = String(req.body?.challenge || '');
+  const intent = String(req.body?.intent || '');
   if (!/^[A-Za-z0-9_-]{32,64}$/.test(state) || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) {
     return res.status(400).json({ ok: false, error: 'Desafío móvil inválido.' });
   }
-  if (mobileAuthChallenges.size + mobileAuthCodes.size >= 10000) return res.status(503).json({ ok: false, error: 'Hay muchas verificaciones activas. Inténtalo más tarde.' });
-  mobileAuthChallenges.set(state, { challenge, expiresAt: Date.now() + 5 * 60 * 1000 });
+  if (intent !== 'login' && intent !== 'register') return res.status(400).json({ ok: false, error: 'Tipo de acceso inválido.' });
+  if (mobileAuthChallenges.size + mobileAuthCodes.size + mobileAuthGrants.size >= 10000) return res.status(503).json({ ok: false, error: 'Hay muchas verificaciones activas. Inténtalo más tarde.' });
+  mobileAuthChallenges.set(state, { challenge, intent, expiresAt: Date.now() + 5 * 60 * 1000 });
   res.json({ ok: true });
 });
 
@@ -952,7 +956,7 @@ app.post('/api/auth/mobile-challenge/complete', async (req, res) => {
   if (mobileAuthCodes.size >= 10000) return res.status(503).json({ ok: false, error: 'No se pudo finalizar la verificación. Inténtalo otra vez.' });
   mobileAuthChallenges.delete(state);
   const code = base64url(crypto.randomBytes(24));
-  mobileAuthCodes.set(code, { state, challenge: request.challenge, turnstileToken: token, expiresAt: Date.now() + 2 * 60 * 1000 });
+  mobileAuthCodes.set(code, { state, challenge: request.challenge, intent: request.intent, expiresAt: Date.now() + 2 * 60 * 1000 });
   res.json({ ok: true, code });
 });
 
@@ -969,19 +973,30 @@ app.post('/api/auth/mobile-challenge/exchange', (req, res) => {
   if (!/^[A-Za-z0-9_-]{43,128}$/.test(verifier) || challenge !== entry.challenge) {
     return res.status(401).json({ ok: false, error: 'No se pudo confirmar el regreso a CodeHub.' });
   }
+  if (mobileAuthGrants.size >= 10000) return res.status(503).json({ ok: false, error: 'No se pudo finalizar la verificación. Inténtalo otra vez.' });
   mobileAuthCodes.delete(code);
-  res.json({ ok: true, turnstileToken: entry.turnstileToken });
+  const grant = base64url(crypto.randomBytes(32));
+  mobileAuthGrants.set(grant, { intent: entry.intent, expiresAt: Date.now() + 2 * 60 * 1000 });
+  res.json({ ok: true, authGrant: grant, intent: entry.intent });
 });
+
+function consumeMobileAuthGrant(grant, expectedIntent) {
+  if (!grant) return false;
+  const entry = mobileAuthGrants.get(grant);
+  mobileAuthGrants.delete(grant); // Single use, even when the requested action mismatches.
+  return !!entry && entry.expiresAt >= Date.now() && entry.intent === expectedIntent;
+}
 
 // POST /api/auth/register — crear cuenta con email + contraseña
 app.post('/api/auth/register', async (req, res) => {
   const email    = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
   const tsToken  = String(req.body?.turnstileToken || '');
-  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
   if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email inválido' });
   if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+  if (!consumeMobileAuthGrant(String(req.body?.mobileGrant || ''), 'register')
+      && !await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -1012,9 +1027,10 @@ app.post('/api/auth/login', async (req, res) => {
   const email    = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
   const tsToken  = String(req.body?.turnstileToken || '');
-  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
   if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
   if (!email || !password) return res.status(400).json({ error: 'Completa email y contraseña' });
+  if (!consumeMobileAuthGrant(String(req.body?.mobileGrant || ''), 'login')
+      && !await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {

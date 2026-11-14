@@ -38,9 +38,12 @@ internal class WileChatRepository(private val accessToken: String) {
                 var failure: String? = null
                 response.use { res ->
                     if (!res.isSuccessful) {
-                        val detail = res.body?.string()?.let {
-                            runCatching { JSONObject(it).optString("error") }.getOrNull()
-                        }.orEmpty()
+                        val errorBody = res.body?.string().orEmpty()
+                        val errorJson = runCatching { JSONObject(errorBody) }.getOrNull()
+                        if (errorJson?.optString("code") == "EMI_DAILY_LIMIT") {
+                            onEvent("quota", errorJson)
+                        }
+                        val detail = errorJson?.optString("error").orEmpty()
                         failure = detail.ifBlank { "WIL.E respondió con un error HTTP ${res.code}." }
                     } else {
                         val source = res.body?.source()

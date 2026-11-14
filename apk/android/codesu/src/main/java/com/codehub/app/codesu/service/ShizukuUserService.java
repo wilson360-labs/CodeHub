@@ -1,5 +1,7 @@
 package com.codehub.app.codesu.service;
 
+import android.os.SystemClock;
+
 import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -15,6 +17,8 @@ import com.codehub.app.codesu.IKillAppService;
  * AMS los declara como dependencia de paquete (pkgDeps).
  */
 public class ShizukuUserService extends IKillAppService.Stub {
+
+    private static final long CACHE_CLEAR_TIMEOUT_MS = 30_000L;
 
     /** Paquete host donde vive el módulo (App.context no está inicializado aquí). */
     public static final String HOST_PACKAGE = "com.codehub.app";
@@ -70,12 +74,27 @@ public class ShizukuUserService extends IKillAppService.Stub {
             process = new ProcessBuilder("/system/bin/pm", "clear", "--cache-only", "--user", "current", pkgName)
                     .redirectErrorStream(true)
                     .start();
+            // pm clear waits for PackageManager's async observer. Bound that wait
+            // so one OEM/system package cannot leave the cleaner stuck forever.
+            long deadline = SystemClock.elapsedRealtime() + CACHE_CLEAR_TIMEOUT_MS;
+            int exitCode;
+            while (true) {
+                try {
+                    exitCode = process.exitValue();
+                    break;
+                } catch (IllegalThreadStateException stillRunning) {
+                    if (SystemClock.elapsedRealtime() >= deadline) {
+                        process.destroy();
+                        return 0;
+                    }
+                    Thread.sleep(100L);
+                }
+            }
             StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) output.append(line).append('\n');
             }
-            int exitCode = process.waitFor();
             return exitCode == 0 && output.toString().contains("Success") ? 1 : 0;
         } catch (Exception e) {
             return 0;

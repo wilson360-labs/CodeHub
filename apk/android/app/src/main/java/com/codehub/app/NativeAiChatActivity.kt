@@ -137,6 +137,8 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var input: EditText
     private lateinit var sendButton: ImageView
     private lateinit var status: TextView
+    private lateinit var quotaLabel: TextView
+    private lateinit var quotaProgress: ProgressBar
     private lateinit var attachLabel: TextView
     private lateinit var modeRow: LinearLayout
     private lateinit var emiVoiceControls: LinearLayout
@@ -147,6 +149,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private var brandMorphSwitcher: TextSwitcher? = null
     private var brandMorphIndex = 0
     private var sendButtonBusy = false
+    private var dailyUsageLoaded = false
+    private var dailyUsed = 0
+    private var dailyLimit = 0
     private val brandMorphPhrases = listOf(
         "CodeHub",
         "Developer",
@@ -188,6 +193,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         buildUi()
         renderHistory()
         tts = TextToSpeech(this, this)
+        refreshDailyUsage()
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
@@ -265,6 +271,22 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             background = rounded(0xFF111A27.toInt(), dp(12), 0xFF222E40.toInt())
         }
         root.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+
+        val quotaBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), dp(5), dp(10), dp(5))
+            background = rounded(0xFF101824.toInt(), dp(11), 0xFF233247.toInt())
+        }
+        quotaLabel = text("Uso diario de IA · consultando…", 10f, 0xFFA8B8CC.toInt())
+        quotaBox.addView(quotaLabel, LinearLayout.LayoutParams(-1, -2))
+        quotaProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFF5DD8B5.toInt())
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF263447.toInt())
+        }
+        quotaBox.addView(quotaProgress, LinearLayout.LayoutParams(-1, dp(3)).apply { topMargin = dp(4) })
+        root.addView(quotaBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
 
         modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val modeScroll = HorizontalScrollView(this).apply {
@@ -564,6 +586,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             generateImage(raw)
             return
         }
+        if (dailyUsageLoaded && dailyLimit > 0 && dailyUsed >= dailyLimit) {
+            status.text = "Límite diario alcanzado. Se renueva mañana."
+            Toast.makeText(this, "Ya usaste tus $dailyLimit mensajes de IA de hoy.", Toast.LENGTH_LONG).show()
+            return
+        }
         val userText = textValue + if (pendingAttachmentLabel.isNotBlank()) "\n\nAdjunto: $pendingAttachmentLabel" else ""
         messages.add(ChatMessage("user", userText))
         val request = JSONObject().put("message", activeMode.prefix + textValue).put("sessionId", sessionId).put("memory", true)
@@ -602,9 +629,17 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                         scrollToBottom()
                     } }
                     "error" -> streamError = data.optString("error").ifBlank { "WIL.E no pudo responder." }
+                    "quota" -> runOnUiThread {
+                        updateDailyUsage(data.optInt("used"), data.optInt("limit"))
+                    }
                     "done" -> {
                         providerName = data.optString("model").substringAfterLast('/').takeIf { it.isNotBlank() }.orEmpty()
-                        data.optJSONObject("emi")?.let { emi -> emiStatus = "${emi.optInt("used")} / ${emi.optInt("limit")} hoy" }
+                        data.optJSONObject("emi")?.let { emi ->
+                            val used = emi.optInt("used")
+                            val limit = emi.optInt("limit")
+                            emiStatus = "$used/$limit hoy"
+                            runOnUiThread { updateDailyUsage(used, limit) }
+                        }
                     }
                 }
             },
@@ -638,6 +673,31 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         if (messages.lastOrNull()?.role == "assistant" && messages.last().text.isBlank()) messages.removeLast()
         persistHistory(); renderHistory()
         streamingBodyView = null
+    }
+
+    private fun refreshDailyUsage() {
+        repository.get("$API/api/chat/usage") { json, _ -> runOnUiThread {
+            val usage = json?.optJSONObject("emi")
+            if (usage == null) {
+                if (!dailyUsageLoaded) quotaLabel.text = "Uso diario de IA · no disponible"
+                return@runOnUiThread
+            }
+            updateDailyUsage(usage.optInt("used"), usage.optInt("limit"))
+        } }
+    }
+
+    private fun updateDailyUsage(used: Int, limit: Int) {
+        if (!::quotaLabel.isInitialized || !::quotaProgress.isInitialized || limit < 1) return
+        dailyUsageLoaded = true
+        dailyUsed = used.coerceAtLeast(0)
+        dailyLimit = limit
+        val percent = ((dailyUsed * 100L) / dailyLimit).toInt().coerceIn(0, 100)
+        quotaLabel.text = "Uso diario de IA · $dailyUsed/$dailyLimit" +
+                if (dailyUsed >= dailyLimit) " · límite alcanzado" else " · quedan ${dailyLimit - dailyUsed}"
+        quotaLabel.setTextColor(if (dailyUsed >= dailyLimit) 0xFFFF9B9B.toInt() else 0xFFB5C7D8.toInt())
+        quotaProgress.progressTintList = android.content.res.ColorStateList.valueOf(
+            if (dailyUsed >= dailyLimit) 0xFFE56E7A.toInt() else 0xFF5DD8B5.toInt())
+        quotaProgress.progress = percent
     }
 
     private fun showThinking(label: String) {

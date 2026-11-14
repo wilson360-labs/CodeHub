@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.SystemClock;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -64,35 +65,35 @@ public class AppUpdateChecker {
     private static final String PREF_AVAILABLE_URL = "app_update_available_url";
     private static final String PREF_AVAILABLE_CODE = "app_update_available_code";
     private static final String PREF_LAST_CHECK = "update_last_check_ts";
-    private static final String PREF_LAST_ATTEMPT = "update_last_attempt_ts";
     private static final String PREF_LAST_POLICY_CHECK = "update_policy_last_check_ts";
-    private static final long CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000; // éxito: 1 vez al día
     private static final long POLICY_CHECK_INTERVAL_MS = 15L * 60 * 1000;
-    // Fallo de red: reintentar en 30 min. Antes la marca de último chequeo se
-    // guardaba ANTES de consultar, así que una consulta fallida (GitHub
-    // inalcanzable) dejaba el diálogo bloqueado 24 horas — ese era el bug
-    // por el que "el update no llega".
-    private static final long CHECK_RETRY_MS = 30L * 60 * 1000;
+    private static final long AUTO_CHECK_DEBOUNCE_MS = 3_000L;
+    private static final Object AUTO_CHECK_LOCK = new Object();
+    private static boolean autoCheckInFlight;
+    private static long lastAutoCheckElapsedMs;
 
     /**
-     * Chequeo con gating por RESULTADO: se llama en onCreate y onResume.
-     * - Chequeo OK   → espera CHECK_INTERVAL_MS antes del siguiente.
-     * - Chequeo FALLIDO (red/servidor) → reintenta en CHECK_RETRY_MS.
-     * La marca del INTENTO se guarda antes de consultar; la del ÉXITO solo
-     * cuando GitHub contestó de verdad (checkNow).
+     * Consulta releases al abrir o volver a CodeHub. onCreate y el onResume
+     * inmediato se deduplican, y el bloqueo evita peticiones paralelas.
      */
     public static void checkIfDue(final MainActivity activity) {
         SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         checkPolicyIfDue(activity, prefs);
-        long now = System.currentTimeMillis();
-        long lastSuccess = prefs.getLong(PREF_LAST_CHECK, 0);
-        long lastAttempt = prefs.getLong(PREF_LAST_ATTEMPT, 0);
-        if (now - lastSuccess < CHECK_INTERVAL_MS || now - lastAttempt < CHECK_RETRY_MS) {
-            showCachedBanner(activity);
-            return;
+        long elapsed = SystemClock.elapsedRealtime();
+        synchronized (AUTO_CHECK_LOCK) {
+            if (autoCheckInFlight || (lastAutoCheckElapsedMs > 0
+                    && elapsed - lastAutoCheckElapsedMs < AUTO_CHECK_DEBOUNCE_MS)) {
+                showCachedBanner(activity);
+                return;
+            }
+            autoCheckInFlight = true;
+            lastAutoCheckElapsedMs = elapsed;
         }
-        prefs.edit().putLong(PREF_LAST_ATTEMPT, now).apply();
-        checkNow(activity);
+        checkNow(activity, -1L, () -> {
+            synchronized (AUTO_CHECK_LOCK) {
+                autoCheckInFlight = false;
+            }
+        });
     }
 
     /**
@@ -155,16 +156,21 @@ public class AppUpdateChecker {
     }
 
     private static void checkNow(final MainActivity activity, final long knownMinimumCode) {
+        checkNow(activity, knownMinimumCode, null);
+    }
+
+    private static void checkNow(final MainActivity activity, final long knownMinimumCode,
+                                 final Runnable completion) {
         new Thread(() -> {
             try {
                 long minimumSupportedCode = knownMinimumCode >= 0
                         ? knownMinimumCode : fetchMinimumSupportedCode(activity);
                 JSONObject release = fetchLatestRelease();
                 if (release == null) {
-                    Log.i(TAG, "GitHub no contestó; reintento automático en " + (CHECK_RETRY_MS / 60000) + " min");
+                    Log.i(TAG, "GitHub no contestó; se volverá a consultar al siguiente acceso");
                     return;
                 }
-                // GitHub contestó: recién aquí arranca la ventana de 24h.
+                // Se conserva la última respuesta para diagnóstico, sin usarla como throttle.
                 SharedPreferences sp = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
                 sp.edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply();
 
@@ -202,6 +208,10 @@ public class AppUpdateChecker {
                 activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
             } catch (Throwable t) {
                 Log.e(TAG, "Error chequeando actualización", t);
+            } finally {
+                if (completion != null) {
+                    completion.run();
+                }
             }
         }).start();
     }
@@ -222,7 +232,6 @@ public class AppUpdateChecker {
             String url = current.getString(PREF_AVAILABLE_URL, "");
             long code = current.getLong(PREF_AVAILABLE_CODE, 0L);
             if (version.isEmpty() || url.isEmpty()) {
-                if (required) checkNow(activity, minimumCode);
                 return;
             }
             String localVersion = "0";

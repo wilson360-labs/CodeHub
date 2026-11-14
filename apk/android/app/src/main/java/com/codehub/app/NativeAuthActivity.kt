@@ -41,6 +41,8 @@ class NativeAuthActivity : Activity() {
     private lateinit var passwordInput: EditText
     private lateinit var confirmInput: EditText
     private lateinit var confirmLabel: TextView
+    private lateinit var loginTab: TextView
+    private lateinit var registerTab: TextView
     private lateinit var status: TextView
     private lateinit var submit: TextView
     private lateinit var root: LinearLayout
@@ -59,19 +61,21 @@ class NativeAuthActivity : Activity() {
         }
         buildUi()
         SystemBars.applyInsets(this)
-        if (savedInstanceState != null && savedInstanceState.getString("auth_action") == Action.GOOGLE.name) {
-            action = Action.GOOGLE
+        if (savedInstanceState != null) {
+            action = Action.entries.firstOrNull { it.name == savedInstanceState.getString("auth_action") }
             pendingState = savedInstanceState.getString("auth_state").orEmpty()
-            pkceVerifier = savedInstanceState.getString("auth_verifier").orEmpty()
+            val verifier = savedInstanceState.getString("auth_verifier").orEmpty()
+            if (action == Action.GOOGLE) pkceVerifier = verifier
+            else challengeVerifier = verifier
         }
         consumeCallback(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        if (action == Action.GOOGLE && pendingState.isNotBlank() && pkceVerifier.isNotBlank()) {
-            outState.putString("auth_action", Action.GOOGLE.name)
+        if (action != null && pendingState.isNotBlank()) {
+            outState.putString("auth_action", action?.name)
             outState.putString("auth_state", pendingState)
-            outState.putString("auth_verifier", pkceVerifier)
+            outState.putString("auth_verifier", if (action == Action.GOOGLE) pkceVerifier else challengeVerifier)
         }
         super.onSaveInstanceState(outState)
     }
@@ -105,11 +109,11 @@ class NativeAuthActivity : Activity() {
             setPadding(dp(4), dp(4), dp(4), dp(4))
             background = rounded(0xFF151B29.toInt(), dp(15), 0xFF303A50.toInt())
         }
-        val loginTab = text("Iniciar sesión", 13f, Color.WHITE, true).apply {
+        loginTab = text("Iniciar sesión", 13f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
             setOnClickListener { setMode(false) }
         }
-        val registerTab = text("Crear cuenta", 13f, 0xFFAAB3C6.toInt(), true).apply {
+        registerTab = text("Crear cuenta", 13f, 0xFFAAB3C6.toInt(), true).apply {
             gravity = Gravity.CENTER
             setOnClickListener { setMode(true) }
         }
@@ -147,6 +151,12 @@ class NativeAuthActivity : Activity() {
 
     private fun setMode(register: Boolean) {
         registerMode = register
+        loginTab.setTextColor(if (register) 0xFFAAB3C6.toInt() else Color.WHITE)
+        registerTab.setTextColor(if (register) Color.WHITE else 0xFFAAB3C6.toInt())
+        loginTab.background = rounded(if (register) Color.TRANSPARENT else 0xFF303B55.toInt(), dp(12),
+            if (register) Color.TRANSPARENT else 0xFF465574.toInt())
+        registerTab.background = rounded(if (register) 0xFF303B55.toInt() else Color.TRANSPARENT, dp(12),
+            if (register) 0xFF465574.toInt() else Color.TRANSPARENT)
         confirmLabel.visibility = if (register) View.VISIBLE else View.GONE
         confirmInput.visibility = if (register) View.VISIBLE else View.GONE
         submit.text = if (register) "Crear mi perfil CodeHub" else "Iniciar sesión"
@@ -167,7 +177,8 @@ class NativeAuthActivity : Activity() {
         val challenge = sha256UrlSafe(challengeVerifier)
         status.text = "Preparando una verificación segura…"
         activeCall = repository.post("$API/api/auth/mobile-challenge/start",
-            JSONObject().put("state", pendingState).put("challenge", challenge)) { json, error -> runOnUiThread {
+            JSONObject().put("state", pendingState).put("challenge", challenge)
+                .put("intent", if (action == Action.REGISTER) "register" else "login")) { json, error -> runOnUiThread {
             activeCall = null
             if (json?.optBoolean("ok") != true) {
                 status.text = error ?: json?.optString("error").orEmpty().ifBlank { "No se pudo iniciar la verificación." }
@@ -217,6 +228,13 @@ class NativeAuthActivity : Activity() {
                 if (code.isBlank()) { status.text = "La verificación no se completó. ${uri.getQueryParameter("error").orEmpty()}"; return }
                 val pending = action
                 if (pending != Action.LOGIN && pending != Action.REGISTER) return
+                if (emailInput.text.isNullOrBlank() || passwordInput.text.isNullOrBlank()) {
+                    action = null
+                    pendingState = ""
+                    challengeVerifier = ""
+                    status.text = "El formulario se reinició mientras verificabas. Vuelve a escribir tus datos e inténtalo otra vez."
+                    return
+                }
                 exchangeTurnstileCode(pending, code)
             }
             "/google" -> {
@@ -232,8 +250,10 @@ class NativeAuthActivity : Activity() {
         val body = JSONObject().put("state", pendingState).put("code", code).put("verifier", challengeVerifier)
         activeCall = repository.post("$API/api/auth/mobile-challenge/exchange", body) { json, error -> runOnUiThread {
             activeCall = null
-            val turnstileToken = json?.optString("turnstileToken").orEmpty()
-            if (json?.optBoolean("ok") != true || turnstileToken.isBlank()) {
+            val authGrant = json?.optString("authGrant").orEmpty()
+            val expectedIntent = if (pending == Action.REGISTER) "register" else "login"
+            if (json?.optBoolean("ok") != true || authGrant.isBlank()
+                || json.optString("intent") != expectedIntent) {
                 setBusy(false, "")
                 status.text = error ?: json?.optString("error").orEmpty().ifBlank { "La verificación expiró. Inténtalo de nuevo." }
                 challengeVerifier = ""
@@ -241,16 +261,16 @@ class NativeAuthActivity : Activity() {
                 return@runOnUiThread
             }
             challengeVerifier = ""
-            sendCredentials(pending, turnstileToken)
+            sendCredentials(pending, authGrant)
         } }
     }
 
-    private fun sendCredentials(currentAction: Action, turnstileToken: String) {
+    private fun sendCredentials(currentAction: Action, authGrant: String) {
         setBusy(true, "Verificando tu cuenta…")
         val payload = JSONObject()
             .put("email", emailInput.text?.toString()?.trim()?.lowercase(Locale.ROOT))
             .put("password", passwordInput.text?.toString())
-            .put("turnstileToken", turnstileToken)
+            .put("mobileGrant", authGrant)
         val path = if (currentAction == Action.REGISTER) "/api/auth/register" else "/api/auth/login"
         activeCall = repository.post("$API$path", payload) { json, error -> runOnUiThread {
             activeCall = null

@@ -116,6 +116,13 @@ public final class CacheCleaner {
     /** Refreshes cached-byte estimates immediately before a deep-clean operation. */
     public static List<CacheAppInfo> recalculateCacheSizes(Context context, List<CacheAppInfo> apps)
             throws Exception {
+        return recalculateCacheSizes(context, apps, null);
+    }
+
+    /** Recalculate with incremental progress so large app lists never look frozen. */
+    public static List<CacheAppInfo> recalculateCacheSizes(Context context, List<CacheAppInfo> apps,
+                                                            MeasurementProgressListener listener)
+            throws Exception {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
             throw new IllegalStateException("La medición de caché requiere Android 8.0 o posterior.");
         if (!hasUsageAccess(context))
@@ -127,6 +134,7 @@ public final class CacheCleaner {
         if (statsManager == null) throw new IllegalStateException("Las estadísticas de almacenamiento no están disponibles.");
         UserHandle user = Process.myUserHandle();
         List<CacheAppInfo> refreshed = new ArrayList<>(apps.size());
+        int completed = 0;
         for (CacheAppInfo app : apps) {
             long cacheBytes = 0L;
             try {
@@ -140,6 +148,8 @@ public final class CacheCleaner {
             }
             refreshed.add(new CacheAppInfo(app.packageName, app.label, app.icon, cacheBytes,
                     app.systemApp, app.protectedApp));
+            completed++;
+            if (listener != null) listener.onProgress(completed, apps.size(), app.packageName);
         }
         Collections.sort(refreshed, (left, right) -> {
             int byCache = Long.compare(right.cacheBytes, left.cacheBytes);
@@ -221,6 +231,11 @@ public final class CacheCleaner {
         for (CacheAppInfo target : targets) {
             boolean cleared = ShizukuPlusUtils.clearAppCache(target.packageName) == 1;
             completed++;
+            // Report each completed system request before querying storage stats,
+            // which can itself be slow on OEM package managers.
+            if (listener != null)
+                listener.onProgress(completed, targets.size(), target.packageName, cleared,
+                        verifiedFreed, unmeasured);
             if (cleared) {
                 success++;
                 try {
@@ -232,9 +247,6 @@ public final class CacheCleaner {
             } else {
                 failure++;
             }
-            if (listener != null)
-                listener.onProgress(completed, targets.size(), target.packageName, cleared,
-                        verifiedFreed, unmeasured);
         }
         return new ClearResult(success, failure, verifiedFreed, unmeasured);
     }
@@ -254,6 +266,10 @@ public final class CacheCleaner {
     public interface ProgressListener {
         void onProgress(int completed, int total, String packageName, boolean cleared,
                         long verifiedFreedBytes, int unmeasuredApps);
+    }
+
+    public interface MeasurementProgressListener {
+        void onProgress(int completed, int total, String packageName);
     }
 
     public static final class ClearResult {
