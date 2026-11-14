@@ -1,6 +1,8 @@
 package com.codehub.app.codesu.service;
 
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.List;
 
@@ -31,6 +33,14 @@ public class ShizukuUserService extends IKillAppService.Stub {
             "org.chromium.webview_shell",
     };
 
+    private static final String[] CACHE_PROTECTED_PACKAGES = {
+            "android", HOST_PACKAGE, "moe.shizuku.privileged.api",
+            "com.android.systemui", "com.android.settings", "com.android.shell",
+            "com.android.phone", "com.android.packageinstaller", "com.android.permissioncontroller",
+            "com.google.android.gms", "com.google.android.gsf", "com.google.android.ims",
+            "com.google.android.setupwizard", "com.google.android.vending",
+    };
+
     private static boolean isProtectedTarget(String pkgName) {
         for (String protectedPkg : ENGINE_PROTECTED)
             if (protectedPkg.equals(pkgName))
@@ -39,6 +49,39 @@ public class ShizukuUserService extends IKillAppService.Stub {
             if (pkgName.startsWith(prefix))
                 return true;
         return false;
+    }
+
+    private static boolean isProtectedCacheTarget(String pkgName) {
+        if (pkgName == null || pkgName.trim().isEmpty()) return true;
+        for (String protectedPkg : CACHE_PROTECTED_PACKAGES)
+            if (protectedPkg.equals(pkgName)) return true;
+        for (String prefix : WEBVIEW_PROVIDER_PREFIXES)
+            if (pkgName.startsWith(prefix)) return true;
+        return pkgName.startsWith("com.android.providers.")
+                || pkgName.startsWith("com.google.android.providers.");
+    }
+
+    /** Uses PackageManager's cache-only operation in the Shizuku shell process. */
+    @Override
+    public int clearAppCache(String pkgName) {
+        if (isProtectedCacheTarget(pkgName)) return -1;
+        Process process = null;
+        try {
+            process = new ProcessBuilder("/system/bin/pm", "clear", "--cache-only", "--user", "current", pkgName)
+                    .redirectErrorStream(true)
+                    .start();
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) output.append(line).append('\n');
+            }
+            int exitCode = process.waitFor();
+            return exitCode == 0 && output.toString().contains("Success") ? 1 : 0;
+        } catch (Exception e) {
+            return 0;
+        } finally {
+            if (process != null) process.destroy();
+        }
     }
 
     @Override

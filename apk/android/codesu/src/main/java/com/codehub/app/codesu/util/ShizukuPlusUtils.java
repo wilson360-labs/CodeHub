@@ -41,7 +41,7 @@ public class ShizukuPlusUtils {
                 .daemon(false)
                 .processNameSuffix("codesu")
                 .debuggable(false)
-                .version(2);
+                .version(3);
     }
 
     public static boolean checkShizuku() {
@@ -102,6 +102,16 @@ public class ShizukuPlusUtils {
             return killAppService.killListOfApps(pkgList, level);
         } catch (Exception e) {
             return -1;
+        }
+    }
+
+    /** Returns 1 when the package manager confirms a cache clear, 0 on failure, -1 if Shizuku is unavailable. */
+    public static int clearAppCache(String packageName) {
+        if (!ensureServiceBound()) return -1;
+        try {
+            return killAppService.clearAppCache(packageName);
+        } catch (Exception e) {
+            return 0;
         }
     }
 }

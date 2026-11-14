@@ -247,15 +247,19 @@ public class CacheCleanerFragment extends Fragment {
                     binding.codesuCacheCleanButton.setEnabled(true);
                     binding.codesuCacheProgress.setProgress(100);
                     binding.codesuCacheProgressText.setText("100% · Actualizando tamaños…");
-                    String resultMessage = "Liberación verificada: " + result.cleared + " apps · "
+                    String outcome = result.failed == 0 ? "Limpieza completada"
+                            : result.cleared == 0 ? "No se pudo ejecutar la limpieza" : "Limpieza parcial";
+                    String resultMessage = outcome + " · " + result.cleared + " apps confirmadas · "
                             + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " liberados"
                             + (result.unmeasuredApps > 0 ? " · medición pendiente en " + result.unmeasuredApps + " apps" : "")
                             + (result.failed > 0 ? " · " + result.failed + " omitidas o sin permiso" : "");
                     binding.codesuCacheResult.setText(resultMessage);
                     binding.codesuCacheResult.setVisibility(View.VISIBLE);
-                    Toast.makeText(requireContext(), "Limpieza terminada · " + result.cleared
-                            + " apps · " + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " liberados",
-                            Toast.LENGTH_LONG).show();
+                    String toastMessage = result.cleared == 0
+                            ? "No se eliminó caché. Revisa la autorización de Shizuku e inténtalo de nuevo."
+                            : outcome + " · " + result.cleared + " apps · "
+                                    + CacheAppAdapter.formatBytes(result.verifiedFreedBytes) + " liberados";
+                    Toast.makeText(requireContext(), toastMessage, Toast.LENGTH_LONG).show();
                     loadCacheApps();
                 });
             } catch (Exception e) {

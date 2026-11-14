@@ -15,9 +15,6 @@ import android.telecom.TelecomManager;
 import android.provider.Telephony;
 import android.content.Intent;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -216,73 +213,30 @@ public final class CacheCleaner {
         }
         if (targets.isEmpty()) return new ClearResult(0, 0, 0L, 0);
 
-        String script = "for p in \"$@\"; do "
-                + "out=$(pm clear --cache-only --user current \"$p\" 2>&1); "
-                + "case \"$out\" in *Success*) echo \"CODESU_CACHE_OK:$p\";; "
-                + "*) echo \"CODESU_CACHE_FAIL:$p\";; esac; "
-                + "done; exit 0";
-        String[] command = new String[4 + targets.size()];
-        command[0] = "sh";
-        command[1] = "-c";
-        command[2] = script;
-        command[3] = "codesu-cache";
-        for (int i = 0; i < targets.size(); i++) command[i + 4] = targets.get(i).packageName;
-
-        Method newProcess = Shizuku.class.getDeclaredMethod(
-                "newProcess", String[].class, String[].class, String.class);
-        newProcess.setAccessible(true);
-        ProcessResult processResult = readProcess(context, newProcess.invoke(null, command, null, null), targets, listener);
-        return processResult.result;
-    }
-
-    private static ProcessResult readProcess(Context context, Object processObject, List<CacheAppInfo> targets,
-                                             ProgressListener listener) throws Exception {
-        if (!(processObject instanceof java.lang.Process))
-            throw new IllegalStateException("Shizuku no pudo iniciar el proceso de limpieza de caché.");
-        java.lang.Process process = (java.lang.Process) processObject;
         int success = 0;
         int failure = 0;
         long verifiedFreed = 0L;
         int unmeasured = 0;
         int completed = 0;
-        Set<String> reported = new HashSet<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                boolean ok = line.startsWith("CODESU_CACHE_OK:");
-                boolean failed = line.startsWith("CODESU_CACHE_FAIL:");
-                if (!ok && !failed) continue;
-                String pkg = line.substring(line.indexOf(':', "CODESU_CACHE_".length()) + 1);
-                if (!reported.add(pkg)) continue;
-                completed++;
-                if (ok) {
-                    success++;
-                    CacheAppInfo target = findTarget(targets, pkg);
-                    if (target != null) {
-                        try {
-                            long afterBytes = queryCacheBytes(context, pkg);
-                            verifiedFreed += Math.max(0L, target.cacheBytes - afterBytes);
-                        } catch (Exception ignored) {
-                            unmeasured++;
-                        }
-                    }
-                } else {
-                    failure++;
+        for (CacheAppInfo target : targets) {
+            boolean cleared = ShizukuPlusUtils.clearAppCache(target.packageName) == 1;
+            completed++;
+            if (cleared) {
+                success++;
+                try {
+                    long afterBytes = queryCacheBytes(context, target.packageName);
+                    verifiedFreed += Math.max(0L, target.cacheBytes - afterBytes);
+                } catch (Exception ignored) {
+                    unmeasured++;
                 }
-                if (listener != null)
-                    listener.onProgress(completed, targets.size(), pkg, ok, verifiedFreed, unmeasured);
+            } else {
+                failure++;
             }
-        } finally {
-            process.getErrorStream().close();
+            if (listener != null)
+                listener.onProgress(completed, targets.size(), target.packageName, cleared,
+                        verifiedFreed, unmeasured);
         }
-        process.waitFor();
-        if (completed < targets.size()) failure += targets.size() - completed;
-        return new ProcessResult(new ClearResult(success, failure, verifiedFreed, unmeasured));
-    }
-
-    private static CacheAppInfo findTarget(List<CacheAppInfo> targets, String packageName) {
-        for (CacheAppInfo app : targets) if (app.packageName.equals(packageName)) return app;
-        return null;
+        return new ClearResult(success, failure, verifiedFreed, unmeasured);
     }
 
     private static long queryCacheBytes(Context context, String packageName) throws Exception {
@@ -315,8 +269,4 @@ public final class CacheCleaner {
         }
     }
 
-    private static final class ProcessResult {
-        final ClearResult result;
-        ProcessResult(ClearResult result) { this.result = result; }
-    }
 }
