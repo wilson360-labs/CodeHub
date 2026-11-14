@@ -3,8 +3,8 @@ package com.codehub.app.codesu.service;
 import android.os.SystemClock;
 
 import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
@@ -68,39 +68,80 @@ public class ShizukuUserService extends IKillAppService.Stub {
     /** Uses PackageManager's cache-only operation in the Shizuku shell process. */
     @Override
     public int clearAppCache(String pkgName) {
-        if (isProtectedCacheTarget(pkgName)) return -1;
+        return clearAppCacheDetailed(pkgName).isEmpty() ? 1 : 0;
+    }
+
+    @Override
+    public String clearAppCacheDetailed(String pkgName) {
+        if (isProtectedCacheTarget(pkgName)) return "Paquete protegido por seguridad.";
         Process process = null;
         try {
             process = new ProcessBuilder("/system/bin/pm", "clear", "--user", "current", "--cache-only", pkgName)
                     .redirectErrorStream(true)
                     .start();
-            // pm clear waits for PackageManager's async observer. Bound that wait
-            // so one OEM/system package cannot leave the cleaner stuck forever.
+            Process running = process;
+            ByteArrayOutputStream captured = new ByteArrayOutputStream();
+            Thread outputReader = new Thread(() -> {
+                try (InputStream stream = running.getInputStream()) {
+                    byte[] buffer = new byte[512];
+                    int count;
+                    while ((count = stream.read(buffer)) >= 0) {
+                        if (count > 0) synchronized (captured) { captured.write(buffer, 0, count); }
+                    }
+                } catch (IOException ignored) { }
+            }, "codesu-cache-pm-output");
+            outputReader.setDaemon(true);
+            outputReader.start();
+
+            // Drain output while waiting; otherwise a full pipe can deadlock pm clear.
             long deadline = SystemClock.elapsedRealtime() + CACHE_CLEAR_TIMEOUT_MS;
             int exitCode;
             while (true) {
                 try {
-                    exitCode = process.exitValue();
+                    exitCode = running.exitValue();
                     break;
                 } catch (IllegalThreadStateException stillRunning) {
                     if (SystemClock.elapsedRealtime() >= deadline) {
-                        process.destroy();
-                        return 0;
+                        running.destroy();
+                        long destroyDeadline = SystemClock.elapsedRealtime() + 500L;
+                        while (SystemClock.elapsedRealtime() < destroyDeadline) {
+                            try { running.exitValue(); break; }
+                            catch (IllegalThreadStateException stillRunning) { Thread.sleep(50L); }
+                        }
+                        try { running.exitValue(); }
+                        catch (IllegalThreadStateException stillRunning) {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) running.destroyForcibly();
+                        }
+                        try { outputReader.join(500L); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+                        return "pm clear superó el límite de 30 s" + outputSuffix(captured);
                     }
                     Thread.sleep(100L);
                 }
             }
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) output.append(line).append('\n');
+            try { outputReader.join(1500L); } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return "Se interrumpió la lectura de respuesta de Package Manager.";
             }
-            return exitCode == 0 && output.toString().contains("Success") ? 1 : 0;
+            String output = outputSuffix(captured);
+            if (exitCode != 0) return "pm clear terminó con código " + exitCode + output;
+            if (!output.toLowerCase(java.util.Locale.ROOT).matches("(?s).*\\bsuccess\\b.*"))
+                return "Package Manager no confirmó la limpieza" + output;
+            return "";
         } catch (Exception e) {
-            return 0;
+            return "No se pudo ejecutar pm clear: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         } finally {
             if (process != null) process.destroy();
         }
+    }
+
+    private static String outputSuffix(ByteArrayOutputStream captured) {
+        String output;
+        synchronized (captured) {
+            output = new String(captured.toByteArray(), java.nio.charset.StandardCharsets.UTF_8).trim();
+        }
+        if (output.isEmpty()) return "";
+        if (output.length() > 240) output = output.substring(0, 240) + "…";
+        return ": " + output;
     }
 
     @Override

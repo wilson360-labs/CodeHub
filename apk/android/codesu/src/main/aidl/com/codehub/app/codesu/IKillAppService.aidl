@@ -7,4 +7,6 @@ interface IKillAppService {
     int killListOfApps(in List<String> packages, int level);
 
     int clearAppCache(String pkgName);
+
+    String clearAppCacheDetailed(String pkgName);
 }

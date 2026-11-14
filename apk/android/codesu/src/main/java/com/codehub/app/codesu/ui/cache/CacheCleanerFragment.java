@@ -337,13 +337,15 @@ public class CacheCleanerFragment extends Fragment {
         int failed = output.getInt(CacheCleanerWorker.KEY_FAILED, 0);
         long freed = output.getLong(CacheCleanerWorker.KEY_FREED, 0L);
         String error = output.getString(CacheCleanerWorker.KEY_ERROR);
-        String result = state == WorkInfo.State.SUCCEEDED
+        String result = state == WorkInfo.State.SUCCEEDED && failed == 0
                 ? "Limpieza completada · " + cleared + " apps confirmadas · " + CacheAppAdapter.formatBytes(freed) + " liberados"
+                : state == WorkInfo.State.SUCCEEDED
+                ? "Limpieza parcial · " + cleared + " confirmadas · " + CacheAppAdapter.formatBytes(freed) + " liberados"
                 : state == WorkInfo.State.CANCELLED ? "Limpieza cancelada por el usuario"
                 : "Limpieza no completada · " + (error == null ? "Shizuku no confirmó el borrado." : error);
         binding.codesuCacheProgress.setProgress(state == WorkInfo.State.SUCCEEDED ? 100 : 0);
-        binding.codesuCacheProgressText.setText(state == WorkInfo.State.SUCCEEDED ? "100% · Limpieza verificada" : "Limpieza detenida");
-        binding.codesuCacheResult.setText(result + (failed > 0 ? " · " + failed + " apps sin confirmar" : ""));
+        binding.codesuCacheProgressText.setText(state == WorkInfo.State.SUCCEEDED ? "100% · Tarea finalizada" : "Limpieza detenida");
+        binding.codesuCacheResult.setText(result + (failed > 0 ? " · " + failed + " sin confirmar" + (error == null || error.trim().isEmpty() ? "" : "\n" + error) : ""));
         binding.codesuCacheResult.setVisibility(View.VISIBLE);
         binding.codesuCacheProgress.setVisibility(View.GONE);
         binding.codesuCacheProgressText.setVisibility(View.GONE);

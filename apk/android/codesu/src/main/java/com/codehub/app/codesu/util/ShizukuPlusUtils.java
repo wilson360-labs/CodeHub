@@ -107,11 +107,17 @@ public class ShizukuPlusUtils {
 
     /** Returns 1 when the package manager confirms a cache clear, 0 on failure, -1 if Shizuku is unavailable. */
     public static int clearAppCache(String packageName) {
-        if (!ensureServiceBound()) return -1;
+        return clearAppCacheDetailed(packageName).isEmpty() ? 1 : 0;
+    }
+
+    public static String clearAppCacheDetailed(String packageName) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
         try {
-            return killAppService.clearAppCache(packageName);
+            String result = killAppService.clearAppCacheDetailed(packageName);
+            return result == null ? "Shizuku no devolvió el resultado de Package Manager." : result;
         } catch (Exception e) {
-            return 0;
+            return "Shizuku no pudo ejecutar la limpieza: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         }
     }
 }

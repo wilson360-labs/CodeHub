@@ -25,6 +25,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.DecelerateInterpolator
@@ -185,6 +186,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         window.statusBarColor = 0xFF090D16.toInt()
         window.navigationBarColor = 0xFF090D16.toInt()
         window.decorView.setBackgroundColor(0xFF090D16.toInt())
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
@@ -395,7 +397,8 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             maxLines = 6
             imeOptions = EditorInfo.IME_ACTION_SEND
             setOnEditorActionListener { _, actionId, event ->
-                if (actionId == EditorInfo.IME_ACTION_SEND || (event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER && !event.isShiftPressed)) {
+                if ((actionId == EditorInfo.IME_ACTION_SEND && event?.isShiftPressed != true)
+                    || (event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER && !event.isShiftPressed)) {
                     sendMessage(); true
                 } else false
             }
@@ -612,6 +615,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             return
         }
         input.setText("")
+        keepComposerReady()
         if (raw.startsWith("/")) {
             handleCommand(raw)
             return
@@ -652,6 +656,16 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         status.text = if (handsFreeEnabled) "JARVIS · enviando tu voz a la IA en línea…" else "Conectando con los proveedores de IA…"
         setSendButtonState(true)
         streamChat(request, assistant)
+    }
+
+    private fun keepComposerReady() {
+        if (!::input.isInitialized || isFinishing || isDestroyed) return
+        input.requestFocus()
+        input.postDelayed({
+            if (isFinishing || isDestroyed || !input.isAttachedToWindow) return@postDelayed
+            val manager = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager ?: return@postDelayed
+            manager.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+        }, 120L)
     }
 
     private fun streamChat(payload: JSONObject, assistant: ChatMessage) {
@@ -1210,16 +1224,45 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         val isUser = message.role == "user"
         val wrapper = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(13), dp(11), dp(13), dp(11))
-            background = rounded(if (isUser) 0xFF252C50.toInt() else 0xFF141C29.toInt(), dp(18), if (isUser) 0xFF414B7A.toInt() else 0xFF283449.toInt())
+            setPadding(dp(15), dp(13), dp(15), dp(12))
+            background = rounded(if (isUser) 0xFF252C50.toInt() else 0xFF12232E.toInt(), dp(18), if (isUser) 0xFF59649A.toInt() else 0xFF287C7D.toInt())
         }
-        wrapper.addView(text(if (isUser) "TÚ" else "JARVIS", 10f, if (isUser) 0xFFAEB8FF.toInt() else 0xFF82D9E8.toInt(), true))
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        if (!isUser) {
+            val orb = FrameLayout(this).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(0xFF102E3A.toInt())
+                    setStroke(dp(1), 0xFF55E3D0.toInt())
+                }
+                addView(ImageView(this@NativeAiChatActivity).apply {
+                    setImageResource(R.drawable.ic_jarvis_core)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    contentDescription = "Símbolo de JARVIS"
+                }, FrameLayout.LayoutParams(dp(27), dp(27), Gravity.CENTER))
+            }
+            header.addView(orb, LinearLayout.LayoutParams(dp(34), dp(34)))
+            val identity = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(text("JARVIS", 11f, 0xFF8DFFF0.toInt(), true))
+                addView(text("ASISTENTE CODEHUB", 8f, 0xFF9BB7C2.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(2) })
+            }
+            header.addView(identity, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+        } else {
+            val you = text("TÚ", 10f, 0xFFD5D9FF.toInt(), true).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(10), dp(5), dp(10), dp(5))
+                background = rounded(0xFF323B68.toInt(), dp(12), 0xFF626FAD.toInt())
+            }
+            header.addView(you, LinearLayout.LayoutParams(-2, -2))
+        }
+        wrapper.addView(header)
         if (message.text.isNotBlank()) {
             val body = TextView(this).apply {
                 text = message.text
-                textSize = 14f
-                setTextColor(0xFFE6EBF3.toInt())
-                setLineSpacing(dp(3).toFloat(), 1f)
+                textSize = 15f
+                setTextColor(0xFFF0F6FA.toInt())
+                setLineSpacing(dp(4).toFloat(), 1.02f)
                 setTextIsSelectable(true)
                 movementMethod = LinkMovementMethod.getInstance()
                 autoLinkMask = android.text.util.Linkify.WEB_URLS
@@ -1304,10 +1347,10 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setOnClickListener { action() }
             addView(ImageView(this@NativeAiChatActivity).apply {
                 setImageResource(icon)
-                imageTintList = android.content.res.ColorStateList.valueOf(0xFF7CE0D2.toInt())
+                imageTintList = android.content.res.ColorStateList.valueOf(0xFF9AFFF0.toInt())
                 scaleType = ImageView.ScaleType.CENTER
             }, LinearLayout.LayoutParams(dp(18), dp(18)))
-            addView(text(label, 11f, 0xFFD7E3ED.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(6) })
+            addView(text(label, 11f, 0xFFEAF5F8.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(6) })
             installPressFeedback(this)
         }
 
@@ -1398,8 +1441,20 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 ?: Locale.getDefault().takeIf { tts.isLanguageAvailable(it) >= TextToSpeech.LANG_AVAILABLE }
             ttsReady = selected != null && tts.setLanguage(selected) >= TextToSpeech.LANG_AVAILABLE
             if (ttsReady) {
+                val maleVoice = runCatching {
+                    tts.voices.orEmpty()
+                        .filter { it.locale.language == (selected?.language ?: "es") }
+                        .sortedByDescending { it.quality }
+                        .firstOrNull { it.name.contains(Regex("(?i)(?:^|[#_\\-.])(?:male|masculine|masc|hombre|man)(?:[_\\-.0-9]|$)")) }
+                }.getOrNull()
+                if (maleVoice != null) {
+                    runCatching { tts.setVoice(maleVoice) }
+                    status.text = "Voz local JARVIS · voz masculina del dispositivo"
+                } else {
+                    status.text = "Voz local del dispositivo · la voz masculina depende de las voces instaladas"
+                }
                 tts.setSpeechRate(1.0f)
-                tts.setPitch(1.02f)
+                tts.setPitch(if (maleVoice != null) 0.90f else 0.94f)
                 tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) = Unit
                     override fun onError(utteranceId: String?) = Unit

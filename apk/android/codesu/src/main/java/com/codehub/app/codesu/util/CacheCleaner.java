@@ -251,7 +251,7 @@ public final class CacheCleaner {
             if (isDeepCleanCandidate(app) && !protectedPackages.contains(app.packageName))
                 targets.add(app);
         }
-        if (targets.isEmpty()) return new ClearResult(0, 0, 0L, 0, 0L);
+        if (targets.isEmpty()) return new ClearResult(0, 0, 0L, 0, 0L, "");
         long targetBytes = 0L;
         for (CacheAppInfo target : targets) targetBytes += target.cacheBytes;
 
@@ -259,6 +259,7 @@ public final class CacheCleaner {
         int failure = 0;
         long verifiedFreed = 0L;
         int unmeasured = 0;
+        List<String> failures = Collections.synchronizedList(new ArrayList<>());
         AtomicInteger clearedRequests = new AtomicInteger();
         AtomicInteger liveUnmeasured = new AtomicInteger();
         AtomicLong liveVerifiedFreed = new AtomicLong();
@@ -268,7 +269,13 @@ public final class CacheCleaner {
         try {
             for (CacheAppInfo target : targets) {
                 completion.submit(() -> {
-                    boolean cleared = ShizukuPlusUtils.clearAppCache(target.packageName) == 1;
+                    String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName);
+                    boolean cleared = detail.isEmpty();
+                    if (!cleared) {
+                        synchronized (failures) {
+                            if (failures.size() < 5) failures.add(target.label + " (" + target.packageName + "): " + detail);
+                        }
+                    }
                     synchronized (progressLock) {
                         int requestNumber = clearedRequests.incrementAndGet();
                         // Move the visible progress as soon as Shizuku confirms each
@@ -288,7 +295,7 @@ public final class CacheCleaner {
                             liveUnmeasured.incrementAndGet();
                         }
                     }
-                    return new CacheClearTaskResult(target.packageName, cleared, freed, measured);
+                    return new CacheClearTaskResult(target.packageName, cleared, freed, measured, detail);
                 });
             }
             for (int i = 0; i < targets.size(); i++) {
@@ -306,7 +313,11 @@ public final class CacheCleaner {
                             listener.onProgress(requestNumber, targets.size(), "app", false,
                                     liveVerifiedFreed.get(), liveUnmeasured.get());
                     }
-                    result = new CacheClearTaskResult("app", false, 0L, false);
+                    result = new CacheClearTaskResult("app", false, 0L, false,
+                            e.getCause() == null ? e.getClass().getSimpleName() : e.getCause().getMessage());
+                    synchronized (failures) {
+                        if (failures.size() < 5) failures.add("app: " + result.detail);
+                    }
                 }
                 if (result.cleared) success++; else failure++;
                 verifiedFreed += result.verifiedFreed;
@@ -315,7 +326,9 @@ public final class CacheCleaner {
         } finally {
             workers.shutdownNow();
         }
-        return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes);
+        String failureSummary;
+        synchronized (failures) { failureSummary = android.text.TextUtils.join("\n", failures); }
+        return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes, failureSummary);
     }
 
     private static boolean isDeepCleanCandidate(CacheAppInfo app) {
@@ -328,11 +341,13 @@ public final class CacheCleaner {
         final boolean cleared;
         final long verifiedFreed;
         final boolean measured;
-        CacheClearTaskResult(String packageName, boolean cleared, long verifiedFreed, boolean measured) {
+        final String detail;
+        CacheClearTaskResult(String packageName, boolean cleared, long verifiedFreed, boolean measured, String detail) {
             this.packageName = packageName;
             this.cleared = cleared;
             this.verifiedFreed = verifiedFreed;
             this.measured = measured;
+            this.detail = detail == null ? "Sin detalle de Package Manager." : detail;
         }
     }
 
@@ -363,12 +378,15 @@ public final class CacheCleaner {
         public final long verifiedFreedBytes;
         public final int unmeasuredApps;
         public final long targetBytes;
-        ClearResult(int cleared, int failed, long verifiedFreedBytes, int unmeasuredApps, long targetBytes) {
+        public final String failureSummary;
+        ClearResult(int cleared, int failed, long verifiedFreedBytes, int unmeasuredApps, long targetBytes,
+                    String failureSummary) {
             this.cleared = cleared;
             this.failed = failed;
             this.verifiedFreedBytes = verifiedFreedBytes;
             this.unmeasuredApps = unmeasuredApps;
             this.targetBytes = targetBytes;
+            this.failureSummary = failureSummary == null ? "" : failureSummary;
         }
     }
 

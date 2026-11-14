@@ -88,7 +88,9 @@ public final class CacheCleanerWorker extends Worker {
                     .putInt("unmeasured", result.unmeasuredApps)
                     .putInt("success_rate", successRate)
                     .putInt("space_rate", spaceRate)
-                    .putString(KEY_ERROR, result.cleared == 0 ? "Shizuku no confirmó la limpieza de ninguna app." : "")
+                    .putString(KEY_ERROR, result.failureSummary.isEmpty()
+                            ? (result.cleared == 0 ? "Shizuku no confirmó la limpieza de ninguna app." : "")
+                            : result.failureSummary)
                     .build();
             publish(100, result.failed == 0 ? "Limpieza completada" : "Limpieza parcial",
                     result.cleared + " apps confirmadas", result.cleared, result.failed,

@@ -122,7 +122,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addEntranceTarget(content, actionPair(codeBeatCard, codeStreamCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        copilotCard = featureCard(R.drawable.ic_jarvis_core, "JARVIS", "Asistente personal de voz y texto", cyan) {
+        copilotCard = featureCard(R.drawable.ic_jarvis_core, "JARVIS", "Asistente personal de voz y texto", cyan, tintIcon = false) {
             listener.onOpenCopilot()
         }
         addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
@@ -718,7 +718,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             }, LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
 
-    private fun featureCard(icon: Int, title: String, description: String, accent: Int, onClick: () -> Unit): View =
+    private fun featureCard(icon: Int, title: String, description: String, accent: Int,
+                            tintIcon: Boolean = true, onClick: () -> Unit): View =
         LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -728,11 +729,28 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             isFocusable = true
             contentDescription = "$title. $description"
             setOnClickListener { onClick() }
-            addView(ImageView(context).apply {
-                setImageResource(icon)
-                imageTintList = ColorStateList.valueOf(accent)
-                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            }, LayoutParams(dp(32), dp(32)))
+            if (tintIcon) {
+                addView(ImageView(context).apply {
+                    setImageResource(icon)
+                    imageTintList = ColorStateList.valueOf(accent)
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LayoutParams(dp(32), dp(32)))
+            } else {
+                val iconFrame = FrameLayout(context).apply {
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(0xFF173648.toInt(), 0xFF12243A.toInt())).apply {
+                        shape = GradientDrawable.OVAL
+                        setStroke(dp(1), 0xFF53E7D2.toInt())
+                    }
+                    elevation = dp(5).toFloat()
+                    addView(ImageView(context).apply {
+                        setImageResource(icon)
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    }, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
+                }
+                addView(iconFrame, LayoutParams(dp(48), dp(48)))
+            }
             val copy = LinearLayout(context).apply {
                 orientation = VERTICAL
                 addView(label(title, 14f, Color.WHITE, true))
