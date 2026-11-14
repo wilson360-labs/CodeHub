@@ -6606,6 +6606,7 @@ async function sendFCM(token, payload) {
   // del tray y NO ejecutar el servicio cuando la app está en background —
   // la alarma de emergencia se pierde. Soloquake data-only de alta prioridad.
   const isQuake = payload.type && payload.type.startsWith('quake');
+  const dataOnly = payload.dataOnly === true;
   try {
     const msg = {
       token: token,
@@ -6630,16 +6631,18 @@ async function sendFCM(token, payload) {
               body: payload.body,
               type: payload.type || 'general',
               url: payload.url || '/',
+              severity: payload.severity || 'info',
             }),
       android: {
         // priority: 'high' — despierta el dispositivo incluso en Doze
         // profundo. Sin esto Android puede demorar la entrega hasta
         // la próxima ventana de mantenimiento si la app no se usa hace
         // tiempo, dando la falsa impresión de que "no está despierta".
-        priority: 'high',
+        priority: (isQuake || dataOnly) ? 'high' : 'normal',
+        ...(dataOnly ? { ttl: Math.max(1, Number(payload.ttl) || 1200) * 1000, collapseKey: payload.type || 'codehub-alert' } : {}),
       },
     };
-    if (!isQuake) {
+    if (!isQuake && !dataOnly) {
       // No-quake: notificación estándar del tray con los campos visuales.
       msg.notification = { title: payload.title, body: payload.body };
       msg.android.notification = {
@@ -7142,7 +7145,8 @@ async function seismicPushPass() {
   let quakes;
   try { quakes = await fetchRecentEarthquakes(USGS_FEED_HOUR); } catch (e) { return { earthquakes: 0 }; }
   const threshold = seismicThreshold();
-  const cutoff = Date.now() - 3 * 60 * 60 * 1000; // solo últimos 3h
+  // No convertir eventos antiguos en alertas urgentes cuando USGS/FCM se retrasa.
+  const cutoff = Date.now() - 15 * 60 * 1000; // solo eventos de los últimos 15 min
 
   let sent = 0;
   const lastKey = {};
@@ -7196,6 +7200,15 @@ async function seismicPushPass() {
     // No repetir si ya se avisó de este mismo sismo
     if (prev === cacheKey) continue;
 
+    const depth = Math.abs(latest.geometry.coordinates[2] || 0);
+    const strongNear = dist <= quakeRadiusForMag(mag, depth) && mag >= 5;
+    // En Android, los eventos moderados o lejanos quedan en el panel sísmico;
+    // reservar push/alarma para sismos fuertes dentro del radio de impacto.
+    if (t._isFCM && !strongNear) {
+      fcmLastQuakeKey.set(t.token, cacheKey);
+      continue;
+    }
+
     const body =
       locDesc +
       (place ? ' · ' + place : '') +
@@ -7208,8 +7221,6 @@ async function seismicPushPass() {
       // alarma). Otro sismo perceptible → quake_info (heads-up). El tipo
       // 'seismic' queda SOLO para la vía web-push: el servicio nativo no
       // lo procesa como sismo (CodeHubFirebaseService solo matches quake_*).
-      const depth = Math.abs(latest.geometry.coordinates[2] || 0);
-      const strongNear = dist <= quakeRadiusForMag(mag, depth) && mag >= 5;
       r = await sendFCM(t.token, {
         title: strongNear ? '🚨 ALERTA SÍSMICA' : '🌋 Actividad sísmica',
         body: body + '\n📍 ' + (t.city || 'Tu zona'),

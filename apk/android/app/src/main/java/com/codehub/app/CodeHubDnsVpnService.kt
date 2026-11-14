@@ -47,7 +47,13 @@ class CodeHubDnsVpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            stopSelf()
+            running.set(false)
+            // Closing the TUN descriptor unblocks the worker's blocking read.
+            runCatching { tunnel?.close() }
+            closeAdGuardDotSocket()
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_STOPPING, true).apply()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelfResult(startId)
             return START_NOT_STICKY
         }
         if (running.get()) return START_STICKY
@@ -64,7 +70,10 @@ class CodeHubDnsVpnService : VpnService() {
             val descriptor = tunnel ?: error("Android no creó el túnel VPN.")
             running.set(true)
             blockedCount.set(getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_BLOCKED_COUNT, 0))
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACTIVE, true).apply()
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putBoolean(KEY_ACTIVE, true)
+                .putBoolean(KEY_STOPPING, false)
+                .apply()
             loadPrivateBlocklist()
             // La lista ya se precarga al abrir CodeHub (CodeHubApp); esto solo refresca si venció.
             prefetchBlocklist(this)
@@ -75,8 +84,13 @@ class CodeHubDnsVpnService : VpnService() {
             }
             worker = Thread({ runDnsTunnel(descriptor) }, "CodeHub-DNS-filter").apply { start() }
         } catch (error: Exception) {
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACTIVE, false).apply()
-            dnsWorkers.shutdownNow()
+            runCatching { tunnel?.close() }
+            tunnel = null
+            closeAdGuardDotSocket()
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putBoolean(KEY_ACTIVE, false)
+                .putBoolean(KEY_STOPPING, false)
+                .apply()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -89,17 +103,28 @@ class CodeHubDnsVpnService : VpnService() {
             val channel = NotificationChannel(channelId, "CodeHub Shield", NotificationManager.IMPORTANCE_LOW)
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
+        val notification = buildVpnNotification(channelId)
+        if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        else startForeground(NOTIFICATION_ID, notification)
+    }
+
+    private fun buildVpnNotification(channelId: String): Notification {
         val open = PendingIntent.getActivity(this, 7101, Intent(this, CodeHubPrivacyActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val stop = PendingIntent.getService(
+            this, 7102, Intent(this, CodeHubDnsVpnService::class.java).setAction(ACTION_STOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         val notificationBuilder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, channelId) else Notification.Builder(this)
         val notification = notificationBuilder
             .setSmallIcon(R.drawable.ic_home_boost)
-            .setContentTitle("CodeHub Shield está activo")
-            .setContentText("Filtrado DNS de anuncios y rastreadores")
+            .setContentTitle("CodeHub Shield · Protección activa")
+            .setContentText("CodeHub Shield · ${blockedCount.get()} consultas DNS bloqueadas")
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(open)
+            .addAction(0, "Detener", stop)
             .build()
-        if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
-        else startForeground(NOTIFICATION_ID, notification)
+        return notification
     }
 
     private fun runDnsTunnel(descriptor: ParcelFileDescriptor) {
@@ -136,7 +161,11 @@ class CodeHubDnsVpnService : VpnService() {
         val query = packet.copyOfRange(dnsOffset, dnsOffset + dnsLength)
         val domain = dnsQuestionName(query)?.lowercase(Locale.ROOT)
         val reply = if (domain != null && blockedDomain(domain)) {
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_BLOCKED_COUNT, blockedCount.incrementAndGet()).apply()
+            val count = blockedCount.incrementAndGet()
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_BLOCKED_COUNT, count).apply()
+            if (count % 10 == 0) {
+                getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildVpnNotification("codehub_dns_vpn"))
+            }
             blockedDnsResponse(query)
         } else forwardDnsWithRecovery(query) ?: dnsErrorResponse(query)
         val sourceAddress = packet.copyOfRange(16, 20)
@@ -358,7 +387,10 @@ class CodeHubDnsVpnService : VpnService() {
         closeAdGuardDotSocket()
         worker = null
         dnsWorkers.shutdownNow()
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACTIVE, false).apply()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putBoolean(KEY_ACTIVE, false)
+            .putBoolean(KEY_STOPPING, false)
+            .apply()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -368,6 +400,7 @@ class CodeHubDnsVpnService : VpnService() {
         const val ACTION_STOP = "com.codehub.app.action.DNS_VPN_STOP"
         const val PREFS = "codehub_privacy_vpn"
         const val KEY_ACTIVE = "active"
+        const val KEY_STOPPING = "stopping"
         const val KEY_BLOCKED_COUNT = "blocked_count"
         const val KEY_RULE_COUNT = "local_rule_count"
         const val KEY_RESOLVER_MODE = "resolver_mode"

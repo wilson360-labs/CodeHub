@@ -123,7 +123,11 @@ module.exports = function createWeatherEngine(deps) {
           if (isNew && allowed) {
             const bodyExtra = alert.body;
             let r;
-            if (s._isFCM) {
+            if (s._isFCM && !alert.critical) {
+              // Los cambios no peligrosos se ven en el panel persistente;
+              // evitar convertirlos en otra notificación Android.
+              r = { ok: true };
+            } else if (s._isFCM) {
               r = await sendFCM(s.token, {
                 title: 'CodeHub Clima · ' + (s.city || 'Tu zona'),
                 body: bodyExtra,
@@ -132,6 +136,7 @@ module.exports = function createWeatherEngine(deps) {
                 // Aviso crítico: entrega inmediata o descartar (no llegar tarde)
                 dataOnly: alert.critical, priority: alert.critical ? 'high' : 'normal',
                 ttl: alert.critical ? 20 * 60 : 3600,
+                severity: alert.critical ? 'critical' : 'info',
               });
             } else {
               r = await sendPush(s, {
@@ -162,7 +167,7 @@ module.exports = function createWeatherEngine(deps) {
         // última notificación: temperatura, lluvia, viento, radiación UV.
         const changes = diffWeatherChange(prevSnap, curSnap);
         const lastBriefAt = s.last_brief_at ? new Date(s.last_brief_at).getTime() : 0;
-        if (changes && changes.length && (now - lastBriefAt) >= CHANGE_COOLDOWN_MS) {
+        if (!s._isFCM && changes && changes.length && (now - lastBriefAt) >= CHANGE_COOLDOWN_MS) {
           // No spoilear dos veces seguidas el mismo cambio ya notificado vía alerta
           const body = '🌦️ Tu clima cambió:\n' + changes.join('\n');
           let r;

@@ -78,8 +78,11 @@ public class WeatherNotificationProvider {
     private static final int NOTIF_ID_QUAKE = 4243; // alarma de sismo
 
     private static final int ALERT_MAG_X10 = 45;    // 4.5 magnitud
+    // El panel informativo conserva actividad de 24 h / 1200 km. La alarma
+    // solo se emite para un evento reciente y realmente cercano.
     private static final int ALERT_RADIUS_KM = 1200;
     private static final long ALERT_WINDOW_MS = 24L * 60 * 60 * 1000;
+    private static final long ALARM_FRESH_MS = 15L * 60 * 1000;
     private static final double ROW_MAG_MIN = 3.5;  // fila informativa
 
     private static final int HOUR_SLOTS = 4;        // "Ahora" + 3 horas
@@ -597,13 +600,15 @@ public class WeatherNotificationProvider {
             float mag = (float) quake.optDouble("mag", 0);
             long time = quake.optLong("time", 0);
 
-            boolean worth = Math.round(mag * 10) >= ALERT_MAG_X10
-                && (System.currentTimeMillis() - time) <= ALERT_WINDOW_MS;
+            long ageMs = System.currentTimeMillis() - time;
+            boolean fresh = ageMs >= 0 && ageMs <= ALARM_FRESH_MS;
+            boolean worth = Math.round(mag * 10) >= ALERT_MAG_X10 && fresh;
             if (!worth) return;
             if (id.equals(prefs.getString(PREF_QUAKE_LAST, ""))) return; // ya sonó
 
             double dist = haversineKm(lat, lon, quake.optDouble("lat", 0), quake.optDouble("lon", 0));
-            if (dist > ALERT_RADIUS_KM) return;
+            double maxAlarmDistance = mag >= 6.0f ? 500.0 : mag >= 5.0f ? 250.0 : 100.0;
+            if (dist > maxAlarmDistance) return;
             prefs.edit().putString(PREF_QUAKE_LAST, id).apply();
 
             String dir = bearingTo8(lat, lon, quake.optDouble("lat", 0), quake.optDouble("lon", 0));
@@ -621,7 +626,7 @@ public class WeatherNotificationProvider {
                 threshold = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                         .getFloat("quake_fullscreen_mag", 5.0f);
             } catch (Exception ignored) {}
-            if (mag >= threshold) {
+            if (mag >= Math.max(6.0f, threshold) && dist <= 150.0) {
                 try {
                     EarthquakeAlertActivity.launch(context, mag, dist, dir, place, time, false);
                 } catch (Exception ignored) {}
@@ -844,9 +849,9 @@ public class WeatherNotificationProvider {
     private static JSONObject fetchQuake(double lat, double lon) {
         HttpURLConnection conn = null;
         try {
-            SimpleDateFormat dayF = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-            dayF.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-            String since = dayF.format(new Date(System.currentTimeMillis() - ALERT_WINDOW_MS));
+            SimpleDateFormat sinceFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+            sinceFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            String since = sinceFormat.format(new Date(System.currentTimeMillis() - ALERT_WINDOW_MS));
             URL url = new URL("https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson"
                 + "&latitude=" + lat + "&longitude=" + lon + "&maxradiuskm=" + ALERT_RADIUS_KM
                 + "&starttime=" + since + "&minmagnitude=3.5&orderby=time");
@@ -867,13 +872,40 @@ public class WeatherNotificationProvider {
 
             JSONObject best = null;
             double bestMag = -1;
+            long newestTime = -1;
+            JSONObject bestAlarmCandidate = null;
+            double bestAlarmMagnitude = -1;
+            long now = System.currentTimeMillis();
             for (int i = 0; i < features.length(); i++) {
                 JSONObject f = features.optJSONObject(i);
                 if (f == null) continue;
                 JSONObject p = f.optJSONObject("properties");
-                if (p == null) continue;
+                JSONObject g = f.optJSONObject("geometry");
+                JSONArray coords = g == null ? null : g.optJSONArray("coordinates");
+                if (p == null || coords == null || coords.length() < 3) continue;
                 double mag = p.optDouble("mag", -1);
-                if (mag > bestMag) { bestMag = mag; best = f; }
+                long eventTime = p.optLong("time", 0);
+                double eventLat = coords.optDouble(1, 0);
+                double eventLon = coords.optDouble(0, 0);
+                double distance = haversineKm(lat, lon, eventLat, eventLon);
+                double alarmRadius = mag >= 6.0 ? 500.0 : mag >= 5.0 ? 250.0 : 100.0;
+                boolean freshNearbyAlarm = Math.round(mag * 10) >= ALERT_MAG_X10
+                    && eventTime > 0 && now - eventTime >= 0 && now - eventTime <= ALARM_FRESH_MS
+                    && distance <= alarmRadius;
+                if (freshNearbyAlarm && mag > bestAlarmMagnitude) {
+                    bestAlarmMagnitude = mag;
+                    bestAlarmCandidate = f;
+                }
+                if (eventTime > newestTime) {
+                    newestTime = eventTime;
+                    best = f;
+                    bestMag = mag;
+                }
+            }
+            if (bestAlarmCandidate != null) {
+                best = bestAlarmCandidate;
+                JSONObject alertProps = best.optJSONObject("properties");
+                bestMag = alertProps == null ? -1 : alertProps.optDouble("mag", -1);
             }
             if (best == null || bestMag < ROW_MAG_MIN) return none;
 

@@ -146,10 +146,10 @@ public class MainActivity extends Activity {
                     intent.putExtra(CodeHubPrivacyActivity.EXTRA_START, true);
                     startActivity(intent);
                 } else {
-                    stopService(new Intent(MainActivity.this, CodeHubDnsVpnService.class));
-                    getSharedPreferences(CodeHubDnsVpnService.PREFS, MODE_PRIVATE).edit()
-                        .putBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false).apply();
-                    if (nativeHome != null) nativeHome.refreshPrivacyStatus();
+                    Intent stop = new Intent(MainActivity.this, CodeHubDnsVpnService.class)
+                        .setAction(CodeHubDnsVpnService.ACTION_STOP);
+                    try { startService(stop); } catch (Exception ignored) {}
+                    mainFrame.postDelayed(() -> { if (nativeHome != null) nativeHome.refreshPrivacyStatus(); }, 500);
                 }
             }
             @Override public void onForceStopApp() { confirmForceStopApp(); }

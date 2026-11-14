@@ -21,15 +21,16 @@ const WX_ALERTS = [
   { cond: 'wind',  critical: true,
     test: c => c.wind_speed_10m > 50 || Number(c.gust_next3h || 0) >= 70,
     msg: c => '💨 Viento fuerte (' + Math.round(Math.max(c.wind_speed_10m, Number(c.gust_next3h || 0))) + ' km/h en ráfagas) — precaución al manejar y asegura objetos sueltos' },
-  { cond: 'rain_soon', critical: true,
+  { cond: 'rain_soon', critical: false,
     test: c => !c.raining && c.rain_in_min != null && c.rain_in_min > 0 && c.rain_in_min <= 45,
     msg: c => '🌧️ Lluvia en ~' + Math.max(5, Math.round(c.rain_in_min / 5) * 5) + ' min en tu ubicación — ponte a cubierto o lleva paraguas' },
-  { cond: 'rain',  critical: true,
+  { cond: 'rain',  critical: false,
     test: c => (c.weather_code >= 61 && c.weather_code <= 67) || c.raining === true,
     msg: c => '🌧️ Está lloviendo en tu zona' + (Number(c.rain_rate_mmh || 0) >= 2.5 ? ' (moderada–fuerte)' : '') + ' — maneja con precaución' },
-  { cond: 'radiation', critical: false, test: c => c.is_day && Number(c.uv_current || 0) >= 7,
+  { cond: 'radiation', critical: c => Number(c.uv_current || 0) >= 11, test: c => c.is_day && Number(c.uv_current || 0) >= 7,
     msg: c => '☀️ Radiación UV alta (' + Number(c.uv_current || 0).toFixed(1) + ') — usa bloqueador SPF 50+ y evita el sol de 11 a 15h' },
-  { cond: 'heat',  critical: false, test: c => c.temperature_2m > 33 || c.apparent_temperature > 38,
+  { cond: 'heat',  critical: c => c.temperature_2m >= 40 || c.apparent_temperature >= 45,
+    test: c => c.temperature_2m > 33 || c.apparent_temperature > 38,
     msg: c => '🌡️ Calor (' + Math.round(c.temperature_2m) + '°C, sensación ' + Math.round(c.apparent_temperature) + '°C) — hidrátate y evita el sol de 11 a 15h' },
   { cond: 'cold',  critical: false, test: c => c.temperature_2m < 0,
     msg: c => '🥶 Frío (' + Math.round(c.temperature_2m) + '°C) — abrígate bien' },
@@ -49,7 +50,12 @@ function uvLevel(v) {
 // Elige la alerta activa actual (máxima prioridad que se cumpla).
 function detectAlert(current) {
   for (const a of WX_ALERTS) {
-    try { if (a.test(current)) return { cond: a.cond, critical: !!a.critical, body: a.msg(current) }; } catch (e) {}
+    try {
+      if (a.test(current)) {
+        const critical = typeof a.critical === 'function' ? a.critical(current) : !!a.critical;
+        return { cond: a.cond, critical, body: a.msg(current) };
+      }
+    } catch (e) {}
   }
   return null;
 }

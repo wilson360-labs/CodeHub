@@ -44,6 +44,11 @@ public class CodeHubFirebaseService extends FirebaseMessagingService {
         if (title == null || title.isEmpty()) title = "CodeHub";
         if (body == null) body = "";
 
+        // Los cambios rutinarios se reflejan en el panel persistente de clima.
+        // En el teléfono reservamos pushes para alertas meteorológicas críticas.
+        if (type.equals("weather_change")) return;
+        if (type.equals("weather") && !"critical".equals(message.getData().get("severity"))) return;
+
         // Alerta de sismo (real o simulacro). Llega como DATA-ONLY de alta
         // prioridad, así que este método corre SIEMPRE (app abierta, en
         // segundo plano o cerrada).
@@ -120,9 +125,9 @@ public class CodeHubFirebaseService extends FirebaseMessagingService {
             String alertType = d.get("alertType") != null ? d.get("alertType") : "earthquake";
             String evId = d.get("evId") != null ? d.get("evId") : "";
 
-            // Defensa extra: un aviso real con más de 30 min NO se muestra como
+            // Defensa extra: un aviso real con más de 15 min NO se muestra como
             // alarma (p. ej. el teléfono estuvo apagado y FCM lo entregó tarde).
-            if (!sim && now - time > 30 * 60 * 1000L) return;
+            if (!sim && now - time > 15 * 60 * 1000L) return;
 
             NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;

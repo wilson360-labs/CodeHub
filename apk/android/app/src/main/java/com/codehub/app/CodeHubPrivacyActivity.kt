@@ -121,9 +121,7 @@ class CodeHubPrivacyActivity : Activity() {
 
     private fun toggleVpn() {
         if (isVpnActive()) {
-            stopService(Intent(this, CodeHubDnsVpnService::class.java))
-            prefs.edit().putBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false).apply()
-            renderState()
+            requestVpnStop()
             return
         }
         startVpnIfNeeded()
@@ -138,11 +136,36 @@ class CodeHubPrivacyActivity : Activity() {
         if (isVpnActive()) {
             status.text = "Modo cambiado · reiniciando protección…"
             status.setTextColor(0xFFFBBF24.toInt())
-            stopService(Intent(this, CodeHubDnsVpnService::class.java))
-            prefs.edit().putBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false).apply()
-            // Espera a que el túnel anterior cierre antes de re-establecer la VPN.
-            handler.postDelayed({ if (!isFinishing && !isDestroyed) startVpnService() }, 700)
+            requestVpnStop(restartAfterStop = true)
         }
+    }
+
+    private fun requestVpnStop(restartAfterStop: Boolean = false) {
+        val intent = Intent(this, CodeHubDnsVpnService::class.java).setAction(CodeHubDnsVpnService.ACTION_STOP)
+        runCatching { startService(intent) }.onFailure {
+            status.text = "No se pudo detener CodeHub Shield: ${it.localizedMessage ?: "error del sistema"}"
+            status.setTextColor(0xFFFCA5A5.toInt())
+            return
+        }
+        status.text = if (restartAfterStop) "Aplicando el nuevo modo…" else "Deteniendo protección…"
+        status.setTextColor(0xFFFBBF24.toInt())
+        var attempts = 0
+        val awaitStop = object : Runnable {
+            override fun run() {
+                if (isFinishing || isDestroyed) return
+                val stopped = !prefs.getBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false) &&
+                    !prefs.getBoolean(CodeHubDnsVpnService.KEY_STOPPING, false)
+                if (stopped) {
+                    renderState()
+                    if (restartAfterStop) handler.postDelayed({ if (!isFinishing && !isDestroyed) startVpnService() }, 250)
+                } else if (attempts++ < 50) handler.postDelayed(this, 100)
+                else {
+                    status.text = "CodeHub Shield sigue cerrándose; espera un momento y vuelve a intentar."
+                    status.setTextColor(0xFFFBBF24.toInt())
+                }
+            }
+        }
+        handler.post(awaitStop)
     }
 
     private fun startVpnIfNeeded() {
