@@ -100,16 +100,16 @@ public class ShizukuUserService extends IKillAppService.Stub {
                 try {
                     exitCode = running.exitValue();
                     break;
-                } catch (IllegalThreadStateException stillRunning) {
+                } catch (IllegalThreadStateException processStillRunning) {
                     if (SystemClock.elapsedRealtime() >= deadline) {
                         running.destroy();
                         long destroyDeadline = SystemClock.elapsedRealtime() + 500L;
                         while (SystemClock.elapsedRealtime() < destroyDeadline) {
                             try { running.exitValue(); break; }
-                            catch (IllegalThreadStateException stillRunning) { Thread.sleep(50L); }
+                            catch (IllegalThreadStateException processStillRunningAfterDestroy) { Thread.sleep(50L); }
                         }
                         try { running.exitValue(); }
-                        catch (IllegalThreadStateException stillRunning) {
+                        catch (IllegalThreadStateException processStillRunningAfterTimeout) {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) running.destroyForcibly();
                         }
                         try { outputReader.join(500L); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
