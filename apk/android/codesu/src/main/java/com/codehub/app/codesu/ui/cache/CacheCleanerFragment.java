@@ -31,6 +31,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import java.util.List;
 
 import com.codehub.app.codesu.App;
+import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.databinding.CodesuCacheCleanerBinding;
 import com.codehub.app.codesu.model.CacheAppInfo;
 import com.codehub.app.codesu.util.CacheCleaner;
