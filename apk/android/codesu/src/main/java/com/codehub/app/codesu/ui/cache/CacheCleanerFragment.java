@@ -268,14 +268,16 @@ public class CacheCleanerFragment extends Fragment {
             showAccessibilityCleaner(targets, estimate);
             return;
         }
+        final List<CacheAppInfo> cleanupTargets = new java.util.ArrayList<>(targets);
+        final long estimatedBytes = estimate;
         new AlertDialog.Builder(requireContext())
                 .setTitle("Elige el modo Turbo")
                 .setMessage("Se usará el tamaño ya medido en esta lista; no volveremos a escanear antes de limpiar. Apps seguras >1 MB: "
-                        + targets.size() + " · " + CacheAppAdapter.formatBytes(estimate) + ".")
+                        + cleanupTargets.size() + " · " + CacheAppAdapter.formatBytes(estimatedBytes) + ".")
                 .setItems(new String[]{"Turbo Shizuku · ejecución en paralelo", "Turbo Accesibilidad · automatizar Ajustes"},
                         (dialog, which) -> {
-                            if (which == 0) confirmShizukuCleaner(targets, estimate);
-                            else showAccessibilityCleaner(targets, estimate);
+                            if (which == 0) confirmShizukuCleaner(cleanupTargets, estimatedBytes);
+                            else showAccessibilityCleaner(cleanupTargets, estimatedBytes);
                         })
                 .setNegativeButton("Cancelar", null)
                 .show();
