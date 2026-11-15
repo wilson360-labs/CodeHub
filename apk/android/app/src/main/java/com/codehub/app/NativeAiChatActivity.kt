@@ -1559,6 +1559,21 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun stopJarvisSpeech() {
+        voiceGeneration++
+        pendingSpeech = null
+        premiumVoiceCall?.cancel()
+        premiumVoiceCall = null
+        premiumVoicePlayer?.let { player ->
+            runCatching { player.stop() }
+            runCatching { player.release() }
+        }
+        premiumVoicePlayer = null
+        currentVoiceFile?.delete()
+        currentVoiceFile = null
+        if (::tts.isInitialized) runCatching { tts.stop() }
+    }
+
     private fun speakWithAndroidTts(value: String, utteranceId: String, generation: Int) {
         if (!ttsReady || !::tts.isInitialized) {
             pendingSpeech = value to utteranceId
