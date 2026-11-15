@@ -45,7 +45,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Clear · Anti-bloatware"
+                    android:text="Limpieza de caché"
                     android:textColor="@color/codesu_text_primary"
                     android:textSize="19sp"
                     android:textStyle="bold" />
@@ -123,6 +123,127 @@
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="12sp" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="ELIGE CÓMO LIMPIAR"
+                android:textColor="@color/codesu_accent_text"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/codesu_cache_engine_shizuku"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="5dp"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:contentDescription="Seleccionar motor Shizuku"
+                    android:focusable="true"
+                    app:cardBackgroundColor="@color/codesu_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/codesu_accent_text"
+                    app:strokeWidth="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="66dp"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="9dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Shizuku"
+                            android:textColor="@color/codesu_text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/codesu_cache_engine_shizuku_status"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Comprobando servicio…"
+                            android:textColor="@color/codesu_text_secondary"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/codesu_cache_engine_accessibility"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:contentDescription="Seleccionar motor Accesibilidad"
+                    android:focusable="true"
+                    app:cardBackgroundColor="@color/codesu_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/codesu_accent_soft"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="66dp"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="9dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Accesibilidad"
+                            android:textColor="@color/codesu_text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/codesu_cache_engine_accessibility_status"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Comprobando permiso…"
+                            android:textColor="@color/codesu_text_secondary"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/codesu_cache_engine_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:text="Shizuku limpia en segundo plano. Accesibilidad automatiza Ajustes y necesita la pantalla desbloqueada."
+                android:textColor="@color/codesu_text_secondary"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/codesu_cache_engine_action"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:minHeight="40dp"
+                android:text="Conectar motor"
+                android:textColor="@color/codesu_accent_text"
+                android:visibility="gone" />
+
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/codesu_cache_keep_screen_on"
                 android:layout_width="match_parent"
@@ -133,6 +254,7 @@
                 android:textSize="13sp" />
 
             <TextView
+                android:id="@+id/codesu_cache_screen_hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Shizuku no necesita mantener la pantalla encendida. Accesibilidad sí; el bloqueo se libera al terminar."
@@ -182,21 +304,22 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/codesu_cache_header" />
 
-    <ImageButton
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/codesu_cache_clean_button"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="18dp"
-        android:background="@drawable/codesu_cache_fab_background"
-        android:contentDescription="Medir y limpiar cachés mayores de 1 MB"
+        android:contentDescription="Iniciar limpieza de caché"
         android:elevation="8dp"
-        android:padding="16dp"
-        android:src="@drawable/codesu_ic_broom"
+        android:text="Iniciar limpieza"
+        android:textColor="@color/white"
         android:visibility="gone"
+        app:icon="@drawable/codesu_ic_broom"
+        app:iconTint="@color/white"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:tint="@color/white" />
+        app:backgroundTint="@color/codesu_accent" />
 
     <TextView
         android:id="@+id/codesu_cache_empty"
