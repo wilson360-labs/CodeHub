@@ -21,6 +21,7 @@ import android.os.ParcelFileDescriptor
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.text.method.LinkMovementMethod
+import android.text.Html
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -1259,10 +1260,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         wrapper.addView(header)
         if (message.text.isNotBlank()) {
             val body = TextView(this).apply {
-                text = message.text
+                text = renderMarkdown(message.text)
                 textSize = 15f
                 setTextColor(0xFFF0F6FA.toInt())
                 setLineSpacing(dp(4).toFloat(), 1.02f)
+                includeFontPadding = false
                 setTextIsSelectable(true)
                 movementMethod = LinkMovementMethod.getInstance()
                 autoLinkMask = android.text.util.Linkify.WEB_URLS
@@ -1279,14 +1281,19 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             } else if (media.startsWith("http")) wrapper.addView(text("Ver imagen: $media", 12f, 0xFF91CFFF.toInt()).apply { setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(media))) } } })
         }
         if (!isUser && message.text.isNotBlank()) {
-            val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END }
-            actions.addView(messageAction(R.drawable.ic_jarvis_copy, "Copiar") { copy(message.text) })
-            actions.addView(messageAction(R.drawable.ic_jarvis_share, "Compartir") { shareAnswer(message.text) })
-            actions.addView(messageAction(R.drawable.ic_voice_speaker, "Leer") {
+            val actions = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.END
+                clipChildren = false
+                clipToPadding = false
+            }
+            actions.addView(messageAction(R.drawable.ic_jarvis_copy, "Copiar respuesta") { copy(message.text) }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginStart = dp(7) })
+            actions.addView(messageAction(R.drawable.ic_jarvis_share, "Compartir respuesta") { shareAnswer(message.text) }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginStart = dp(7) })
+            actions.addView(messageAction(R.drawable.ic_voice_speaker, "Leer respuesta") {
                 val spoken = speechFriendly(message.text)
                 if (spoken.isNotBlank()) speakJarvis(spoken, "jarvis-message")
-            })
-            wrapper.addView(actions)
+            }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginStart = dp(7) })
+            wrapper.addView(actions, LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(9) })
         }
         val params = LinearLayout.LayoutParams(if (isUser) (resources.displayMetrics.widthPixels * .86f).toInt() else -1, -2).apply {
             bottomMargin = dp(9)
@@ -1336,23 +1343,54 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         .trim()
 
     private fun messageAction(icon: Int, label: String, action: () -> Unit): View =
-        LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(10), 0, dp(11), 0)
+        FrameLayout(this).apply {
             background = rippleActionBackground(0xFF172532.toInt(), 0xFF355064.toInt())
             contentDescription = label
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) tooltipText = label
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
             addView(ImageView(this@NativeAiChatActivity).apply {
                 setImageResource(icon)
                 imageTintList = android.content.res.ColorStateList.valueOf(0xFF9AFFF0.toInt())
-                scaleType = ImageView.ScaleType.CENTER
-            }, LinearLayout.LayoutParams(dp(18), dp(18)))
-            addView(text(label, 11f, 0xFFEAF5F8.toInt(), true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(6) })
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, FrameLayout.LayoutParams(dp(19), dp(19), Gravity.CENTER))
             installPressFeedback(this)
         }
+
+    private fun renderMarkdown(value: String): CharSequence {
+        val preserved = mutableListOf<String>()
+        fun preserve(html: String): String {
+            val token = "CODEHUBPRESERVE${preserved.size}TOKEN"
+            preserved += html
+            return token
+        }
+
+        var source = Regex("(?s)```[^\\n`]*\\n?(.*?)```").replace(value) { match ->
+            val code = match.groupValues[1].trimEnd('\n')
+            preserve("<br/><br/><tt><font color='#9AFFF0'>${escapeHtml(code)}</font></tt><br/><br/>")
+        }
+        source = Regex("\\[([^\\]]+)]\\((https?://[^)\\s]+)\\)").replace(source) { match ->
+            preserve("<a href=\"${escapeHtml(match.groupValues[2])}\">${escapeHtml(match.groupValues[1])}</a>")
+        }
+
+        var html = escapeHtml(source)
+        html = Regex("(?m)^#{1,6}\\s+(.+)$").replace(html) { "<b>${it.groupValues[1]}</b>" }
+        html = Regex("\\*\\*(.+?)\\*\\*").replace(html) { "<b>${it.groupValues[1]}</b>" }
+        html = Regex("(?<!\\*)\\*([^*\\n]+)\\*(?!\\*)").replace(html) { "<i>${it.groupValues[1]}</i>" }
+        html = Regex("`([^`\\n]+)`").replace(html) { "<tt><font color='#9AFFF0'>${it.groupValues[1]}</font></tt>" }
+        html = Regex("(?m)^\\s*[-*]\\s+").replace(html, "&#8226; ")
+        html = html.replace("\n", "<br/>")
+        preserved.forEachIndexed { index, fragment -> html = html.replace("CODEHUBPRESERVE${index}TOKEN", fragment) }
+        return Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT)
+    }
+
+    private fun escapeHtml(value: String): String = value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
 
     private fun shareAnswer(value: String) {
         val share = Intent(Intent.ACTION_SEND).setType("text/plain")
