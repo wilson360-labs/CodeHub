@@ -14,6 +14,7 @@ import android.provider.Settings;
 import android.telecom.TelecomManager;
 import android.provider.Telephony;
 import android.content.Intent;
+import android.content.SharedPreferences;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,9 +27,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import com.codehub.app.codesu.model.CacheAppInfo;
 import rikka.shizuku.Shizuku;
@@ -37,6 +37,46 @@ import rikka.shizuku.Shizuku;
 public final class CacheCleaner {
 
     public static final long DEEP_CLEAN_MIN_CACHE_BYTES = 1024L * 1024L;
+    private static final String SNAPSHOT_PREFS = "codesu_cache_snapshots";
+
+    /** Persists the sizes already displayed in the list; workers must not rescan before clearing. */
+    public static String saveCleanupSnapshot(Context context, List<CacheAppInfo> apps) throws Exception {
+        String id = java.util.UUID.randomUUID().toString();
+        JSONArray snapshot = new JSONArray();
+        for (CacheAppInfo app : apps) {
+            if (!isDeepCleanCandidate(app)) continue;
+            snapshot.put(new JSONObject().put("package", app.packageName).put("label", app.label)
+                    .put("bytes", app.cacheBytes).put("system", app.systemApp)
+                    .put("protected", app.protectedApp));
+        }
+        context.getSharedPreferences(SNAPSHOT_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(id, snapshot.toString()).apply();
+        return id;
+    }
+
+    public static List<CacheAppInfo> loadCleanupSnapshot(Context context, String id) throws Exception {
+        if (id == null || id.trim().isEmpty()) throw new IllegalArgumentException("No se encontró la medición guardada.");
+        SharedPreferences prefs = context.getSharedPreferences(SNAPSHOT_PREFS, Context.MODE_PRIVATE);
+        String raw = prefs.getString(id, null);
+        if (raw == null) throw new IllegalStateException("La medición expiró. Actualiza la lista e inténtalo otra vez.");
+        JSONArray rows = new JSONArray(raw);
+        List<CacheAppInfo> apps = new ArrayList<>(rows.length());
+        for (int i = 0; i < rows.length(); i++) {
+            JSONObject row = rows.optJSONObject(i);
+            if (row == null) continue;
+            String packageName = row.optString("package", "");
+            if (packageName.isEmpty() || isProtected(packageName)) continue;
+            apps.add(new CacheAppInfo(packageName, row.optString("label", packageName), null,
+                    row.optLong("bytes", 0L), row.optBoolean("system", false),
+                    row.optBoolean("protected", false)));
+        }
+        return apps;
+    }
+
+    public static void removeCleanupSnapshot(Context context, String id) {
+        if (id == null || id.trim().isEmpty()) return;
+        context.getSharedPreferences(SNAPSHOT_PREFS, Context.MODE_PRIVATE).edit().remove(id).apply();
+    }
 
     private static final Set<String> PROTECTED_PACKAGES = new HashSet<>(Arrays.asList(
             "android",
@@ -193,7 +233,12 @@ public final class CacheCleaner {
     public static boolean isProtected(String packageName) {
         if (packageName == null || PROTECTED_PACKAGES.contains(packageName)) return true;
         return packageName.startsWith("com.android.providers.")
-                || packageName.startsWith("com.google.android.providers.");
+                || packageName.startsWith("com.google.android.providers.")
+                || packageName.startsWith("com.google.android.webview")
+                || packageName.startsWith("com.android.webview")
+                || packageName.startsWith("com.google.android.trichromelibrary")
+                || packageName.startsWith("com.android.chrome")
+                || packageName.startsWith("org.chromium.webview_shell");
     }
 
     private static Set<String> getProtectedPackages(Context context) {
@@ -259,75 +304,27 @@ public final class CacheCleaner {
         int failure = 0;
         long verifiedFreed = 0L;
         int unmeasured = 0;
-        List<String> failures = Collections.synchronizedList(new ArrayList<>());
-        AtomicInteger clearedRequests = new AtomicInteger();
-        AtomicInteger liveUnmeasured = new AtomicInteger();
-        AtomicLong liveVerifiedFreed = new AtomicLong();
-        Object progressLock = new Object();
-        ExecutorService workers = Executors.newFixedThreadPool(Math.min(3, targets.size()));
-        CompletionService<CacheClearTaskResult> completion = new ExecutorCompletionService<>(workers);
-        try {
-            for (CacheAppInfo target : targets) {
-                completion.submit(() -> {
-                    String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName);
-                    boolean cleared = detail.isEmpty();
-                    if (!cleared) {
-                        synchronized (failures) {
-                            if (failures.size() < 5) failures.add(target.label + " (" + target.packageName + "): " + detail);
-                        }
-                    }
-                    synchronized (progressLock) {
-                        int requestNumber = clearedRequests.incrementAndGet();
-                        // Move the visible progress as soon as Shizuku confirms each
-                        // request; StorageStats verification can be slower on OEMs.
-                        if (listener != null)
-                            listener.onProgress(requestNumber, targets.size(), target.packageName, cleared,
-                                    liveVerifiedFreed.get(), liveUnmeasured.get());
-                    }
-                    long freed = 0L;
-                    boolean measured = true;
-                    if (cleared) {
-                        try {
-                            freed = Math.max(0L, target.cacheBytes - queryCacheBytes(context, target.packageName));
-                            liveVerifiedFreed.addAndGet(freed);
-                        } catch (Exception ignored) {
-                            measured = false;
-                            liveUnmeasured.incrementAndGet();
-                        }
-                    }
-                    return new CacheClearTaskResult(target.packageName, cleared, freed, measured, detail);
-                });
-            }
-            for (int i = 0; i < targets.size(); i++) {
-                CacheClearTaskResult result;
+        List<String> failures = new ArrayList<>();
+        for (int index = 0; index < targets.size(); index++) {
+            CacheAppInfo target = targets.get(index);
+            String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName);
+            boolean cleared = detail.isEmpty();
+            long freed = 0L;
+            if (cleared) {
                 try {
-                    Future<CacheClearTaskResult> future = completion.take();
-                    result = future.get();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException("La limpieza fue interrumpida.", e);
-                } catch (ExecutionException e) {
-                    synchronized (progressLock) {
-                        int requestNumber = clearedRequests.incrementAndGet();
-                        if (listener != null)
-                            listener.onProgress(requestNumber, targets.size(), "app", false,
-                                    liveVerifiedFreed.get(), liveUnmeasured.get());
-                    }
-                    result = new CacheClearTaskResult("app", false, 0L, false,
-                            e.getCause() == null ? e.getClass().getSimpleName() : e.getCause().getMessage());
-                    synchronized (failures) {
-                        if (failures.size() < 5) failures.add("app: " + result.detail);
-                    }
+                    freed = Math.max(0L, target.cacheBytes - queryCacheBytes(context, target.packageName));
+                } catch (Exception ignored) {
+                    unmeasured++;
                 }
-                if (result.cleared) success++; else failure++;
-                verifiedFreed += result.verifiedFreed;
-                if (result.cleared && !result.measured) unmeasured++;
+            } else if (failures.size() < 5) {
+                failures.add(target.label + " (" + target.packageName + "): " + detail);
             }
-        } finally {
-            workers.shutdownNow();
+            if (cleared) success++; else failure++;
+            verifiedFreed += freed;
+            if (listener != null) listener.onProgress(index + 1, targets.size(), target.packageName,
+                    cleared, verifiedFreed, unmeasured);
         }
-        String failureSummary;
-        synchronized (failures) { failureSummary = android.text.TextUtils.join("\n", failures); }
+        String failureSummary = android.text.TextUtils.join("\n", failures);
         return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes, failureSummary);
     }
 
@@ -336,22 +333,7 @@ public final class CacheCleaner {
                 && !isProtected(app.packageName);
     }
 
-    private static final class CacheClearTaskResult {
-        final String packageName;
-        final boolean cleared;
-        final long verifiedFreed;
-        final boolean measured;
-        final String detail;
-        CacheClearTaskResult(String packageName, boolean cleared, long verifiedFreed, boolean measured, String detail) {
-            this.packageName = packageName;
-            this.cleared = cleared;
-            this.verifiedFreed = verifiedFreed;
-            this.measured = measured;
-            this.detail = detail == null ? "Sin detalle de Package Manager." : detail;
-        }
-    }
-
-    private static long queryCacheBytes(Context context, String packageName) throws Exception {
+    public static long queryCacheBytes(Context context, String packageName) throws Exception {
         PackageManager pm = context.getPackageManager();
         ApplicationInfo app = pm.getApplicationInfo(packageName, 0);
         StorageStatsManager statsManager = (StorageStatsManager)

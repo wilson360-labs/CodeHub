@@ -4,4 +4,6 @@
     <string name="title_home">Running Apps</string>
     <string name="title_selection">Selection</string>
     <string name="title_settings">Settings</string>
+    <string name="codesu_cache_accessibility_label">CodeSu · Turbo de caché</string>
+    <string name="codesu_cache_accessibility_description">Automatiza, solo cuando el usuario inicia una limpieza, los botones de almacenamiento y borrar caché de las apps seleccionadas. Nunca toca borrar datos.</string>
 </resources>

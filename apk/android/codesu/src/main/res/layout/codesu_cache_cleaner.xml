@@ -123,6 +123,22 @@
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="12sp" />
 
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/codesu_cache_keep_screen_on"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Mantener pantalla encendida para Turbo Accesibilidad"
+                android:textColor="@color/codesu_text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Shizuku no necesita mantener la pantalla encendida. Accesibilidad sí; el bloqueo se libera al terminar."
+                android:textColor="@color/codesu_text_secondary"
+                android:textSize="11sp" />
+
             <Button
                 android:id="@+id/codesu_usage_access_button"
                 android:layout_width="wrap_content"

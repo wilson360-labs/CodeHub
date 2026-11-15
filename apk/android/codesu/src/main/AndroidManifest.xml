@@ -70,6 +70,19 @@
         </service>
 
         <service
+            android:name=".service.CacheCleanerAccessibilityService"
+            android:exported="true"
+            android:label="@string/codesu_cache_accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/codesu_cache_accessibility_service" />
+        </service>
+
+        <service
             android:name=".service.AutoKillService"
             android:enabled="true"
             android:exported="false"

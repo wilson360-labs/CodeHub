@@ -34,6 +34,8 @@ public final class CacheCleanerWorker extends Worker {
     public static final String KEY_FREED = "freed";
     public static final String KEY_TARGET = "target";
     public static final String KEY_ERROR = "error";
+    public static final String KEY_SNAPSHOT_ID = "snapshot_id";
+    public static final String KEEP_SCREEN_ON = "keep_screen_on_during_cleanup";
     private static final String CHANNEL_ID = "codesu_cache_cleanup";
     private static final int NOTIFICATION_ID = 7421;
 
@@ -45,19 +47,17 @@ public final class CacheCleanerWorker extends Worker {
     @Override
     public Result doWork() {
         Context context = getApplicationContext();
+        String snapshotId = getInputData().getString(KEY_SNAPSHOT_ID);
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
                 return failure("La limpieza protegida requiere Android 11 o posterior.");
             if (!CacheCleaner.hasUsageAccess(context))
-                return failure("Activa el acceso al uso para medir caché.");
+                return failure("Activa el acceso al uso para verificar los bytes liberados.");
             if (!CacheCleaner.isShizukuReady())
                 return failure("Shizuku está apagado o CodeSu no tiene permiso.");
             setForegroundAsync(foregroundInfo(0, "Preparando limpieza segura…")).get();
 
-            List<CacheAppInfo> apps = CacheCleaner.loadInstalledApps(context, (completed, total, packageName) -> {
-                int percent = total == 0 ? 35 : (int) (completed * 35L / total);
-                publish(percent, "Midiendo caché", packageName, 0, 0, 0L, 0L);
-            });
+            List<CacheAppInfo> apps = CacheCleaner.loadCleanupSnapshot(context, snapshotId);
             int eligible = 0;
             for (CacheAppInfo app : apps) {
                 if (app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES
@@ -65,10 +65,10 @@ public final class CacheCleanerWorker extends Worker {
             }
             if (eligible == 0) return failure("Ninguna app segura supera 1 MB de caché.");
 
-            publish(40, "Conectando con Shizuku", "Preparando apps…", 0, 0, 0L, 0L);
+            publish(5, "Turbo Shizuku", "Usando la medición visible", 0, eligible, 0L, 0L);
             CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(context, apps,
                     (completed, total, packageName, cleared, freed, unmeasured) -> {
-                        int percent = total == 0 ? 95 : 40 + (int) (completed * 55L / total);
+                        int percent = total == 0 ? 95 : 5 + (int) (completed * 90L / total);
                         publish(percent, "Limpiando caché", packageName, completed, total, freed, 0L);
                     });
             int attempted = result.cleared + result.failed;
@@ -102,6 +102,8 @@ public final class CacheCleanerWorker extends Worker {
             String detail = e.getMessage();
             return failure(detail == null || detail.trim().isEmpty()
                     ? "Error inesperado durante la limpieza de caché." : detail);
+        } finally {
+            CacheCleaner.removeCleanupSnapshot(context, snapshotId);
         }
     }
 
