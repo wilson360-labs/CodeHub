@@ -18,6 +18,7 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.text.Normalizer;
 
 import com.codehub.app.codesu.model.CacheAppInfo;
 import com.codehub.app.codesu.util.CacheCleaner;
@@ -35,6 +36,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public static final String KEY_FREED = "freed";
     public static final String KEY_TARGET = "target";
     public static final String KEY_ERROR = "error";
+    public static final String KEY_CURRENT_APP = "current_app";
     private static final long STEP_TIMEOUT_MS = 12_000L;
     private static final long KEEP_AWAKE_TIMEOUT_MS = 30L * 60L * 1000L;
     private static final String SETTINGS_PREFS = "settings";
@@ -43,6 +45,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     private List<CacheAppInfo> targets = new ArrayList<>();
     private String loadedSnapshotId;
     private Runnable stepTimeout;
+    private Runnable cacheVerificationTask;
     private PowerManager.WakeLock screenWakeLock;
 
     public static boolean isEnabled(Context context) {
@@ -69,7 +72,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 .putString(KEY_SNAPSHOT_ID, snapshotId).putInt(KEY_INDEX, 0)
                 .putInt(KEY_DONE, 0).putInt(KEY_FAILED, 0).putLong(KEY_FREED, 0L)
                 .putLong(KEY_TARGET, total).putString(KEY_ERROR, "")
-                .putInt("total", targets.size()).putString("phase", "Preparando Turbo Accesibilidad")
+                .putInt("total", targets.size()).putString("phase", "Preparando Turbo Tasker")
                 .apply();
         openAppInfo(context, targets.get(0).packageName);
     }
@@ -127,6 +130,31 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         if (root == null) return;
         try {
             String phase = prefs.getString("phase", "APP_INFO");
+            if (phase.equals("CACHE_CONFIRM_WAIT")) {
+                if (hasCacheClearConfirmation(root)) {
+                    AccessibilityNodeInfo positive = findClickableAction(root, new String[]{
+                            "clear cache", "borrar cache", "vaciar cache", "ok", "aceptar", "delete", "borrar", "limpiar"
+                    });
+                    if (positive == null) {
+                        finishRun("Android mostró una confirmación de caché no reconocida. La tarea se pausó sin aceptarla.");
+                        return;
+                    }
+                    clearCacheVerificationTask();
+                    boolean accepted = clickNode(positive);
+                    positive.recycle();
+                    if (!accepted) {
+                        finishRun("No se pudo aceptar la confirmación explícita de Borrar caché.");
+                        return;
+                    }
+                    prefs.edit().putString("phase", "VERIFYING").apply();
+                    scheduleCacheVerification(targets.get(index), 1200L);
+                    return;
+                }
+                if (hasClickableAction(root, new String[]{"cancel", "cancelar", "not now", "ahora no", "no"})) {
+                    finishRun("Apareció una confirmación que no se identificó como Borrar caché. La tarea se pausó sin aceptarla.");
+                    return;
+                }
+            }
             AccessibilityNodeInfo clear = findAction(root, new String[]{
                     "clear cache", "borrar caché", "borrar cache", "vaciar caché", "vaciar cache", "limpiar caché", "limpiar cache"
             });
@@ -136,9 +164,9 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                     return;
                 }
                 clearStepTimeout();
-                prefs.edit().putString("phase", "VERIFYING").apply();
+                prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").apply();
                 CacheAppInfo app = targets.get(index);
-                handler.postDelayed(() -> verifyAndAdvance(app), 1400L);
+                scheduleCacheVerification(app, 2400L);
                 return;
             }
             if (phase.equals("APP_INFO")) {
@@ -193,6 +221,87 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             handler.removeCallbacks(stepTimeout);
             stepTimeout = null;
         }
+        clearCacheVerificationTask();
+    }
+
+    private void scheduleCacheVerification(CacheAppInfo app, long delayMs) {
+        clearCacheVerificationTask();
+        cacheVerificationTask = () -> {
+            android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            if (!prefs.getBoolean(KEY_RUNNING, false)) return;
+            prefs.edit().putString("phase", "VERIFYING").apply();
+            verifyAndAdvance(app);
+        };
+        handler.postDelayed(cacheVerificationTask, delayMs);
+    }
+
+    private void clearCacheVerificationTask() {
+        if (cacheVerificationTask != null) {
+            handler.removeCallbacks(cacheVerificationTask);
+            cacheVerificationTask = null;
+        }
+    }
+
+    private boolean hasCacheClearConfirmation(AccessibilityNodeInfo root) {
+        return hasCachePromptText(root)
+                && hasClickableAction(root, new String[]{"cancel", "cancelar", "not now", "ahora no", "no"});
+    }
+
+    private boolean hasCachePromptText(AccessibilityNodeInfo node) {
+        if (node == null) return false;
+        CharSequence label = node.getText();
+        if (label != null && !node.isClickable()) {
+            String text = normalize(label.toString());
+            boolean namesCache = text.contains("cache")
+                    && (text.contains("clear") || text.contains("borrar")
+                    || text.contains("limpiar") || text.contains("vaciar") || text.contains("delete"));
+            boolean mentionsData = text.contains("data") || text.contains("datos");
+            if (namesCache && !mentionsData) return true;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            boolean found = hasCachePromptText(child);
+            child.recycle();
+            if (found) return true;
+        }
+        return false;
+    }
+
+    private boolean hasClickableAction(AccessibilityNodeInfo root, String[] labels) {
+        AccessibilityNodeInfo node = findClickableAction(root, labels);
+        if (node == null) return false;
+        node.recycle();
+        return true;
+    }
+
+    private AccessibilityNodeInfo findClickableAction(AccessibilityNodeInfo root, String[] labels) {
+        if (root == null) return null;
+        CharSequence text = root.getText();
+        CharSequence description = root.getContentDescription();
+        if (root.isClickable() && (matchesExact(text, labels) || matchesExact(description, labels)))
+            return AccessibilityNodeInfo.obtain(root);
+        for (int i = 0; i < root.getChildCount(); i++) {
+            AccessibilityNodeInfo child = root.getChild(i);
+            if (child == null) continue;
+            AccessibilityNodeInfo match = findClickableAction(child, labels);
+            child.recycle();
+            if (match != null) return match;
+        }
+        return null;
+    }
+
+    private boolean matchesExact(CharSequence value, String[] labels) {
+        if (value == null) return false;
+        String normalized = normalize(value.toString());
+        for (String label : labels) if (normalized.equals(normalize(label))) return true;
+        return false;
+    }
+
+    private String normalize(String value) {
+        return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ").trim();
     }
 
     private void verifyAndAdvance(CacheAppInfo app) {
@@ -250,6 +359,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             return;
         }
         prefs.edit().putString("phase", "APP_INFO").apply();
+        prefs.edit().putString(KEY_CURRENT_APP, targets.get(index).label).apply();
         armStepTimeout();
         try { openAppInfo(this, targets.get(index).packageName); }
         catch (RuntimeException e) { failCurrent("Android no pudo abrir la ficha de la app."); }
@@ -268,7 +378,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 .putString(KEY_ERROR, existing).putString("phase", "Limpieza terminada").apply();
         CacheCleaner.removeCleanupSnapshot(this, snapshotId);
         releaseScreenWakeLock();
-        Toast.makeText(this, "Turbo Accesibilidad terminado · " + done + " apps · "
+        Toast.makeText(this, "Turbo Tasker · Accesibilidad · " + done + " apps · "
                 + failed + " fallidas · " + CacheAppInfoBytes.format(freed) + " verificados",
                 Toast.LENGTH_LONG).show();
     }

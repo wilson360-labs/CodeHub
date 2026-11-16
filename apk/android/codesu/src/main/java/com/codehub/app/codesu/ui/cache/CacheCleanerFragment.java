@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -48,10 +49,11 @@ public class CacheCleanerFragment extends Fragment {
     private boolean cleaning;
     private boolean loading;
     private boolean measurementStale = true;
+    // Engine selection is intentionally session-only; it must not persist in preferences.
+    private int selectedCleanupEngine = ENGINE_SHIZUKU;
     private int loadGeneration;
     private static final String CLEANER_PREFS = "codesu_cache_cleaner";
     private static final String LAST_WORK_ID = "last_cleanup_work_id";
-    private static final String CLEANER_ENGINE_KEY = "selected_cleanup_engine";
     private static final int ENGINE_SHIZUKU = 0;
     private static final int ENGINE_ACCESSIBILITY = 1;
     private static final int SHIZUKU_PERMISSION_REQUEST = 7684;
@@ -96,6 +98,8 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheEngineShizuku.setOnClickListener(v -> selectEngine(ENGINE_SHIZUKU));
         binding.codesuCacheEngineAccessibility.setOnClickListener(v -> selectEngine(ENGINE_ACCESSIBILITY));
         binding.codesuCacheEngineAction.setOnClickListener(v -> configureSelectedEngine());
+        requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE).edit()
+                .remove("selected_cleanup_engine").apply();
         android.content.SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
         binding.codesuCacheKeepScreenOn.setChecked(settings.getBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, true));
         binding.codesuCacheKeepScreenOn.setOnCheckedChangeListener((button, checked) ->
@@ -140,15 +144,12 @@ public class CacheCleanerFragment extends Fragment {
     }
 
     private int selectedEngine() {
-        int saved = requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE)
-                .getInt(CLEANER_ENGINE_KEY, ENGINE_SHIZUKU);
-        return saved == ENGINE_ACCESSIBILITY ? ENGINE_ACCESSIBILITY : ENGINE_SHIZUKU;
+        return selectedCleanupEngine;
     }
 
     private void selectEngine(int engine) {
         if (binding == null || cleaning) return;
-        requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE)
-                .edit().putInt(CLEANER_ENGINE_KEY, engine).apply();
+        selectedCleanupEngine = engine;
         refreshEngineUi();
     }
 
@@ -185,7 +186,7 @@ public class CacheCleanerFragment extends Fragment {
         boolean engineReady;
         if (engine == ENGINE_ACCESSIBILITY) {
             engineReady = accessibilityEnabled;
-            binding.codesuCacheEngineSummary.setText("Automatiza Ajustes app por app; requiere pantalla encendida y desbloqueada. Puede tardar más que Shizuku.");
+            binding.codesuCacheEngineSummary.setText("Turbo Tasker automatiza app por app: ficha → almacenamiento → borrar caché → verificar. Requiere pantalla encendida y desbloqueada.");
             binding.codesuCacheKeepScreenOn.setVisibility(View.VISIBLE);
             binding.codesuCacheScreenHint.setVisibility(View.VISIBLE);
             binding.codesuCacheEngineAction.setText("Activar Accesibilidad");
@@ -225,10 +226,7 @@ public class CacheCleanerFragment extends Fragment {
     private void configureSelectedEngine() {
         if (binding == null || cleaning) return;
         if (selectedEngine() == ENGINE_ACCESSIBILITY) {
-            try { CacheCleanerAccessibilityService.openAccessibilitySettings(requireContext()); }
-            catch (RuntimeException e) {
-                Toast.makeText(requireContext(), "No se pudieron abrir los ajustes de Accesibilidad.", Toast.LENGTH_LONG).show();
-            }
+            showAccessibilitySetupGuide();
             return;
         }
         if (!isShizukuRunning()) {
@@ -248,6 +246,37 @@ public class CacheCleanerFragment extends Fragment {
         try { Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST); }
         catch (RuntimeException e) {
             Toast.makeText(requireContext(), "No se pudo solicitar el permiso de Shizuku.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showAccessibilitySetupGuide() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            openAccessibilitySettingsSafely();
+            return;
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Preparar Turbo Accesibilidad")
+                .setMessage("Activa CodeSu en Ajustes > Accesibilidad > Aplicaciones instaladas. Si Android bloquea el servicio por ser una app instalada desde APK, abre la ficha de CodeHub > menú ⋮ > Permitir ajustes restringidos y luego vuelve a Accesibilidad. Esta autorización la debe confirmar la persona; CodeHub no puede aceptarla ni saltársela automáticamente.")
+                .setNeutralButton("Ficha de CodeHub", (dialog, which) -> openCodeHubAppInfo())
+                .setNegativeButton("Ahora no", null)
+                .setPositiveButton("Abrir Accesibilidad", (dialog, which) -> openAccessibilitySettingsSafely())
+                .show();
+    }
+
+    private void openAccessibilitySettingsSafely() {
+        try { CacheCleanerAccessibilityService.openAccessibilitySettings(requireContext()); }
+        catch (RuntimeException e) {
+            Toast.makeText(requireContext(), "No se pudieron abrir los ajustes de Accesibilidad.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void openCodeHubAppInfo() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", requireContext().getPackageName(), null));
+            startActivity(intent);
+        } catch (RuntimeException e) {
+            Toast.makeText(requireContext(), "Abre manualmente Ajustes > Aplicaciones > CodeHub.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -453,7 +482,7 @@ public class CacheCleanerFragment extends Fragment {
             Toast.makeText(requireContext(), "Activa Accesibilidad antes de iniciar la limpieza.", Toast.LENGTH_LONG).show();
             return;
         }
-        new AlertDialog.Builder(requireContext()).setTitle("Turbo Accesibilidad")
+        new AlertDialog.Builder(requireContext()).setTitle("Turbo Tasker · Accesibilidad")
                 .setMessage("Automatizará Ajustes para " + targets.size() + " apps seguras sobre 1 MB ("
                         + CacheAppAdapter.formatBytes(estimate) + "). El teléfono debe permanecer encendido y desbloqueado. Solo intenta borrar caché; nunca datos ni sesiones.")
                 .setNegativeButton("Cancelar", null)
@@ -496,7 +525,7 @@ public class CacheCleanerFragment extends Fragment {
             return;
         }
         cleaning = true;
-        setCleanupUi("Turbo Accesibilidad · iniciando Ajustes", 0);
+        setCleanupUi("Turbo Tasker · abriendo Ajustes", 0);
         String snapshotId = null;
         try {
             snapshotId = CacheCleaner.saveCleanupSnapshot(requireContext(), targets);
@@ -541,7 +570,14 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgress.setProgress(percent);
         binding.codesuCacheProgress.setVisibility(View.VISIBLE);
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
-        binding.codesuCacheProgressText.setText(phase + " · " + percent + "% · " + current + "/" + total + " apps");
+        String stage = phase;
+        if ("APP_INFO".equals(phase)) stage = "Abriendo ajustes de la app";
+        else if ("STORAGE".equals(phase)) stage = "Abriendo almacenamiento";
+        else if ("CACHE_CONFIRM_WAIT".equals(phase)) stage = "Procesando confirmación de caché";
+        else if ("VERIFYING".equals(phase)) stage = "Verificando caché liberada";
+        String app = prefs.getString(CacheCleanerAccessibilityService.KEY_CURRENT_APP, "");
+        binding.codesuCacheProgressText.setText(stage + " · " + percent + "% · " + current + "/" + total + " apps"
+                + (app == null || app.trim().isEmpty() ? "" : " · " + app));
         binding.codesuCacheTotal.setText("Automatización visible de Ajustes · no apagues ni bloquees el teléfono");
     }
 
@@ -553,7 +589,7 @@ public class CacheCleanerFragment extends Fragment {
         int failed = prefs.getInt(CacheCleanerAccessibilityService.KEY_FAILED, 0);
         long freed = prefs.getLong(CacheCleanerAccessibilityService.KEY_FREED, 0L);
         String error = prefs.getString(CacheCleanerAccessibilityService.KEY_ERROR, "");
-        String result = "Turbo Accesibilidad terminado · " + done + " apps confirmadas · "
+        String result = "Turbo Tasker · Accesibilidad · " + done + " apps confirmadas · "
                 + CacheAppAdapter.formatBytes(freed) + " liberados verificados · " + failed + " fallidas";
         binding.codesuCacheProgress.setProgress(100);
         binding.codesuCacheProgressText.setText("100% · Automatización terminada");

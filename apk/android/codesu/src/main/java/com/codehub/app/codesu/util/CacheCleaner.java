@@ -237,7 +237,6 @@ public final class CacheCleaner {
                 || packageName.startsWith("com.google.android.webview")
                 || packageName.startsWith("com.android.webview")
                 || packageName.startsWith("com.google.android.trichromelibrary")
-                || packageName.startsWith("com.android.chrome")
                 || packageName.startsWith("org.chromium.webview_shell");
     }
 
