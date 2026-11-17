@@ -38,6 +38,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public static final String KEY_ERROR = "error";
     public static final String KEY_CURRENT_APP = "current_app";
     private static final long STEP_TIMEOUT_MS = 12_000L;
+    private static final int MAX_CACHE_VERIFY_ATTEMPTS = 3;
+    private static final long CACHE_VERIFY_RETRY_MS = 1_500L;
     private static final long KEEP_AWAKE_TIMEOUT_MS = 30L * 60L * 1000L;
     private static final String SETTINGS_PREFS = "settings";
 
@@ -133,21 +135,22 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             if (phase.equals("CACHE_CONFIRM_WAIT")) {
                 if (hasCacheClearConfirmation(root)) {
                     AccessibilityNodeInfo positive = findClickableAction(root, new String[]{
-                            "clear cache", "borrar cache", "vaciar cache", "ok", "aceptar", "delete", "borrar", "limpiar"
+                            "clear cache", "borrar cache", "vaciar cache", "clear", "ok", "aceptar", "delete", "borrar", "limpiar"
                     });
                     if (positive == null) {
                         finishRun("Android mostró una confirmación de caché no reconocida. La tarea se pausó sin aceptarla.");
                         return;
                     }
                     clearCacheVerificationTask();
-                    boolean accepted = clickNode(positive);
-                    positive.recycle();
+                    boolean accepted;
+                    try { accepted = clickNode(positive); }
+                    finally { positive.recycle(); }
                     if (!accepted) {
                         finishRun("No se pudo aceptar la confirmación explícita de Borrar caché.");
                         return;
                     }
-                    prefs.edit().putString("phase", "VERIFYING").apply();
-                    scheduleCacheVerification(targets.get(index), 1200L);
+                    prefs.edit().putString("phase", "VERIFYING").putInt("verify_attempts", 0).apply();
+                    scheduleCacheVerification(targets.get(index), CACHE_VERIFY_RETRY_MS);
                     return;
                 }
                 if (hasClickableAction(root, new String[]{"cancel", "cancelar", "not now", "ahora no", "no"})) {
@@ -159,24 +162,29 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                     "clear cache", "borrar caché", "borrar cache", "vaciar caché", "vaciar cache", "limpiar caché", "limpiar cache"
             });
             if (clear != null && phase.equals("STORAGE")) {
-                if (!clickNode(clear)) {
-                    failCurrent("El botón Borrar caché no estaba disponible.");
+                try {
+                    if (!clickNode(clear)) {
+                        failCurrent("El botón Borrar caché no estaba disponible.");
+                        return;
+                    }
+                    clearStepTimeout();
+                    prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0).apply();
+                    scheduleCacheVerification(targets.get(index), 2_000L);
                     return;
-                }
-                clearStepTimeout();
-                prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").apply();
-                CacheAppInfo app = targets.get(index);
-                scheduleCacheVerification(app, 2400L);
-                return;
+                } finally { clear.recycle(); }
             }
             if (phase.equals("APP_INFO")) {
                 AccessibilityNodeInfo storage = findAction(root, new String[]{
                         "storage & cache", "storage and cache", "storage", "almacenamiento y caché",
                         "almacenamiento y cache", "almacenamiento"
                 });
-                if (storage != null && clickNode(storage)) {
-                    prefs.edit().putString("phase", "STORAGE").apply();
-                    armStepTimeout();
+                if (storage != null) {
+                    try {
+                        if (clickNode(storage)) {
+                            prefs.edit().putString("phase", "STORAGE").apply();
+                            armStepTimeout();
+                        }
+                    } finally { storage.recycle(); }
                 }
             }
         } finally {
@@ -307,16 +315,17 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     private void verifyAndAdvance(CacheAppInfo app) {
         android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
+        int attempts = prefs.getInt("verify_attempts", 0) + 1;
         long remaining;
         try {
             remaining = CacheCleaner.queryCacheBytes(this, app.packageName);
         } catch (Exception error) {
-            failCurrent("Android no permitió verificar el resultado de caché.");
+            retryOrFailVerification(app, attempts, "Android no permitió verificar el resultado de caché.");
             return;
         }
         long freed = Math.max(0L, app.cacheBytes - remaining);
         if (freed == 0L) {
-            failCurrent("Ajustes no confirmó espacio liberado para esta app.");
+            retryOrFailVerification(app, attempts, "Ajustes no confirmó espacio liberado para esta app.");
             return;
         }
         int index = prefs.getInt(KEY_INDEX, 0) + 1;
@@ -324,6 +333,16 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 .putLong(KEY_FREED, prefs.getLong(KEY_FREED, 0L) + freed)
                 .putString("phase", "APP_INFO").apply();
         advanceOrFinish();
+    }
+
+    private void retryOrFailVerification(CacheAppInfo app, int attempts, String reason) {
+        if (attempts < MAX_CACHE_VERIFY_ATTEMPTS) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putInt("verify_attempts", attempts).putString("phase", "VERIFYING").apply();
+            scheduleCacheVerification(app, CACHE_VERIFY_RETRY_MS);
+            return;
+        }
+        failCurrent(reason + " (" + attempts + " intentos). ");
     }
 
     private void failCurrent(String reason) {
@@ -387,9 +406,13 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         if (root == null) return null;
         CharSequence text = root.getText();
         CharSequence description = root.getContentDescription();
-        if (matches(text, labels) || matches(description, labels)) return root;
+        if (matches(text, labels) || matches(description, labels)) return AccessibilityNodeInfo.obtain(root);
         for (int i = 0; i < root.getChildCount(); i++) {
-            AccessibilityNodeInfo match = findAction(root.getChild(i), labels);
+            AccessibilityNodeInfo child = root.getChild(i);
+            if (child == null) continue;
+            AccessibilityNodeInfo match;
+            try { match = findAction(child, labels); }
+            finally { child.recycle(); }
             if (match != null) return match;
         }
         return null;
@@ -406,11 +429,14 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     }
 
     private boolean clickNode(AccessibilityNodeInfo node) {
-        if (node == null || !node.isEnabled()) return false;
+        if (node == null) return false;
         AccessibilityNodeInfo current = node;
         for (int depth = 0; current != null && depth < 5; depth++) {
-            if (current.isEnabled() && current.isClickable())
-                return current.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            if (current.isEnabled() && current.isClickable()) {
+                boolean clicked = current.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                if (current != node) current.recycle();
+                return clicked;
+            }
             AccessibilityNodeInfo parent = current.getParent();
             if (current != node) current.recycle();
             current = parent;

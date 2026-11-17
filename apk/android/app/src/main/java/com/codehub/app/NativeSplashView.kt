@@ -1,11 +1,7 @@
 package com.codehub.app
 
 import android.content.Context
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.RectF
-import android.graphics.SweepGradient
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
@@ -15,11 +11,9 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
-import java.util.Calendar
 
-/** Native port of CodeHub's web splash, shown only by the compiled Android app. */
+/** Static native startup screen using the official CodeHub logo. */
 class NativeSplashView(context: Context) : FrameLayout(context) {
     fun interface OnDismissedListener {
         fun onDismissed()
@@ -27,345 +21,66 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val startedAt = SystemClock.elapsedRealtime()
-    private var dismissed = false
     private var dismissRequested = false
+    private var dismissed = false
     private var onDismissed: OnDismissedListener? = null
-    private lateinit var logoView: View
-    private lateinit var orbitalRings: OrbitalRingsView
-    private lateinit var auroraBackground: AuroraBackground
-    private lateinit var haloView: View
-    private val progressBar: ProgressBar
-    private val progressLabel: TextView
-    private val statusLabel: TextView
 
     init {
         isClickable = true
         isFocusable = true
         setBackgroundColor(Color.rgb(8, 11, 17))
 
-        auroraBackground = AuroraBackground(context)
-        addView(auroraBackground, LayoutParams(-1, -1))
-
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        val logoSize = dp(194)
-        val logoFrame = FrameLayout(context)
-        haloView = View(context).apply {
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0x1F38EF7D.toInt())
-            }
-        }
-        logoFrame.addView(haloView, LayoutParams(logoSize, logoSize, Gravity.CENTER))
-        orbitalRings = OrbitalRingsView(context)
-        logoFrame.addView(orbitalRings, LayoutParams(logoSize, logoSize, Gravity.CENTER))
-
-        val logo = ImageView(context).apply {
+        content.addView(ImageView(context).apply {
             setImageResource(R.drawable.codehub_splash)
-            contentDescription = "CodeHub"
+            contentDescription = "Logotipo oficial de CodeHub"
             scaleType = ImageView.ScaleType.FIT_CENTER
-            elevation = dp(8).toFloat()
-        }
-        logoView = logo
-        logoFrame.addView(logo, LayoutParams(dp(132), dp(132), Gravity.CENTER))
-        content.addView(logoFrame, LinearLayout.LayoutParams(logoSize, logoSize))
-
-        val greeting = TextView(context).apply {
-            text = greetingText()
-            textSize = 10f
-            letterSpacing = .16f
-            setTextColor(Color.rgb(56, 239, 125))  // brand green
-            typeface = Typeface.create("monospace", Typeface.NORMAL)
-            gravity = Gravity.CENTER
-        }
-        content.addView(greeting, LinearLayout.LayoutParams(-2, -2).apply {
-            topMargin = dp(15)
-        })
-
-        val brand = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-        brand.addView(TextView(context).apply {
-            text = "Code"
-            textSize = 34f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            letterSpacing = .035f
-        })
-        brand.addView(TextView(context).apply {
-            text = "Hub"
-            textSize = 34f
-            setTextColor(Color.rgb(56, 239, 125))  // brand green
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            letterSpacing = .035f
-        })
-        content.addView(brand, LinearLayout.LayoutParams(-2, -2).apply {
-            topMargin = dp(3)
-        })
-
+        }, LinearLayout.LayoutParams(dp(148), dp(148)))
         content.addView(TextView(context).apply {
-            text = "by Wilson.E  ·  GUATEMALA"
-            textSize = 9f
-            letterSpacing = .12f
-            setTextColor(Color.rgb(118, 120, 147))
-            typeface = Typeface.create("monospace", Typeface.NORMAL)
+            text = "CodeHub"
+            textSize = 28f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6) })
-
-        val progressSection = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        val progressTop = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        statusLabel = TextView(context).apply {
-            text = "INICIANDO…"
-            textSize = 9f
-            letterSpacing = .07f
-            setTextColor(Color.rgb(119, 126, 157))
-            typeface = Typeface.create("monospace", Typeface.NORMAL)
-        }
-        progressLabel = TextView(context).apply {
-            text = "0%"
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(14) })
+        content.addView(TextView(context).apply {
+            text = "by Wilson.E · GUATEMALA"
             textSize = 10f
-            setTextColor(Color.rgb(56, 239, 125))  // brand green
-            typeface = Typeface.create("monospace", Typeface.BOLD)
-        }
-        progressTop.addView(statusLabel, LinearLayout.LayoutParams(0, -2, 1f))
-        progressTop.addView(progressLabel)
-        progressSection.addView(progressTop)
-
-        progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progress = 0
-            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(56, 239, 125))
-            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(24, 46, 34))
-        }
-        progressSection.addView(progressBar, LinearLayout.LayoutParams(-1, dp(3)).apply {
-            topMargin = dp(8)
-        })
-        content.addView(progressSection, LinearLayout.LayoutParams(dp(220), -2).apply {
-            topMargin = dp(28)
-        })
-
+            letterSpacing = .08f
+            setTextColor(Color.rgb(150, 163, 183))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(5) })
         addView(content, LayoutParams(-2, -2, Gravity.CENTER))
-        auroraBackground.setAnimationTime(0L)
-        alpha = 0f
-        logoView.alpha = 0f
-        logoView.scaleX = .84f
-        logoView.scaleY = .84f
-        logoView.translationY = dp(10).toFloat()
-        orbitalRings.alpha = 0f
     }
 
-    /** Lets a visible splash reflect WebView progress when a web route is opened during startup. */
-    fun setLoadProgress(value: Int) {
-        if (dismissRequested || dismissed) return
-        val percent = value.coerceIn(0, 100)
-        progressBar.setProgress(percent, false)
-        progressLabel.text = "$percent%"
-        statusLabel.text = when {
-            percent < 30 -> "INICIANDO…"
-            percent < 60 -> "CARGANDO RECURSOS…"
-            percent < 90 -> "CASI LISTO…"
-            else -> "PREPARANDO CODEHUB…"
-        }
-    }
+    /** Kept for MainActivity compatibility; the static splash has no progress animation. */
+    fun setLoadProgress(value: Int) = Unit
 
-    /** Runs once the splash has fully faded, so the home entrance is visible. */
     fun setOnDismissed(callback: OnDismissedListener) {
         onDismissed = callback
     }
 
-    /** Keeps the entrance readable briefly, then fades into the native home. */
+    /** Holds the static logo briefly so it does not flash past during startup. */
     fun dismiss() {
         if (dismissRequested || dismissed) return
         dismissRequested = true
-        val remaining = (850L - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0L)
+        val remaining = (1_200L - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0L)
         mainHandler.postDelayed({
             if (dismissed) return@postDelayed
-            animate().cancel()
-            animate().alpha(0f).scaleX(1.015f).scaleY(1.015f)
-                .setDuration(240L)
-                .withEndAction {
-                    dismissed = true
-                    visibility = View.GONE
-                    onDismissed?.onDismissed()
-                    onDismissed = null
-                }
-                .start()
+            dismissed = true
+            visibility = View.GONE
+            onDismissed?.onDismissed()
+            onDismissed = null
         }, remaining)
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        animate().alpha(1f).scaleX(1f).scaleY(1f)
-            .setDuration(220L)
-            .setInterpolator(android.view.animation.DecelerateInterpolator())
-            .start()
-        logoView.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
-            .setDuration(560L)
-            .setInterpolator(android.view.animation.OvershootInterpolator(0.75f))
-            .start()
-        orbitalRings.animate().alpha(1f).rotation(42f)
-            .setDuration(620L)
-            .setInterpolator(android.view.animation.DecelerateInterpolator())
-            .start()
-        haloView.animate().alpha(1f).setDuration(520L).start()
     }
 
     override fun onDetachedFromWindow() {
         mainHandler.removeCallbacksAndMessages(null)
-        animate().cancel()
-        logoView.animate().cancel()
-        orbitalRings.animate().cancel()
-        haloView.animate().cancel()
         super.onDetachedFromWindow()
     }
 
-    private fun greetingText(): String {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        val timeGreeting = when {
-            hour in 5..11 -> "BUENOS DÍAS"
-            hour in 12..18 -> "BUENAS TARDES"
-            else -> "BUENAS NOCHES"
-        }
-        return "BIENVENIDO  ·  $timeGreeting"
-    }
-
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density + .5f).toInt()
-}
-
-/** Lightweight Canvas equivalent of the web splash's colored rotating orbit rings. */
-private class OrbitalRingsView(context: Context) : View(context) {
-    private val density = resources.displayMetrics.density
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val orbitDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF6366F1.toInt()
-        setShadowLayer(9f * density, 0f, 0f, color)
-    }
-    private val bounds = RectF()
-    private var rotation = 0f
-    private var gradientWidth = 0
-    private var gradientHeight = 0
-    private var orbitGradient: SweepGradient? = null
-
-    fun setRotationDegrees(value: Float) {
-        rotation = value
-        invalidate()
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val cx = width / 2f
-        val cy = height / 2f
-        val radius = width / 2f - 5f * density
-        bounds.set(cx - radius, cy - radius, cx + radius, cy + radius)
-
-        if (gradientWidth != width || gradientHeight != height) {
-            gradientWidth = width
-            gradientHeight = height
-            orbitGradient = SweepGradient(
-                cx, cy,
-                intArrayOf(0xFF6366F1.toInt(), 0xFF22C55E.toInt(), 0xFF06B6D4.toInt(), 0xFF6366F1.toInt(), 0xFF6366F1.toInt()),
-                null,
-            )
-        }
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 2.4f * density
-        paint.shader = orbitGradient
-        canvas.save()
-        canvas.rotate(rotation, cx, cy)
-        canvas.drawArc(bounds, 0f, 330f, false, paint)
-        orbitDotPaint.color = 0xFF6366F1.toInt()
-        canvas.drawCircle(cx, cy - radius, 4f * density, orbitDotPaint)
-        canvas.restore()
-
-        // Two orbit sparks echo the web splash's independent orbital dots.
-        val dotOrbit = radius - 10f * density
-        val phase = Math.toRadians((rotation * 1.72f).toDouble())
-        canvas.drawCircle(
-            cx + kotlin.math.cos(phase).toFloat() * dotOrbit,
-            cy + kotlin.math.sin(phase).toFloat() * dotOrbit,
-            2.4f * density,
-            orbitDotPaint.apply { color = 0xFF22D3EE.toInt() },
-        )
-        val phaseTwo = phase + Math.PI * 1.28
-        canvas.drawCircle(
-            cx + kotlin.math.cos(phaseTwo).toFloat() * (dotOrbit - 5f * density),
-            cy + kotlin.math.sin(phaseTwo).toFloat() * (dotOrbit - 5f * density),
-            2f * density,
-            orbitDotPaint.apply { color = 0xFF38EF7D.toInt() },
-        )
-
-        paint.shader = null
-        paint.color = 0x8838EF7D.toInt()
-        paint.strokeWidth = 1.4f * density
-        val inner = radius - 10f * density
-        bounds.set(cx - inner, cy - inner, cx + inner, cy + inner)
-        canvas.save()
-        canvas.rotate(-rotation * .78f, cx, cy)
-        canvas.drawArc(bounds, 205f, 270f, false, paint)
-        canvas.restore()
-        paint.style = Paint.Style.FILL
-    }
-
-}
-
-/** Animated star field and drifting color blooms matching the web splash palette. */
-private class AuroraBackground(context: Context) : View(context) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var animationTime = 0L
-    private val stars = Array(42) { index ->
-        val x = ((index * 73 + 19) % 997) / 997f
-        val y = ((index * 137 + 41) % 991) / 991f
-        val radius = if (index % 7 == 0) 1.5f else 1f
-        Triple(x, y, radius)
-    }
-
-    fun setAnimationTime(elapsed: Long) {
-        animationTime = elapsed
-        invalidate()
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val w = width.toFloat()
-        val h = height.toFloat()
-        val radius = maxOf(w, h) * .62f
-        val phase = animationTime / 16_000.0 * Math.PI * 2.0
-        val driftX = kotlin.math.sin(phase).toFloat()
-        val driftY = kotlin.math.cos(phase).toFloat()
-        paint.shader = android.graphics.RadialGradient(
-            w * (.5f + .12f * driftX), h * (.18f + .08f * driftY), radius,
-            intArrayOf(0x2B38EF7D.toInt(), 0x0A38EF7D.toInt(), Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
-        )
-        canvas.drawRect(0f, 0f, w, h, paint)
-        paint.shader = android.graphics.RadialGradient(
-            w * (.82f - .08f * driftX), h * (.68f - .1f * driftY), radius * .68f,
-            intArrayOf(0x1938EF7D.toInt(), Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
-        )
-        canvas.drawRect(0f, 0f, w, h, paint)
-        paint.shader = null
-        stars.forEachIndexed { index, (x, y, starRadius) ->
-            val baseAlpha = when (index % 4) {
-                0 -> 191
-                1 -> 204
-                2 -> 179
-                else -> 179
-            }
-            val twinkle = .68f + .32f * ((kotlin.math.sin(animationTime / (780.0 + index * 37.0) + index) + 1.0) / 2.0).toFloat()
-            val color = when (index % 4) {
-                0 -> Color.WHITE
-                1, 2 -> 0xFF38EF7D.toInt()
-                else -> 0xFFE8C978.toInt()
-            }
-            paint.color = Color.argb((baseAlpha * twinkle).toInt(), Color.red(color), Color.green(color), Color.blue(color))
-            canvas.drawCircle(x * w, y * h, starRadius * resources.displayMetrics.density, paint)
-        }
-    }
 }

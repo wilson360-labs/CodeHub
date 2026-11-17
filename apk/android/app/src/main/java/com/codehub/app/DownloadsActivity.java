@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageInfo;
 import android.database.Cursor;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -170,32 +172,14 @@ public class DownloadsActivity extends Activity {
         listView.setAdapter(new ArrayAdapter<DownloadEntry>(this, android.R.layout.simple_list_item_2, entries) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                LinearLayout row = convertView instanceof LinearLayout
-                    ? (LinearLayout) convertView : new LinearLayout(DownloadsActivity.this);
-                row.setOrientation(LinearLayout.VERTICAL);
-                row.setPadding(0, (int) (10 * getResources().getDisplayMetrics().density), 0,
-                    (int) (10 * getResources().getDisplayMetrics().density));
-
+                DownloadRow row = convertView instanceof DownloadRow
+                    ? (DownloadRow) convertView : new DownloadRow(DownloadsActivity.this);
                 DownloadEntry e = getItem(position);
-                TextView line1 = row.getChildCount() > 0 ? (TextView) row.getChildAt(0) : null;
-                TextView line2 = row.getChildCount() > 1 ? (TextView) row.getChildAt(1) : null;
-                if (line1 == null) {
-                    line1 = new TextView(DownloadsActivity.this);
-                    line1.setTextSize(15);
-                    line1.setTextColor(0xFFFFFFFF);
-                    line1.setMaxLines(1);
-                    row.addView(line1, new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                }
-                if (line2 == null) {
-                    line2 = new TextView(DownloadsActivity.this);
-                    line2.setTextSize(13);
-                    line2.setTextColor(0xFF9AA0B8);
-                    row.addView(line2, new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                }
-                line1.setText(e.title != null ? e.title : "Descarga");
-                line2.setText(statusLine(e));
+                row.title.setText(e.title != null ? e.title : "Descarga");
+                row.status.setText(statusLine(e));
+                row.uninstall.setVisibility(e.status == DownloadManager.STATUS_SUCCESSFUL && isApkDownload(e)
+                        ? View.VISIBLE : View.GONE);
+                row.uninstall.setOnClickListener(v -> inspectInstalledApk(e));
                 return row;
             }
         });
@@ -324,6 +308,80 @@ public class DownloadsActivity extends Activity {
         }
     }
 
+    private boolean isApkDownload(DownloadEntry entry) {
+        String value = ((entry.localUri == null ? "" : entry.localUri) + " "
+                + (entry.title == null ? "" : entry.title)).toLowerCase(java.util.Locale.ROOT);
+        return value.contains(".apk") || value.contains("application/vnd.android.package-archive");
+    }
+
+    /** Resolves the package from a downloaded APK and delegates uninstall to Android. */
+    private void inspectInstalledApk(DownloadEntry entry) {
+        if (entry.localUri == null) { toast("No se pudo localizar el APK descargado"); return; }
+        new Thread(() -> {
+            String packageName = null;
+            File temporary = null;
+            String failure = null;
+            try {
+                Uri source = Uri.parse(entry.localUri);
+                File apk = toRealFile(source);
+                if (apk == null && "content".equals(source.getScheme())) {
+                    temporary = copyToPrivate(source);
+                    apk = temporary;
+                }
+                if (apk == null || !apk.isFile()) throw new IllegalStateException("El APK descargado ya no está disponible.");
+                PackageInfo archive;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    archive = getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(),
+                            PackageManager.PackageInfoFlags.of(PackageManager.GET_META_DATA));
+                } else {
+                    //noinspection deprecation
+                    archive = getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), PackageManager.GET_META_DATA);
+                }
+                if (archive == null || archive.packageName == null)
+                    throw new IllegalStateException("Android no pudo leer el paquete de este APK.");
+                packageName = archive.packageName;
+            } catch (Exception error) {
+                failure = error.getMessage() == null ? "No se pudo revisar el APK." : error.getMessage();
+            } finally {
+                if (temporary != null) temporary.delete();
+            }
+
+            final String resolvedPackage = packageName;
+            final String failureMessage = failure;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (failureMessage != null) { toast(failureMessage); return; }
+                if (resolvedPackage == null) { toast("No se pudo identificar la app del APK."); return; }
+                if (resolvedPackage.equals(getPackageName())) {
+                    toast("Ese APK pertenece a CodeHub; no se ofrece desinstalarla desde su propio historial.");
+                    return;
+                }
+                try {
+                    getPackageManager().getPackageInfo(resolvedPackage, 0);
+                    confirmUninstall(resolvedPackage, entry.title);
+                } catch (PackageManager.NameNotFoundException notInstalled) {
+                    toast("La app de este APK no está instalada en el dispositivo.");
+                }
+            });
+        }, "CodeHub-apk-package-check").start();
+    }
+
+    private void confirmUninstall(String packageName, String label) {
+        new AlertDialog.Builder(this)
+                .setTitle("Desinstalar aplicación")
+                .setMessage("Se abrirá el instalador de Android para desinstalar "
+                        + (label == null || label.trim().isEmpty() ? packageName : label)
+                        + ". Android solicitará confirmación; CodeHub no puede desinstalarla en silencio.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Continuar", (dialog, which) -> {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + packageName)));
+                    } catch (Exception error) {
+                        toast("Android no pudo abrir la desinstalación de esta app.");
+                    }
+                }).show();
+    }
+
     private void openFile(DownloadEntry e, Uri u) {
         try {
             File f = toRealFile(u);
@@ -432,5 +490,40 @@ public class DownloadsActivity extends Activity {
         String localUri;
         String srcUri;
         long time;
+    }
+
+    private final class DownloadRow extends LinearLayout {
+        final TextView title;
+        final TextView status;
+        final Button uninstall;
+
+        DownloadRow(Context context) {
+            super(context);
+            float density = getResources().getDisplayMetrics().density;
+            setOrientation(HORIZONTAL);
+            setGravity(Gravity.CENTER_VERTICAL);
+            setPadding(0, (int) (8 * density), 0, (int) (8 * density));
+
+            LinearLayout textColumn = new LinearLayout(context);
+            textColumn.setOrientation(VERTICAL);
+            title = new TextView(context);
+            title.setTextSize(15);
+            title.setTextColor(0xFFFFFFFF);
+            title.setMaxLines(1);
+            status = new TextView(context);
+            status.setTextSize(12);
+            status.setTextColor(0xFF9AA0B8);
+            textColumn.addView(title, new LinearLayout.LayoutParams(-1, -2));
+            textColumn.addView(status, new LinearLayout.LayoutParams(-1, -2));
+            addView(textColumn, new LinearLayout.LayoutParams(0, -2, 1f));
+
+            uninstall = new Button(context);
+            uninstall.setText("Desinstalar");
+            uninstall.setTextSize(11);
+            uninstall.setAllCaps(false);
+            uninstall.setMinHeight((int) (38 * density));
+            uninstall.setPadding((int) (7 * density), 0, (int) (7 * density), 0);
+            addView(uninstall, new LinearLayout.LayoutParams(-2, -2));
+        }
     }
 }

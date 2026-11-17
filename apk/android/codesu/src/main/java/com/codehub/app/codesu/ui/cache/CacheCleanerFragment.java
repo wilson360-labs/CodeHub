@@ -48,9 +48,8 @@ public class CacheCleanerFragment extends Fragment {
     private CacheAppAdapter adapter;
     private boolean cleaning;
     private boolean loading;
+    private boolean hasMeasurement;
     private boolean measurementStale = true;
-    // Engine selection is intentionally session-only; it must not persist in preferences.
-    private int selectedCleanupEngine = ENGINE_SHIZUKU;
     private int loadGeneration;
     private static final String CLEANER_PREFS = "codesu_cache_cleaner";
     private static final String LAST_WORK_ID = "last_cleanup_work_id";
@@ -95,11 +94,9 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheApps.setAdapter(adapter);
         binding.codesuUsageAccessButton.setOnClickListener(v -> openUsageAccessSettings());
         binding.codesuCacheCleanButton.setOnClickListener(v -> confirmGlobalCacheClear());
-        binding.codesuCacheEngineShizuku.setOnClickListener(v -> selectEngine(ENGINE_SHIZUKU));
-        binding.codesuCacheEngineAccessibility.setOnClickListener(v -> selectEngine(ENGINE_ACCESSIBILITY));
-        binding.codesuCacheEngineAction.setOnClickListener(v -> configureSelectedEngine());
-        requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE).edit()
-                .remove("selected_cleanup_engine").apply();
+        binding.codesuCacheEngineShizuku.setOnClickListener(v -> configureEngine(ENGINE_SHIZUKU));
+        binding.codesuCacheEngineAccessibility.setOnClickListener(v -> configureEngine(ENGINE_ACCESSIBILITY));
+        binding.codesuCacheEngineAction.setOnClickListener(v -> showEngineSetupChooser());
         android.content.SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
         binding.codesuCacheKeepScreenOn.setChecked(settings.getBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, true));
         binding.codesuCacheKeepScreenOn.setOnCheckedChangeListener((button, checked) ->
@@ -132,7 +129,7 @@ public class CacheCleanerFragment extends Fragment {
             accessibilityProgressHandler.post(accessibilityProgressPoll);
         } else if (accessibility.getBoolean(CacheCleanerAccessibilityService.KEY_RESULT_PENDING, false)) {
             renderAccessibilityResult(accessibility);
-        } else {
+        } else if (!hasMeasurement || adapter == null || adapter.getApps().isEmpty()) {
             loadCacheApps();
         }
     }
@@ -141,16 +138,6 @@ public class CacheCleanerFragment extends Fragment {
     public void onStop() {
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
         super.onStop();
-    }
-
-    private int selectedEngine() {
-        return selectedCleanupEngine;
-    }
-
-    private void selectEngine(int engine) {
-        if (binding == null || cleaning) return;
-        selectedCleanupEngine = engine;
-        refreshEngineUi();
     }
 
     private boolean isShizukuRunning() {
@@ -167,7 +154,6 @@ public class CacheCleanerFragment extends Fragment {
 
     private void refreshEngineUi() {
         if (binding == null || !isAdded()) return;
-        int engine = selectedEngine();
         boolean shizukuRunning = isShizukuRunning();
         boolean shizukuAuthorized = isShizukuAuthorized();
         boolean accessibilityEnabled = CacheCleanerAccessibilityService.isEnabled(requireContext());
@@ -180,34 +166,20 @@ public class CacheCleanerFragment extends Fragment {
         int waitingColor = Color.parseColor("#C77722");
         binding.codesuCacheEngineShizukuStatus.setTextColor(shizukuAuthorized ? readyColor : waitingColor);
         binding.codesuCacheEngineAccessibilityStatus.setTextColor(accessibilityEnabled ? readyColor : waitingColor);
-        setEngineCardSelected(binding.codesuCacheEngineShizuku, engine == ENGINE_SHIZUKU);
-        setEngineCardSelected(binding.codesuCacheEngineAccessibility, engine == ENGINE_ACCESSIBILITY);
-
-        boolean engineReady;
-        if (engine == ENGINE_ACCESSIBILITY) {
-            engineReady = accessibilityEnabled;
-            binding.codesuCacheEngineSummary.setText("Turbo Tasker automatiza app por app: ficha → almacenamiento → borrar caché → verificar. Requiere pantalla encendida y desbloqueada.");
-            binding.codesuCacheKeepScreenOn.setVisibility(View.VISIBLE);
-            binding.codesuCacheScreenHint.setVisibility(View.VISIBLE);
-            binding.codesuCacheEngineAction.setText("Activar Accesibilidad");
-            binding.codesuCacheSafetyNote.setText("Solo intenta borrar caché; Android puede variar según la marca. No borra datos ni sesiones.");
-        } else {
-            engineReady = shizukuAuthorized;
-            binding.codesuCacheEngineSummary.setText("Limpieza directa en segundo plano, solo caché. Necesita Shizuku iniciado y permiso concedido a CodeSu.");
-            binding.codesuCacheKeepScreenOn.setVisibility(View.GONE);
-            binding.codesuCacheScreenHint.setVisibility(View.GONE);
-            binding.codesuCacheEngineAction.setText(shizukuRunning ? "Conceder permiso a CodeSu" : "Abrir Shizuku");
-            binding.codesuCacheSafetyNote.setText("Solo caché >1 MB en apps no protegidas. No elimina aplicaciones ni borra datos o sesiones.");
-        }
+        setEngineCardSelected(binding.codesuCacheEngineShizuku, shizukuAuthorized);
+        setEngineCardSelected(binding.codesuCacheEngineAccessibility, accessibilityEnabled);
+        binding.codesuCacheEngineSummary.setText("En cada limpieza eliges cómo ejecutarla: Shizuku en segundo plano o Turbo Tasker por Accesibilidad app por app.");
+        binding.codesuCacheKeepScreenOn.setVisibility(View.VISIBLE);
+        binding.codesuCacheScreenHint.setVisibility(View.VISIBLE);
+        binding.codesuCacheEngineAction.setText("Configurar motores");
+        binding.codesuCacheSafetyNote.setText("Solo borra caché superior a 1 MB en apps no protegidas. Nunca borra datos, sesiones ni desinstala aplicaciones.");
         boolean supportedApi = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
         if (!supportedApi) {
             binding.codesuCacheEngineSummary.setText("La limpieza protegida de caché requiere Android 11 o posterior.");
             binding.codesuCacheSafetyNote.setText("CodeSu puede consultar tamaños, pero no iniciar la limpieza protegida en esta versión de Android.");
         }
-        boolean showEngineAction = engine == ENGINE_ACCESSIBILITY ? !accessibilityEnabled : !shizukuAuthorized;
-        binding.codesuCacheEngineAction.setVisibility(showEngineAction && supportedApi ? View.VISIBLE : View.GONE);
-        binding.codesuCacheCleanButton.setEnabled(engineReady && !cleaning && !loading && !measurementStale
-                && supportedApi);
+        binding.codesuCacheEngineAction.setVisibility(supportedApi ? View.VISIBLE : View.GONE);
+        binding.codesuCacheCleanButton.setEnabled(!cleaning && !loading && !measurementStale && supportedApi);
         binding.codesuCacheEngineShizuku.setEnabled(!cleaning);
         binding.codesuCacheEngineAccessibility.setEnabled(!cleaning);
         binding.codesuCacheEngineAction.setEnabled(!cleaning);
@@ -223,9 +195,17 @@ public class CacheCleanerFragment extends Fragment {
         card.setSelected(selected);
     }
 
-    private void configureSelectedEngine() {
+    private void showEngineSetupChooser() {
         if (binding == null || cleaning) return;
-        if (selectedEngine() == ENGINE_ACCESSIBILITY) {
+        new AlertDialog.Builder(requireContext()).setTitle("Configurar motor")
+                .setItems(new String[]{"Shizuku", "Accesibilidad · Turbo Tasker"}, (dialog, which) ->
+                        configureEngine(which == 0 ? ENGINE_SHIZUKU : ENGINE_ACCESSIBILITY))
+                .setNegativeButton("Cancelar", null).show();
+    }
+
+    private void configureEngine(int engine) {
+        if (binding == null || cleaning) return;
+        if (engine == ENGINE_ACCESSIBILITY) {
             showAccessibilitySetupGuide();
             return;
         }
@@ -338,6 +318,7 @@ public class CacheCleanerFragment extends Fragment {
                     binding.codesuCacheRefresh.setEnabled(true);
                     binding.codesuCacheRefresh.setAlpha(1f);
                     adapter.submit(apps);
+                    hasMeasurement = true;
                     measurementStale = false;
                     long totalBytes = 0L;
                     int appsWithCache = 0;
@@ -445,21 +426,28 @@ public class CacheCleanerFragment extends Fragment {
             Toast.makeText(requireContext(), "Ninguna app no protegida supera 1 MB de caché.", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (selectedEngine() == ENGINE_SHIZUKU) {
-            if (!CacheCleaner.isShizukuReady()) {
-                refreshEngineUi();
-                Toast.makeText(requireContext(), "Conecta y autoriza Shizuku antes de iniciar.", Toast.LENGTH_LONG).show();
-                return;
-            }
-            confirmShizukuCleaner(targets, estimate);
-            return;
-        }
-        if (!CacheCleanerAccessibilityService.isEnabled(requireContext())) {
-            refreshEngineUi();
-            Toast.makeText(requireContext(), "Activa el servicio de Accesibilidad antes de iniciar.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        confirmAccessibilityCleaner(targets, estimate);
+        showCleanupEngineChooser(targets, estimate);
+    }
+
+    private void showCleanupEngineChooser(List<CacheAppInfo> targets, long estimate) {
+        if (binding == null || cleaning) return;
+        new AlertDialog.Builder(requireContext()).setTitle("¿Cómo quieres ejecutar esta limpieza?")
+                .setItems(new String[]{"Shizuku · limpieza directa", "Accesibilidad · Turbo Tasker"}, (dialog, which) -> {
+                    if (which == 0) {
+                        if (!CacheCleaner.isShizukuReady()) {
+                            configureEngine(ENGINE_SHIZUKU);
+                            return;
+                        }
+                        confirmShizukuCleaner(targets, estimate);
+                    } else {
+                        if (!CacheCleanerAccessibilityService.isEnabled(requireContext())) {
+                            showAccessibilitySetupGuide();
+                            return;
+                        }
+                        confirmAccessibilityCleaner(targets, estimate);
+                    }
+                })
+                .setNegativeButton("Cancelar", null).show();
     }
 
     private void confirmShizukuCleaner(List<CacheAppInfo> targets, long estimate) {
@@ -484,7 +472,7 @@ public class CacheCleanerFragment extends Fragment {
         }
         new AlertDialog.Builder(requireContext()).setTitle("Turbo Tasker · Accesibilidad")
                 .setMessage("Automatizará Ajustes para " + targets.size() + " apps seguras sobre 1 MB ("
-                        + CacheAppAdapter.formatBytes(estimate) + "). El teléfono debe permanecer encendido y desbloqueado. Solo intenta borrar caché; nunca datos ni sesiones.")
+                        + CacheAppAdapter.formatBytes(estimate) + "). Usará esta medición guardada y no volverá a escanear antes de borrar. El teléfono debe permanecer encendido y desbloqueado. Solo intenta borrar caché; nunca datos ni sesiones.")
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("Iniciar limpieza", (dialog, which) -> startAccessibilityCleaner(targets))
                 .show();
