@@ -117,7 +117,7 @@ public class ShizukuPlusUtils {
     public static String clearAppCacheDetailed(String packageName, long estimatedCacheBytes) {
         if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
         try {
-            String result = killAppService.clearAppCacheDetailed(packageName, estimatedCacheBytes);
+            String result = killAppService.clearAppCacheDetailedWithEstimate(packageName, estimatedCacheBytes);
             return result == null ? "Shizuku no devolvió el resultado de Package Manager." : result;
         } catch (Exception e) {
             return "Shizuku no pudo ejecutar la limpieza: "

@@ -74,11 +74,11 @@ public class ShizukuUserService extends IKillAppService.Stub {
 
     @Override
     public String clearAppCacheDetailed(String pkgName) {
-        return clearAppCacheDetailed(pkgName, 0L);
+        return clearAppCacheDetailedWithEstimate(pkgName, 0L);
     }
 
     @Override
-    public String clearAppCacheDetailed(String pkgName, long estimatedCacheBytes) {
+    public String clearAppCacheDetailedWithEstimate(String pkgName, long estimatedCacheBytes) {
         if (isProtectedCacheTarget(pkgName)) return "Paquete protegido por seguridad.";
         Process process = null;
         try {
