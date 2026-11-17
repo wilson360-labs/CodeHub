@@ -94,13 +94,16 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheApps.setAdapter(adapter);
         binding.codesuUsageAccessButton.setOnClickListener(v -> openUsageAccessSettings());
         binding.codesuCacheCleanButton.setOnClickListener(v -> confirmGlobalCacheClear());
+        binding.codesuCacheCancelButton.setOnClickListener(v -> cancelCleanup());
         binding.codesuCacheEngineShizuku.setOnClickListener(v -> configureEngine(ENGINE_SHIZUKU));
         binding.codesuCacheEngineAccessibility.setOnClickListener(v -> configureEngine(ENGINE_ACCESSIBILITY));
         binding.codesuCacheEngineAction.setOnClickListener(v -> showEngineSetupChooser());
         android.content.SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
         binding.codesuCacheKeepScreenOn.setChecked(settings.getBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, true));
-        binding.codesuCacheKeepScreenOn.setOnCheckedChangeListener((button, checked) ->
-                settings.edit().putBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, checked).apply());
+        binding.codesuCacheKeepScreenOn.setOnCheckedChangeListener((button, checked) -> {
+            settings.edit().putBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, checked).apply();
+            updateKeepScreenOnFlag(cleaning);
+        });
         refreshEngineUi();
         binding.codesuCacheRefresh.setOnClickListener(v -> {
             binding.codesuCacheRefreshIcon.animate().rotationBy(360f).setDuration(650)
@@ -266,6 +269,7 @@ public class CacheCleanerFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         accessibilityProgressHandler.removeCallbacks(accessibilityProgressPoll);
+        updateKeepScreenOnFlag(false);
         loadGeneration++;
         loading = false;
         cleaning = false;
@@ -543,6 +547,11 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
         binding.codesuCacheResult.setVisibility(View.GONE);
         binding.codesuCacheProgressText.setText(label + " · " + percent + "%");
+        binding.codesuCacheCleanButton.setText("Limpiando · " + percent + "%");
+        binding.codesuCacheCancelButton.setText("Cancelar tarea");
+        binding.codesuCacheCancelButton.setEnabled(true);
+        binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
+        updateKeepScreenOnFlag(true);
     }
 
     private void renderAccessibilityProgress(android.content.SharedPreferences prefs) {
@@ -568,6 +577,9 @@ public class CacheCleanerFragment extends Fragment {
         String app = prefs.getString(CacheCleanerAccessibilityService.KEY_CURRENT_APP, "");
         binding.codesuCacheProgressText.setText(stage + " · " + percent + "% · " + current + "/" + total + " apps"
                 + (app == null || app.trim().isEmpty() ? "" : " · " + app));
+        binding.codesuCacheCleanButton.setText("Limpiando · " + percent + "%");
+        binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
+        updateKeepScreenOnFlag(true);
         binding.codesuCacheTotal.setText("Automatización visible de Ajustes · no apagues ni bloquees el teléfono");
     }
 
@@ -586,6 +598,11 @@ public class CacheCleanerFragment extends Fragment {
         String result = "Turbo Tasker · Accesibilidad · " + done + " apps confirmadas · "
                 + CacheAppAdapter.formatBytes(freed) + " liberados verificados · " + failed + " fallidas";
         binding.codesuCacheProgress.setProgress(progress);
+        binding.codesuCacheCancelButton.setVisibility(View.GONE);
+        binding.codesuCacheCancelButton.setEnabled(true);
+        binding.codesuCacheCancelButton.setText("Cancelar tarea");
+        binding.codesuCacheCleanButton.setText("Iniciar limpieza");
+        updateKeepScreenOnFlag(false);
         binding.codesuCacheProgressText.setText(completed
                 ? "100% · Automatización terminada" : "Tarea detenida · " + progress + "%");
         binding.codesuCacheProgress.setVisibility(View.GONE);
@@ -611,10 +628,48 @@ public class CacheCleanerFragment extends Fragment {
         cleaning = false;
         if (binding == null) return;
         refreshEngineUi();
+        binding.codesuCacheCleanButton.setText("Iniciar limpieza");
+        binding.codesuCacheCancelButton.setVisibility(View.GONE);
+        binding.codesuCacheCancelButton.setEnabled(true);
+        binding.codesuCacheCancelButton.setText("Cancelar tarea");
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
         binding.codesuCacheProgress.setVisibility(View.GONE);
         binding.codesuCacheProgressText.setVisibility(View.GONE);
+        updateKeepScreenOnFlag(false);
+    }
+
+    private void cancelCleanup() {
+        if (binding == null || !cleaning) return;
+        binding.codesuCacheCancelButton.setEnabled(false);
+        binding.codesuCacheCancelButton.setText("Cancelando…");
+        android.content.SharedPreferences accessibility = requireContext().getSharedPreferences(
+                CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE);
+        if (accessibility.getBoolean(CacheCleanerAccessibilityService.KEY_RUNNING, false)) {
+            CacheCleanerAccessibilityService.cancelByUser(requireContext());
+            accessibilityProgressHandler.removeCallbacks(accessibilityProgressPoll);
+            renderAccessibilityResult(requireContext().getSharedPreferences(
+                    CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE));
+            return;
+        }
+        String savedId = requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE)
+                .getString(LAST_WORK_ID, "");
+        try {
+            if (savedId != null && !savedId.isEmpty())
+                WorkManager.getInstance(requireContext()).cancelWorkById(UUID.fromString(savedId));
+            else resetCleanupUi();
+        } catch (IllegalArgumentException e) {
+            resetCleanupUi();
+        }
+    }
+
+    private void updateKeepScreenOnFlag(boolean active) {
+        if (getActivity() == null) return;
+        boolean enabled = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, true);
+        if (active && enabled)
+            getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
     private void observeCleanupWork() {
         if (binding == null) return;
@@ -653,12 +708,22 @@ public class CacheCleanerFragment extends Fragment {
             String phase = progress.getString(CacheCleanerWorker.KEY_PHASE);
             String current = progress.getString(CacheCleanerWorker.KEY_CURRENT);
             binding.codesuCacheProgress.setProgress(percent);
+            binding.codesuCacheCleanButton.setText("Limpiando · " + percent + "%");
+            binding.codesuCacheCancelButton.setText("Cancelar tarea");
+            binding.codesuCacheCancelButton.setEnabled(true);
+            binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
+            updateKeepScreenOnFlag(true);
             binding.codesuCacheProgressText.setText((phase == null ? "Limpieza en segundo plano" : phase)
                     + " · " + percent + "%" + (current == null || current.isEmpty() ? "" : " · " + current));
             binding.codesuCacheTotal.setText("La limpieza continúa aunque salgas de CodeSu");
             return;
         }
         cleaning = false;
+        binding.codesuCacheCancelButton.setVisibility(View.GONE);
+        binding.codesuCacheCancelButton.setEnabled(true);
+        binding.codesuCacheCancelButton.setText("Cancelar tarea");
+        binding.codesuCacheCleanButton.setText("Iniciar limpieza");
+        updateKeepScreenOnFlag(false);
         binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);

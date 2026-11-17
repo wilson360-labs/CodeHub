@@ -11,4 +11,6 @@ interface IKillAppService {
     String clearAppCacheDetailed(String pkgName);
 
     String clearAppCacheDetailedWithEstimate(String pkgName, long estimatedCacheBytes);
+
+    String manageSystemApp(String packageName, int action);
 }

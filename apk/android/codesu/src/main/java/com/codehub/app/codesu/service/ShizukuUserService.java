@@ -154,6 +154,98 @@ public class ShizukuUserService extends IKillAppService.Stub {
         return ": " + output;
     }
 
+    private static boolean isProtectedSystemPackage(String pkg) {
+        if (pkg == null) return true;
+        String[] protectedPackages = {
+                HOST_PACKAGE, "android", "com.android.systemui", "com.android.settings",
+                "com.android.shell", "com.android.phone", "com.android.permissioncontroller",
+                "com.android.packageinstaller", "com.google.android.gms", "com.google.android.gsf",
+                "com.google.android.vending", "moe.shizuku.privileged.api",
+                "com.android.launcher3", "com.sec.android.app.launcher",
+                "com.google.android.apps.nexuslauncher", "com.miui.home",
+                "com.oppo.launcher", "com.huawei.android.launcher", "com.motorola.launcher3",
+                "com.google.android.inputmethod.latin", "com.samsung.android.honeyboard"
+        };
+        for (String item : protectedPackages) if (item.equals(pkg)) return true;
+        return pkg.startsWith("com.android.providers.") || pkg.startsWith("com.google.android.providers.")
+                || pkg.startsWith("com.android.system.") || pkg.startsWith("com.google.android.webview")
+                || pkg.startsWith("com.android.webview") || pkg.startsWith("com.google.android.trichromelibrary")
+                || pkg.startsWith("com.android.launcher") || pkg.startsWith("com.google.android.inputmethod");
+    }
+
+    /** Reversible per-user system-app disable/enable. It never uninstalls APKs. */
+    @Override
+    public String manageSystemApp(String packageName, int action) {
+        if (packageName == null || !packageName.matches("[A-Za-z0-9._]+"))
+            return "Nombre de paquete no válido.";
+        if (isProtectedSystemPackage(packageName)) return "App protegida por seguridad.";
+        if (action < 0 || action > 3) return "Acción no válida.";
+        Process listing = null;
+        try {
+            listing = new ProcessBuilder("/system/bin/cmd", "package", "list", "packages", "-s", "-u")
+                    .redirectErrorStream(true).start();
+            ByteArrayOutputStream listed = new ByteArrayOutputStream();
+            try (InputStream stream = listing.getInputStream()) {
+                byte[] buffer = new byte[2048];
+                int count;
+                while ((count = stream.read(buffer)) >= 0) if (count > 0) listed.write(buffer, 0, count);
+            }
+            long deadline = SystemClock.elapsedRealtime() + 10_000L;
+            while (true) {
+                try { listing.exitValue(); break; }
+                catch (IllegalThreadStateException running) {
+                    if (SystemClock.elapsedRealtime() >= deadline) {
+                        listing.destroy();
+                        return "Package Manager tardó demasiado.";
+                    }
+                    Thread.sleep(50L);
+                }
+            }
+            boolean systemPackage = false;
+            for (String line : listed.toString("UTF-8").split("\\r?\\n"))
+                if (line.trim().equals("package:" + packageName)) { systemPackage = true; break; }
+            if (!systemPackage) return "Solo se permiten apps del sistema detectadas por Package Manager.";
+
+            String operation = action == 0 ? "disable-user" : action == 1 ? "enable"
+                    : action == 2 ? "uninstall" : "install-existing";
+            Process command = new ProcessBuilder("/system/bin/cmd", "package", operation,
+                    "--user", "current", packageName).redirectErrorStream(true).start();
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            Process runningCommand = command;
+            Thread reader = new Thread(() -> {
+                try (InputStream stream = runningCommand.getInputStream()) {
+                    byte[] buffer = new byte[1024];
+                    int count;
+                    while ((count = stream.read(buffer)) >= 0) if (count > 0) synchronized (output) { output.write(buffer, 0, count); }
+                } catch (IOException ignored) { }
+            }, "codesu-debloater-output");
+            reader.setDaemon(true);
+            reader.start();
+            deadline = SystemClock.elapsedRealtime() + 15_000L;
+            int exit;
+            while (true) {
+                try { exit = command.exitValue(); break; }
+                catch (IllegalThreadStateException running) {
+                    if (SystemClock.elapsedRealtime() >= deadline) {
+                        command.destroy();
+                        return "La operación superó 15 segundos.";
+                    }
+                    Thread.sleep(80L);
+                }
+            }
+            try { reader.join(700L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            String message;
+            synchronized (output) { message = output.toString("UTF-8").trim(); }
+            if (exit != 0) return message.isEmpty() ? "Package Manager rechazó la operación." : message;
+            return "OK: " + (message.isEmpty() ? "Operación completada para este usuario." : message);
+        } catch (Exception e) {
+            return "Shizuku no pudo completar la operación: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        } finally {
+            if (listing != null) listing.destroy();
+        }
+    }
+
     @Override
     public boolean killApp(String pkgName, int level) {
         if (isProtectedTarget(pkgName))

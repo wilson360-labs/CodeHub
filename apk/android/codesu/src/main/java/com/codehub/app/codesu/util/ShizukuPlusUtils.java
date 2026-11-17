@@ -41,7 +41,7 @@ public class ShizukuPlusUtils {
                 .daemon(false)
                 .processNameSuffix("codesu")
                 .debuggable(false)
-                .version(4);
+                .version(5);
     }
 
     public static boolean checkShizuku() {
@@ -112,6 +112,17 @@ public class ShizukuPlusUtils {
 
     public static String clearAppCacheDetailed(String packageName) {
         return clearAppCacheDetailed(packageName, 0L);
+    }
+
+    public static String manageSystemApp(String packageName, int action) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.manageSystemApp(packageName, action);
+            return result == null ? "Shizuku no devolvió resultado." : result;
+        } catch (Exception e) {
+            return "No se pudo administrar la app: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
     }
 
     public static String clearAppCacheDetailed(String packageName, long estimatedCacheBytes) {

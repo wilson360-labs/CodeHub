@@ -28,4 +28,9 @@
         android:name="com.codehub.app.codesu.ui.Settings.SettingsFragment"
         android:label="@string/title_settings"
         tools:layout="@layout/fragment_settings" />
+
+    <fragment
+        android:id="@+id/navigation_debloater"
+        android:name="com.codehub.app.codesu.ui.debloater.DebloaterFragment"
+        android:label="Debloater" />
 </navigation>

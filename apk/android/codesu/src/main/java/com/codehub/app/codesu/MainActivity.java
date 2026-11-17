@@ -101,7 +101,8 @@ public class MainActivity extends AppCompatActivity {
             int destinationId = id == R.id.nav_home ? R.id.navigation_home
                     : id == R.id.nav_excluded ? R.id.navigation_excluded
                     : id == R.id.nav_settings ? R.id.navigation_settings
-                    : id == R.id.nav_cache ? R.id.navigation_cache : 0;
+                    : id == R.id.nav_cache ? R.id.navigation_cache
+                    : id == R.id.nav_debloater ? R.id.navigation_debloater : 0;
             if (destinationId == 0 || navController.getCurrentDestination() == null
                     || navController.getCurrentDestination().getId() == destinationId)
                 return;
@@ -112,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
         binding.navExcluded.setOnClickListener(navListener);
         binding.navSettings.setOnClickListener(navListener);
         binding.navCache.setOnClickListener(navListener);
+        binding.navDebloater.setOnClickListener(navListener);
     }
 
     private void updateSelectedTab(NavDestination destination) {
@@ -120,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
         setTabSelected(binding.navExcluded, destination.getId() == R.id.navigation_excluded);
         setTabSelected(binding.navSettings, destination.getId() == R.id.navigation_settings);
         setTabSelected(binding.navCache, destination.getId() == R.id.navigation_cache);
+        setTabSelected(binding.navDebloater, destination.getId() == R.id.navigation_debloater);
     }
 
     private void setTabSelected(View tab, boolean selected) {

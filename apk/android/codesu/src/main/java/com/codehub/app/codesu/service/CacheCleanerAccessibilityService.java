@@ -40,7 +40,6 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     private static final long STEP_TIMEOUT_MS = 12_000L;
     private static final int MAX_CACHE_VERIFY_ATTEMPTS = 3;
     private static final long CACHE_VERIFY_RETRY_MS = 1_500L;
-    private static final long KEEP_AWAKE_TIMEOUT_MS = 30L * 60L * 1000L;
     private static final String SETTINGS_PREFS = "settings";
     private static volatile CacheCleanerAccessibilityService activeInstance;
 
@@ -390,7 +389,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         long freed = prefs.getLong(KEY_FREED, 0L);
         String snapshotId = prefs.getString(KEY_SNAPSHOT_ID, null);
         prefs.edit().putBoolean(KEY_RUNNING, false).putBoolean(KEY_RESULT_PENDING, true)
-                .putString(KEY_ERROR, existing).putString("phase", "Limpieza terminada").apply();
+                .putString(KEY_ERROR, existing).putString("phase",
+                        reason == null || reason.isEmpty() ? "Limpieza terminada" : "Tarea detenida").apply();
         CacheCleaner.removeCleanupSnapshot(this, snapshotId);
         releaseScreenWakeLock();
         Toast.makeText(this, "Turbo Tasker · Accesibilidad · " + done + " apps · "
@@ -400,17 +400,25 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
 
     /** A foreground return to CodeHub is an explicit stop, never a trigger to replay Settings taps. */
     public static void stopWhenUserReturns(Context context) {
+        stopRun(context, "La tarea se pausó al volver a CodeHub.");
+    }
+
+    public static void cancelByUser(Context context) {
+        stopRun(context, "La tarea se canceló desde CodeSu.");
+    }
+
+    private static void stopRun(Context context, String reason) {
         android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
         CacheCleanerAccessibilityService service = activeInstance;
         if (service != null) {
-            Runnable stop = () -> service.finishRun("La tarea se pausó al volver a CodeHub.");
+            Runnable stop = () -> service.finishRun(reason);
             if (Looper.myLooper() == Looper.getMainLooper()) stop.run();
             else service.handler.post(stop);
         } else {
             prefs.edit().putBoolean(KEY_RUNNING, false).putBoolean(KEY_RESULT_PENDING, true)
-                    .putString(KEY_ERROR, "La tarea se interrumpió antes de completar. Iníciala de nuevo manualmente.")
-                    .putString("phase", "Limpieza interrumpida").apply();
+                    .putString(KEY_ERROR, reason)
+                    .putString("phase", "Tarea detenida").apply();
             try { CacheCleaner.removeCleanupSnapshot(context, prefs.getString(KEY_SNAPSHOT_ID, null)); }
             catch (RuntimeException ignored) { }
         }
@@ -467,7 +475,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         if (manager == null) return;
         screenWakeLock = manager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "CodeSu:AccessibilityCacheTurbo");
         screenWakeLock.setReferenceCounted(false);
-        screenWakeLock.acquire(KEEP_AWAKE_TIMEOUT_MS);
+        screenWakeLock.acquire();
     }
 
     private void releaseScreenWakeLock() {
