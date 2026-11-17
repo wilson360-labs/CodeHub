@@ -9,4 +9,6 @@ interface IKillAppService {
     int clearAppCache(String pkgName);
 
     String clearAppCacheDetailed(String pkgName);
+
+    String clearAppCacheDetailed(String pkgName, long estimatedCacheBytes);
 }

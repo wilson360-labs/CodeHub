@@ -18,7 +18,9 @@ import com.codehub.app.codesu.IKillAppService;
  */
 public class ShizukuUserService extends IKillAppService.Stub {
 
-    private static final long CACHE_CLEAR_TIMEOUT_MS = 30_000L;
+    private static final long CACHE_CLEAR_BASE_TIMEOUT_MS = 60_000L;
+    private static final long CACHE_CLEAR_MAX_TIMEOUT_MS = 180_000L;
+    private static final long CACHE_CLEAR_BYTES_PER_EXTRA_10S = 100L * 1024L * 1024L;
 
     /** Paquete host donde vive el módulo (App.context no está inicializado aquí). */
     public static final String HOST_PACKAGE = "com.codehub.app";
@@ -33,7 +35,6 @@ public class ShizukuUserService extends IKillAppService.Stub {
             "com.google.android.webview",
             "com.android.webview",
             "com.google.android.trichromelibrary",
-            "com.android.chrome",
             "org.chromium.webview_shell",
     };
 
@@ -73,10 +74,18 @@ public class ShizukuUserService extends IKillAppService.Stub {
 
     @Override
     public String clearAppCacheDetailed(String pkgName) {
+        return clearAppCacheDetailed(pkgName, 0L);
+    }
+
+    @Override
+    public String clearAppCacheDetailed(String pkgName, long estimatedCacheBytes) {
         if (isProtectedCacheTarget(pkgName)) return "Paquete protegido por seguridad.";
         Process process = null;
         try {
-            process = new ProcessBuilder("/system/bin/pm", "clear", "--user", "current", "--cache-only", pkgName)
+            long extraSteps = Math.max(0L, estimatedCacheBytes) / CACHE_CLEAR_BYTES_PER_EXTRA_10S;
+            long timeoutMs = Math.min(CACHE_CLEAR_MAX_TIMEOUT_MS,
+                    CACHE_CLEAR_BASE_TIMEOUT_MS + extraSteps * 10_000L);
+            process = new ProcessBuilder("/system/bin/cmd", "package", "clear", "--user", "current", "--cache-only", pkgName)
                     .redirectErrorStream(true)
                     .start();
             Process running = process;
@@ -93,8 +102,8 @@ public class ShizukuUserService extends IKillAppService.Stub {
             outputReader.setDaemon(true);
             outputReader.start();
 
-            // Drain output while waiting; otherwise a full pipe can deadlock pm clear.
-            long deadline = SystemClock.elapsedRealtime() + CACHE_CLEAR_TIMEOUT_MS;
+            // Drain output while waiting; otherwise a full pipe can deadlock the package command.
+            long deadline = SystemClock.elapsedRealtime() + timeoutMs;
             int exitCode;
             while (true) {
                 try {
@@ -113,7 +122,8 @@ public class ShizukuUserService extends IKillAppService.Stub {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) running.destroyForcibly();
                         }
                         try { outputReader.join(500L); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
-                        return "pm clear superó el límite de 30 s" + outputSuffix(captured);
+                        return "Package Manager superó el límite de " + (timeoutMs / 1000L)
+                                + " s para esta app" + outputSuffix(captured);
                     }
                     Thread.sleep(100L);
                 }
@@ -123,12 +133,12 @@ public class ShizukuUserService extends IKillAppService.Stub {
                 return "Se interrumpió la lectura de respuesta de Package Manager.";
             }
             String output = outputSuffix(captured);
-            if (exitCode != 0) return "pm clear terminó con código " + exitCode + output;
+            if (exitCode != 0) return "Package Manager terminó con código " + exitCode + output;
             if (!output.toLowerCase(java.util.Locale.ROOT).matches("(?s).*\\bsuccess\\b.*"))
                 return "Package Manager no confirmó la limpieza" + output;
             return "";
         } catch (Exception e) {
-            return "No se pudo ejecutar pm clear: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+            return "Shizuku no pudo limpiar la caché: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         } finally {
             if (process != null) process.destroy();
         }

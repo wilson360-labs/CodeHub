@@ -43,8 +43,9 @@ public final class CacheCleaner {
     public static String saveCleanupSnapshot(Context context, List<CacheAppInfo> apps) throws Exception {
         String id = java.util.UUID.randomUUID().toString();
         JSONArray snapshot = new JSONArray();
+        Set<String> seenPackages = new HashSet<>();
         for (CacheAppInfo app : apps) {
-            if (!isDeepCleanCandidate(app)) continue;
+            if (!isDeepCleanCandidate(app) || !seenPackages.add(app.packageName)) continue;
             snapshot.put(new JSONObject().put("package", app.packageName).put("label", app.label)
                     .put("bytes", app.cacheBytes).put("system", app.systemApp)
                     .put("protected", app.protectedApp));
@@ -291,8 +292,10 @@ public final class CacheCleaner {
 
         List<CacheAppInfo> targets = new ArrayList<>();
         Set<String> protectedPackages = getProtectedPackages(context);
+        Set<String> seenPackages = new HashSet<>();
         for (CacheAppInfo app : apps) {
-            if (isDeepCleanCandidate(app) && !protectedPackages.contains(app.packageName))
+            if (isDeepCleanCandidate(app) && !protectedPackages.contains(app.packageName)
+                    && seenPackages.add(app.packageName))
                 targets.add(app);
         }
         if (targets.isEmpty()) return new ClearResult(0, 0, 0L, 0, 0L, "");
@@ -306,7 +309,9 @@ public final class CacheCleaner {
         List<String> failures = new ArrayList<>();
         for (int index = 0; index < targets.size(); index++) {
             CacheAppInfo target = targets.get(index);
-            String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName);
+            if (listener != null) listener.onProgress(index, targets.size(), target.packageName,
+                    false, verifiedFreed, unmeasured);
+            String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName, target.cacheBytes);
             boolean cleared = detail.isEmpty();
             long freed = 0L;
             if (cleared) {

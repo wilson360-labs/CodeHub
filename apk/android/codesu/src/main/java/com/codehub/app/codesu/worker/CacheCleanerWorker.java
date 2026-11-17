@@ -69,7 +69,7 @@ public final class CacheCleanerWorker extends Worker {
             CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(context, apps,
                     (completed, total, packageName, cleared, freed, unmeasured) -> {
                         int percent = total == 0 ? 95 : 5 + (int) (completed * 90L / total);
-                        publish(percent, "Limpiando caché", packageName, completed, total, freed, 0L);
+                        publish(percent, "Shizuku · limpiando caché", packageName, completed, total, freed, 0L);
                     });
             int attempted = result.cleared + result.failed;
             int successRate = attempted == 0 ? 0 : Math.round(result.cleared * 100f / attempted);
