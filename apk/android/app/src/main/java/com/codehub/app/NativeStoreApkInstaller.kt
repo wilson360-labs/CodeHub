@@ -64,7 +64,7 @@ object NativeStoreApkInstaller {
         fun onFinished(status: Status, message: String = "")
     }
 
-    enum class Status { INSTALLED, INSTALLER_OPENED, READY_BACKGROUND, FAILED, CANCELLED }
+    enum class Status { INSTALLED, INSTALLER_OPENED, READY_BACKGROUND, SIGNATURE_MISMATCH, FAILED, CANCELLED }
 
     /** APKs verified and ready for the user-confirmation installer path. */
     private val pendingApks = ConcurrentHashMap<String, File>()
@@ -138,11 +138,23 @@ object NativeStoreApkInstaller {
 
                 val archive = withContext(Dispatchers.IO) {
                     @Suppress("DEPRECATION")
-                    context.packageManager.getPackageArchiveInfo(destination.absolutePath, 0)
+                    context.packageManager.getPackageArchiveInfo(destination.absolutePath,
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                        else android.content.pm.PackageManager.GET_SIGNATURES)
                 }
                 if (archive?.packageName.isNullOrBlank()) error("El archivo descargado no es un APK válido")
                 if (!expectedPackage.isNullOrBlank() && expectedPackage != archive?.packageName) {
                     error("El paquete APK no coincide con la app seleccionada")
+                }
+                if (!expectedPackage.isNullOrBlank() && hasDifferentSigningCertificate(context, archive!!, expectedPackage)) {
+                    if (relaunchAfterInstall || appId == SELF_UPDATE_ID) {
+                        error("La firma de CodeHub no coincide con la instalada. No se desinstaló CodeHub ni se modificaron sus datos; instala una compilación firmada con el certificado original.")
+                    }
+                    pendingApks[appId] = destination
+                    val detail = "La firma digital de ${appName.ifBlank { appId }} cambió. Android bloquea la actualización para proteger la app y sus datos. Si aceptas desinstalarla y reinstalarla, perderás sus datos locales y sesiones. CodeHub intentará hacerlo con Shizuku; Android puede pedir confirmación según la versión y sus políticas."
+                    setState(appId, ApkTransferState.AwaitingUserConfirmation(detail))
+                    main.post { listener?.onFinished(Status.SIGNATURE_MISMATCH, detail) }
+                    return@launch
                 }
                 if (relaunchAfterInstall) {
                     val current = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -188,6 +200,16 @@ object NativeStoreApkInstaller {
                         // Keep the real Package Manager reason visible when we fall back.
                         silentInstallFailure = error.message?.take(240)
                             ?.takeIf { it.isNotBlank() } ?: "Shizuku no devolvió un resultado válido."
+                        if (isSignatureMismatch(silentInstallFailure)) {
+                            if (relaunchAfterInstall || appId == SELF_UPDATE_ID) {
+                                throw IOException("Android rechazó la actualización de CodeHub por una firma distinta. No se desinstaló la app ni se borraron sus datos. Instala una versión firmada con el certificado original.")
+                            }
+                            pendingApks[appId] = destination
+                            val detail = "La firma digital de ${appName.ifBlank { appId }} cambió. Android bloquea la actualización para proteger la app y sus datos. Si aceptas desinstalarla y reinstalarla, se borrarán sus datos locales y sesiones; la nueva versión se instalará con Shizuku si Android lo permite."
+                            setState(appId, ApkTransferState.AwaitingUserConfirmation(detail))
+                            main.post { listener?.onFinished(Status.SIGNATURE_MISMATCH, detail) }
+                            return@launch
+                        }
                     }
                 } else if (preferSilent) {
                     silentInstallFailure = "Shizuku no está activo o CodeHub no tiene permiso."
@@ -260,6 +282,98 @@ object NativeStoreApkInstaller {
             openPackageInstaller(context, file)
             scheduleApkCleanup(appId, file)
         }.isSuccess
+    }
+
+    /** Called only after an explicit warning/consent; app data is lost by uninstall. */
+    @JvmStatic
+    fun reinstallAfterSignatureChange(
+        context: Context,
+        appId: String,
+        packageName: String,
+        activity: Activity?,
+        listener: Listener,
+    ) {
+        val file = pendingApks[appId]
+        if (file == null || !file.isFile) {
+            main.post { listener.onFinished(Status.FAILED, "El APK verificado ya no está disponible. Descárgalo de nuevo.") }
+            return
+        }
+        if (appId == SELF_UPDATE_ID || packageName == context.packageName) {
+            main.post { listener.onFinished(Status.FAILED, "CodeHub no puede desinstalarse a sí misma. Instala una compilación con la firma original.") }
+            return
+        }
+        if (!ShizukuInstaller.isReady()) {
+            main.post { listener.onFinished(Status.FAILED, "Para reinstalar sin el instalador, Shizuku debe estar activo y autorizado.") }
+            return
+        }
+        scope.launch {
+            var previousVersionRemoved = false
+            try {
+                withContext(Dispatchers.IO) {
+                    ShizukuInstaller.uninstallSilently(packageName)
+                    previousVersionRemoved = true
+                    ShizukuInstaller.installSilently(file.absolutePath)
+                }
+                file.delete()
+                pendingApks.remove(appId)
+                setState(appId, ApkTransferState.Installed)
+                main.post { listener.onFinished(Status.INSTALLED, "App reinstalada. Android eliminó sus datos locales junto con la versión anterior.") }
+            } catch (error: Exception) {
+                if (!previousVersionRemoved) {
+                    val detail = "Shizuku no pudo desinstalar la versión anterior. No se borraron sus datos. ${error.message ?: "Revisa los permisos e inténtalo otra vez."}"
+                    setState(appId, ApkTransferState.Failed(detail))
+                    main.post { listener.onFinished(Status.FAILED, detail) }
+                    return@launch
+                }
+                val detail = "La versión anterior se desinstaló, pero Android no completó la instalación automática: ${error.message ?: "error del Package Manager"}"
+                val opened = activity != null && !activity.isFinishing && !activity.isDestroyed && runCatching {
+                    openPackageInstaller(context, file)
+                }.isSuccess
+                if (opened) {
+                    scheduleApkCleanup(appId, file)
+                    setState(appId, ApkTransferState.AwaitingUserConfirmation(detail))
+                    main.post { listener.onFinished(Status.INSTALLER_OPENED, detail) }
+                } else {
+                    pendingApks[appId] = file
+                    setState(appId, ApkTransferState.AwaitingUserConfirmation(detail))
+                    main.post { listener.onFinished(Status.READY_BACKGROUND, detail) }
+                }
+            }
+        }
+    }
+
+    private fun isSignatureMismatch(message: String): Boolean {
+        val value = message.lowercase(Locale.ROOT)
+        return value.contains("install_failed_update_incompatible") ||
+            value.contains("signatures do not match") || value.contains("signatures are inconsistent")
+    }
+
+    @Suppress("DEPRECATION")
+    private fun hasDifferentSigningCertificate(context: Context, archive: android.content.pm.PackageInfo, packageName: String): Boolean {
+        return runCatching {
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+            else android.content.pm.PackageManager.GET_SIGNATURES
+            val installed = context.packageManager.getPackageInfo(packageName, flags)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val oldInfo = installed.signingInfo ?: return@runCatching false
+                val newInfo = archive.signingInfo ?: return@runCatching false
+                val oldCurrent = oldInfo.apkContentsSigners.orEmpty().toSet()
+                val newCurrent = newInfo.apkContentsSigners.orEmpty().toSet()
+                if (oldCurrent.isEmpty() || newCurrent.isEmpty()) return@runCatching false
+                if (oldInfo.hasMultipleSigners() || newInfo.hasMultipleSigners()) {
+                    oldCurrent != newCurrent
+                } else {
+                    val oldLineage = oldInfo.signingCertificateHistory.orEmpty().toSet().ifEmpty { oldCurrent }
+                    val newLineage = newInfo.signingCertificateHistory.orEmpty().toSet().ifEmpty { newCurrent }
+                    oldLineage.intersect(newLineage).isEmpty()
+                }
+            } else {
+                val old = installed.signatures.orEmpty().toSet()
+                val fresh = archive.signatures.orEmpty().toSet()
+                fresh.isNotEmpty() && fresh != old
+            }
+        }.getOrDefault(false)
     }
 
     /** Removes only this app's installer APK and partial file, never app/user data. */

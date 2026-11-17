@@ -3744,10 +3744,11 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
     if (a.source_repo) {
       try {
         const r = await broadcastPush({
-          title: '🆕 Nueva app open source: ' + a.nombre,
-          body: (a.descripcion ? String(a.descripcion).slice(0, 120) : 'Ya disponible en el catálogo open source de CodeHub'),
-          type: 'app_update',
+          title: '🆕 Nueva app en CodeHub Store: ' + a.nombre,
+          body: 'Ya está disponible en CodeHub Store.',
+          type: 'new_app',
           appId: a.appId,
+          appName: a.nombre,
           version: a.version || '',
           url: '/opensource.html',
         });
@@ -6700,6 +6701,8 @@ async function sendFCM(token, payload) {
               type: payload.type || 'general',
               url: payload.url || '/',
               severity: payload.severity || 'info',
+              appName: payload.appName || '',
+              version: payload.version || '',
             }),
       android: {
         // priority: 'high' — despierta el dispositivo incluso en Doze
@@ -6825,7 +6828,7 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
 // Envía un push a todos los suscriptores (broadcast reutilizable por
 // los flujos automáticos: nueva app, app actualizada, CodeHub Release).
 // Envía vía Web Push (VAPID) + FCM (app nativa).
-async function broadcastPush({ title, body = '', url = '/', type = 'announcement', appId, version }) {
+async function broadcastPush({ title, body = '', url = '/', type = 'announcement', appId, appName, version }) {
   const t = String(title).trim().slice(0, 80);
   const b = String(body || '').trim().slice(0, 180);
   let sentWeb = 0, sentAndroid = 0;
@@ -6848,7 +6851,13 @@ async function broadcastPush({ title, body = '', url = '/', type = 'announcement
     const fcmSubs = await fcmListTokens();
     fcmTotal = fcmSubs.length;
     for (const rec of fcmSubs) {
-      const result = await sendFCM(rec.token, { title: t, body: b, type, url });
+      const appNotice = type === 'app_update' || type === 'new_app';
+      const result = await sendFCM(rec.token, {
+        title: appNotice ? (type === 'app_update' ? 'App actualizada' : 'Nueva app en CodeHub Store') : t,
+        body: appNotice ? '' : b,
+        type, url, appName, version,
+        dataOnly: appNotice,
+      });
       if (result.ok) {
         sentAndroid += 1;
       } else {
@@ -7485,9 +7494,10 @@ async function autoCheckAppUpdates() {
 
       const r = await broadcastPush({
         title: '🔄 ' + app.nombre + ' se actualizó',
-        body: truncate(release.body, 120) || 'Nueva versión ' + nuevaVersion + ' disponible',
+        body: 'La versión ' + nuevaVersion + ' ya está disponible en CodeHub Store.',
         type: 'app_update',
         appId: app.appId,
+        appName: app.nombre,
         version: nuevaVersion,
         url: '/opensource.html',
       });
@@ -7577,9 +7587,10 @@ app.post('/api/webhook/github-release', async (req, res) => {
 
     const r = await broadcastPush({
       title: '🔄 ' + app_.nombre + ' se actualizó',
-      body: truncate(release.body, 120) || 'Nueva versión ' + nuevaVersion + ' disponible',
+      body: 'La versión ' + nuevaVersion + ' ya está disponible en CodeHub Store.',
       type: 'app_update',
       appId: app_.appId,
+      appName: app_.nombre,
       version: nuevaVersion,
       url: '/opensource.html',
     });

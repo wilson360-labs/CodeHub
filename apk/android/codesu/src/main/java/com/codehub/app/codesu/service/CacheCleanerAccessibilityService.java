@@ -42,6 +42,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     private static final long CACHE_VERIFY_RETRY_MS = 1_500L;
     private static final long KEEP_AWAKE_TIMEOUT_MS = 30L * 60L * 1000L;
     private static final String SETTINGS_PREFS = "settings";
+    private static volatile CacheCleanerAccessibilityService activeInstance;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private List<CacheAppInfo> targets = new ArrayList<>();
@@ -95,6 +96,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
+        activeInstance = this;
         AccessibilityServiceInfo info = getServiceInfo();
         if (info != null) {
             info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
@@ -105,7 +107,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                     | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
             setServiceInfo(info);
         }
-        resumePendingRun();
+        stopOrphanedRun();
     }
 
     @Override
@@ -192,17 +194,11 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         }
     }
 
-    private void resumePendingRun() {
+    private void stopOrphanedRun() {
         android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
-        acquireScreenWakeLockIfRequested();
-        if (!loadTargets(prefs)) {
-            finishRun("No se pudo recuperar la lista guardada.");
-            return;
-        }
-        int index = prefs.getInt(KEY_INDEX, 0);
-        if (index >= 0 && index < targets.size()) launchCurrentPackage();
-        else finishRun("");
+        // A service reconnect must never replay Settings automation by itself.
+        finishRun("La tarea anterior se detuvo y no se reanudó automáticamente. Iníciala de nuevo desde Cache Cleaner.");
     }
 
     private boolean loadTargets(android.content.SharedPreferences prefs) {
@@ -402,6 +398,24 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 Toast.LENGTH_LONG).show();
     }
 
+    /** A foreground return to CodeHub is an explicit stop, never a trigger to replay Settings taps. */
+    public static void stopWhenUserReturns(Context context) {
+        android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (!prefs.getBoolean(KEY_RUNNING, false)) return;
+        CacheCleanerAccessibilityService service = activeInstance;
+        if (service != null) {
+            Runnable stop = () -> service.finishRun("La tarea se pausó al volver a CodeHub.");
+            if (Looper.myLooper() == Looper.getMainLooper()) stop.run();
+            else service.handler.post(stop);
+        } else {
+            prefs.edit().putBoolean(KEY_RUNNING, false).putBoolean(KEY_RESULT_PENDING, true)
+                    .putString(KEY_ERROR, "La tarea se interrumpió antes de completar. Iníciala de nuevo manualmente.")
+                    .putString("phase", "Limpieza interrumpida").apply();
+            try { CacheCleaner.removeCleanupSnapshot(context, prefs.getString(KEY_SNAPSHOT_ID, null)); }
+            catch (RuntimeException ignored) { }
+        }
+    }
+
     private AccessibilityNodeInfo findAction(AccessibilityNodeInfo root, String[] labels) {
         if (root == null) return null;
         CharSequence text = root.getText();
@@ -471,6 +485,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_RUNNING, false))
             finishRun("El servicio de Accesibilidad se detuvo durante la limpieza.");
         releaseScreenWakeLock();
+        if (activeInstance == this) activeInstance = null;
         super.onDestroy();
     }
 

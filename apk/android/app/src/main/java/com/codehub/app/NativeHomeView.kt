@@ -581,10 +581,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     }
 
     @JvmOverloads
-    fun showAppUpdateAvailable(version: String, build: String, shizukuReady: Boolean, required: Boolean = false) {
+    fun showAppUpdateAvailable(version: String, build: String, publishedDate: String, shizukuReady: Boolean, required: Boolean = false) {
         updateTitle.text = if (required) "Actualización obligatoria" else "Hay una actualización disponible"
         updateSubtitle.text = (if (required) "Esta versión ya no tiene soporte · " else "") + "v$version" +
             (if (build.isNotBlank()) " · $build" else "") +
+            (if (publishedDate.isNotBlank()) " · $publishedDate" else "") +
             if (shizukuReady) " · instalación rápida lista" else " · instalación confirmada por Android"
         updateAction.text = if (required) "Actualizar ahora" else "Actualizar"
         updateAction.isEnabled = true
@@ -597,7 +598,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
     fun showAppUpdateProgress(percent: Int?, message: String) {
         updateTitle.text = message
-        updateSubtitle.text = if (percent == null) "Verificando la descarga y el paquete" else "Descargando CodeHub · $percent%"
+        updateSubtitle.text = if (percent == null) "Verificando la descarga y el paquete" else "Descargando CodeHub…"
         updateAction.text = if (percent == null) "Preparando" else "$percent%"
         updateAction.isEnabled = false
         updateAction.alpha = .75f
@@ -633,7 +634,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
     fun showAppUpdateError(message: String) {
         updateTitle.text = "No se pudo actualizar CodeHub"
-        updateSubtitle.text = message.take(100).ifBlank { "Revisa la conexión e inténtalo otra vez." }
+        updateSubtitle.text = message.take(280).ifBlank { "Revisa la conexión e inténtalo otra vez." }
         updateProgress.visibility = View.GONE
         updateAction.text = "Reintentar"
         updateAction.isEnabled = true

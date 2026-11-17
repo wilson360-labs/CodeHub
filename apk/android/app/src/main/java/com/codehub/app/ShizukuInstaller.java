@@ -168,6 +168,29 @@ public class ShizukuInstaller {
         return installApkFromStream(apkPath, null);
     }
 
+    /** Removes one explicitly confirmed third-party package before a signature-changing reinstall. */
+    public static boolean uninstallSilently(String packageName) throws Exception {
+        if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
+        if (packageName == null || !packageName.matches("[A-Za-z0-9_.]+")
+                || "com.codehub.app".equals(packageName)) {
+            throw new IllegalArgumentException("Paquete no válido para desinstalación");
+        }
+        Process process = newProcessReflective(new String[]{"sh", "-c",
+                "pm uninstall --user current " + packageName + " 2>&1"}, null, null);
+        String output;
+        try (InputStream stream = process.getInputStream(); ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int count;
+            while ((count = stream.read(buffer)) != -1) bytes.write(buffer, 0, count);
+            output = bytes.toString("UTF-8").trim();
+        }
+        int code = process.waitFor();
+        if (code != 0 || !output.toLowerCase(java.util.Locale.ROOT).contains("success")) {
+            throw new Exception(output.isEmpty() ? "Android no permitió desinstalar la app." : output);
+        }
+        return true;
+    }
+
     /** Self-update path: after Package Manager accepts CodeHub, reopen its launcher activity. */
     public static boolean installSilentlyAndRelaunch(String apkPath, String activityComponent) throws Exception {
         if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
@@ -186,7 +209,10 @@ public class ShizukuInstaller {
         if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
         File apk = new File(apkPath);
         if (!apk.isFile() || apk.length() <= 0L) throw new IllegalArgumentException("El APK no existe o está vacío");
-        String command = "pm install -r -S " + apk.length() + " - 2>&1; result=$?; "
+        // Record CodeHub as the installer for future updates. Android 16 applies
+        // stricter no-user-action rules to PackageInstaller updates; the package
+        // manager still decides whether this session qualifies and may require UI.
+        String command = "pm install --user current -i com.codehub.app -r -S " + apk.length() + " - 2>&1; result=$?; "
                 + (activityComponent == null ? "" : "if [ $result -eq 0 ]; then sleep 1; am start -n \"" + activityComponent
                 + "\" || true; fi; ") + "exit $result";
         Process p = newProcessReflective(new String[]{"sh", "-c", command}, null, null);

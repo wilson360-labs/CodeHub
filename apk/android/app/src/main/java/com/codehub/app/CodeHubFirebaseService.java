@@ -44,6 +44,40 @@ public class CodeHubFirebaseService extends FirebaseMessagingService {
         if (title == null || title.isEmpty()) title = "CodeHub";
         if (body == null) body = "";
 
+        if (type.equals("app_update") || type.equals("new_app")) {
+            String name = message.getData().getOrDefault("appName", "");
+            String version = message.getData().getOrDefault("version", "");
+            String language = java.util.Locale.getDefault().getLanguage();
+            String shownName = name.isEmpty() ? "CodeHub Store" : name;
+            boolean update = type.equals("app_update");
+            switch (language) {
+                case "es":
+                    title = update ? "App actualizada" : "Nueva app en CodeHub Store";
+                    body = update
+                            ? shownName + (version.isEmpty() ? " tiene una nueva versión" : " · versión " + version) + " disponible."
+                            : shownName + " ya está disponible en CodeHub Store.";
+                    break;
+                case "pt":
+                    title = update ? "App atualizada" : "Novo app na CodeHub Store";
+                    body = update
+                            ? shownName + (version.isEmpty() ? " tem uma nova versão" : " · versão " + version) + " disponível."
+                            : shownName + " já está disponível na CodeHub Store.";
+                    break;
+                case "fr":
+                    title = update ? "Application mise à jour" : "Nouvelle application dans CodeHub Store";
+                    body = update
+                            ? shownName + (version.isEmpty() ? " a une nouvelle version" : " · version " + version) + " disponible."
+                            : shownName + " est disponible dans CodeHub Store.";
+                    break;
+                default:
+                    title = update ? "App updated" : "New app in CodeHub Store";
+                    body = update
+                            ? shownName + (version.isEmpty() ? " has a new version" : " · version " + version) + " is available."
+                            : shownName + " is now available in CodeHub Store.";
+                    break;
+            }
+        }
+
         // Los cambios rutinarios se reflejan en el panel persistente de clima.
         // En el teléfono reservamos pushes para alertas meteorológicas críticas.
         if (type.equals("weather_change")) return;

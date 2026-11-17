@@ -751,7 +751,7 @@ class NativeStoreActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
         info.addView(label(app.category + if (app.ratingCount > 0) "  ·  ★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)}" else "", 12f, 0xFFB7C5FF.toInt()))
-        info.addView(label(app.description.ifBlank { "Descubre esta aplicación de código abierto." }, 12f, 0xFFCBD5E1.toInt()).apply {
+        info.addView(label(cleanReleaseNotes(app.description).ifBlank { "Descubre esta aplicación de código abierto." }, 12f, 0xFFCBD5E1.toInt()).apply {
             maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
             setPadding(0, dp(4), 0, 0)
@@ -844,7 +844,7 @@ class NativeStoreActivity : Activity() {
         info.addView(label(app.category + if (app.version.isEmpty()) "" else " · ${app.version}", 12f, 0xFF9EB2FF.toInt()).apply {
             maxLines = 1
         })
-        info.addView(label(app.description.ifEmpty { app.repo }, 12f, 0xFF9AA0B8.toInt()).apply {
+        info.addView(label(cleanReleaseNotes(app.description).ifEmpty { "Aplicación de código abierto disponible en CodeHub Store." }, 12f, 0xFF9AA0B8.toInt()).apply {
             maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
@@ -1007,7 +1007,7 @@ class NativeStoreActivity : Activity() {
 
         // --- Panel: Descripción ---
         val descPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        descPanel.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
+        descPanel.addView(label(cleanReleaseNotes(app.description).ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
             setLineSpacing(dp(3).toFloat(), 1f)
             setPadding(0, dp(14), 0, dp(4))
         })
@@ -1016,7 +1016,7 @@ class NativeStoreActivity : Activity() {
         })
         if (app.changelog.isNotBlank()) {
             descPanel.addView(label("Novedades", 14f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(14), 0, dp(5)) })
-            descPanel.addView(label(app.changelog, 13f, 0xFFB7B8C8.toInt()).apply {
+            descPanel.addView(label(cleanReleaseNotes(app.changelog), 13f, 0xFFB7B8C8.toInt()).apply {
                 maxLines = 6
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
@@ -1213,7 +1213,7 @@ class NativeStoreActivity : Activity() {
             isAllCaps = false
             setOnClickListener { showReviews(app) }
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(4) })
-        content.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
+        content.addView(label(cleanReleaseNotes(app.description).ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
             setLineSpacing(dp(3).toFloat(), 1f)
         })
         content.addView(label("Versión ${app.version.ifEmpty { "disponible" }}", 12f, 0xFF9AA0B8.toInt()).apply {
@@ -1230,7 +1230,7 @@ class NativeStoreActivity : Activity() {
         content.addView(releaseActions)
         if (app.changelog.isNotBlank()) {
             content.addView(label("Novedades", 14f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(14), 0, dp(5)) })
-            content.addView(label(app.changelog, 13f, 0xFFB7B8C8.toInt()).apply {
+            content.addView(label(cleanReleaseNotes(app.changelog), 13f, 0xFFB7B8C8.toInt()).apply {
                 maxLines = 6
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
@@ -1241,17 +1241,16 @@ class NativeStoreActivity : Activity() {
         content.addView(label("Ficha informativa: abre el enlace desde una PC con Windows para instalar la aplicación.", 12f, 0xFFFFC857.toInt()).apply {
             setPadding(0, dp(10), 0, 0)
         })
+        val directApk = app.downloadUrl.takeIf { it.startsWith("https://", true) && it.substringBefore('?').endsWith(".apk", true) }
         val dialog = AlertDialog.Builder(this)
             .setView(ScrollView(this).apply { isFillViewport = true; addView(content) })
             .setNegativeButton("Cerrar", null)
-            .setNeutralButton("Sitio oficial", null)
-            .setPositiveButton("Abrir enlace", null)
+            .setPositiveButton(if (directApk != null) "Descargar APK" else "Sin APK directo", null)
             .create()
         detailDialog = dialog
         dialog.setOnShowListener {
-            val downloadTarget = app.downloadUrl.takeIf { it.startsWith("https://", ignoreCase = true) } ?: app.repo
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { openExternal(downloadTarget) }
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { openExternal(app.repo) }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = directApk != null
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { directApk?.let(::openExternal) }
         }
         dialog.show()
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -1288,13 +1287,13 @@ class NativeStoreActivity : Activity() {
                             text = "${release.name}${if (release.prerelease) " · Beta" else " · Estable"}  (${apkAssets.size} variantes APK)"
                             isAllCaps = false
                             setOnClickListener {
-                                if (apkAssets.isEmpty()) openExternal(release.url)
+                                if (apkAssets.isEmpty()) Toast.makeText(this@NativeStoreActivity, "Esta versión no incluye un APK descargable.", Toast.LENGTH_SHORT).show()
                                 else showReleaseAssets(app, release, apkAssets)
                             }
                         }
                         releaseActions.addView(button, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
                         if (release.notes.isNotBlank()) {
-                            releaseActions.addView(label(release.notes, 12f, 0xFFB7B8C8.toInt()).apply {
+                            releaseActions.addView(label(cleanReleaseNotes(release.notes), 12f, 0xFFB7B8C8.toInt()).apply {
                                 maxLines = 4
                                 ellipsize = android.text.TextUtils.TruncateAt.END
                                 setPadding(dp(8), dp(3), dp(8), dp(5))
@@ -1308,6 +1307,15 @@ class NativeStoreActivity : Activity() {
 
     private data class ReleaseAsset(val name: String, val url: String)
     private data class AppRelease(val name: String, val url: String, val prerelease: Boolean, val notes: String, val assets: List<ReleaseAsset>)
+
+    private fun cleanReleaseNotes(raw: String): String = raw
+        .replace(Regex("(?is)\\[([^]]+)]\\(https?://[^)]+\\)"), "$1")
+        .replace(Regex("(?i)https?://\\S+"), "")
+        .replace(Regex("(?im)^\\s*(?:full changelog|changelog|source code|repository|repo)\\s*:?\\s*.*$"), "")
+        .replace(Regex("(?m)^\\s*[-*]\\s*$"), "")
+        .replace(Regex("\\n{3,}"), "\\n\\n")
+        .trim()
+        .take(1_800)
 
     private fun fetchReleases(repo: String): List<AppRelease> = runCatching {
         val connection = URL("https://api.github.com/repos/$repo/releases?per_page=10").openConnection() as HttpURLConnection
@@ -1395,6 +1403,17 @@ class NativeStoreActivity : Activity() {
                                 val text = if (message.isBlank()) "Descarga lista · confirma la instalación de ${app.name}."
                                     else "$message. Confirma la instalación de ${app.name} en Android."
                                 Toast.makeText(this@NativeStoreActivity, text, Toast.LENGTH_LONG).show()
+                            }
+                            NativeStoreApkInstaller.Status.SIGNATURE_MISMATCH -> {
+                                AlertDialog.Builder(this@NativeStoreActivity)
+                                    .setTitle("La firma de ${app.name} cambió")
+                                    .setMessage(message)
+                                    .setNegativeButton("Cancelar", null)
+                                    .setPositiveButton("Desinstalar y reinstalar") { _, _ ->
+                                        NativeStoreApkInstaller.reinstallAfterSignatureChange(
+                                            applicationContext, app.id, app.packageName, this@NativeStoreActivity, this)
+                                    }
+                                    .show()
                             }
                             NativeStoreApkInstaller.Status.READY_BACKGROUND -> {
                                 detailRing?.setDone()

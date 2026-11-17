@@ -563,6 +563,15 @@ class NativeMyAppsActivity : Activity() {
                                     }
                                     NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeMyAppsActivity,
                                         (message.takeIf { it.isNotBlank() }?.plus(" · ") ?: "") + "APK lista · confirma la actualización de ${app.name}.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.SIGNATURE_MISMATCH -> AlertDialog.Builder(this@NativeMyAppsActivity)
+                                        .setTitle("La firma de ${app.name} cambió")
+                                        .setMessage(message)
+                                        .setNegativeButton("Cancelar", null)
+                                        .setPositiveButton("Desinstalar y reinstalar") { _, _ ->
+                                            NativeStoreApkInstaller.reinstallAfterSignatureChange(
+                                                applicationContext, app.id, app.packageName, this@NativeMyAppsActivity, this)
+                                        }
+                                        .show()
                                     NativeStoreApkInstaller.Status.READY_BACKGROUND -> Toast.makeText(this@NativeMyAppsActivity,
                                         (message.takeIf { it.isNotBlank() }?.plus(" · ") ?: "") + "Actualización lista en segundo plano · toca la notificación para instalar.", Toast.LENGTH_LONG).show()
                                     NativeStoreApkInstaller.Status.CANCELLED -> Toast.makeText(this@NativeMyAppsActivity, "Actualización cancelada.", Toast.LENGTH_SHORT).show()
@@ -583,12 +592,7 @@ class NativeMyAppsActivity : Activity() {
     }
 
     private fun openRelease(app: AppEntry) {
-        val url = app.downloadUrl.ifBlank { "https://github.com/${app.repo}/releases/latest" }
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        } catch (_: Exception) {
-            Toast.makeText(this, "No se pudo abrir el release", Toast.LENGTH_SHORT).show()
-        }
+        Toast.makeText(this, "No hay un APK directo publicado para esta actualización.", Toast.LENGTH_LONG).show()
     }
 
     private fun showAppActions(app: AppEntry) {

@@ -203,7 +203,8 @@ public class AppUpdateChecker {
 
                 String buildLabel = releaseBuildLabel(release);
                 UpdateInfo info = new UpdateInfo(remoteVersion, buildLabel, apkUrl, remoteCode,
-                        minimumSupportedCode > 0 && localCode < minimumSupportedCode);
+                        minimumSupportedCode > 0 && localCode < minimumSupportedCode,
+                        formatPublishedDate(release.optString("published_at", "")));
                 cacheUpdate(activity, info);
                 activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
             } catch (Throwable t) {
@@ -244,7 +245,8 @@ public class AppUpdateChecker {
                 activity.runOnUiThread(activity::hideAppUpdateBanner);
                 return;
             }
-            UpdateInfo info = new UpdateInfo(version, build, url, code, required);
+            UpdateInfo info = new UpdateInfo(version, build, url, code, required,
+                    current.getString("app_update_available_date", ""));
             cacheUpdate(activity, info);
             activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
         }).start();
@@ -394,23 +396,47 @@ public class AppUpdateChecker {
         return "";
     }
 
+    private static String formatPublishedDate(String raw) {
+        if (raw == null || raw.isEmpty()) return "";
+        try {
+            java.util.Date date = null;
+            for (String pattern : new String[]{"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'"}) {
+                try {
+                    java.text.SimpleDateFormat input = new java.text.SimpleDateFormat(pattern, java.util.Locale.US);
+                    input.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                    date = input.parse(raw);
+                    if (date != null) break;
+                } catch (Exception ignored) { }
+            }
+            if (date == null) return "";
+            String formatted = new java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(date);
+            return "Actualizada el " + formatted;
+        } catch (Exception ignored) { return ""; }
+    }
+
     public static final class UpdateInfo {
         public final String version;
         public final String buildLabel;
         public final String apkUrl;
         public final long versionCode;
         public final boolean required;
+        public final String publishedDate;
 
         UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode) {
             this(version, buildLabel, apkUrl, versionCode, false);
         }
 
         UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode, boolean required) {
+            this(version, buildLabel, apkUrl, versionCode, required, "");
+        }
+
+        UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode, boolean required, String publishedDate) {
             this.version = version;
             this.buildLabel = buildLabel;
             this.apkUrl = apkUrl;
             this.versionCode = versionCode;
             this.required = required;
+            this.publishedDate = publishedDate == null ? "" : publishedDate;
         }
     }
 
@@ -419,6 +445,7 @@ public class AppUpdateChecker {
                 .putString(PREF_AVAILABLE_VERSION, info.version)
                 .putString(PREF_AVAILABLE_BUILD, info.buildLabel)
                 .putString(PREF_AVAILABLE_URL, info.apkUrl)
+                .putString("app_update_available_date", info.publishedDate)
                 .putLong(PREF_AVAILABLE_CODE, info.versionCode)
                 .putBoolean("app_update_required", info.required)
                 .apply();
@@ -429,6 +456,7 @@ public class AppUpdateChecker {
                 .remove(PREF_AVAILABLE_VERSION)
                 .remove(PREF_AVAILABLE_BUILD)
                 .remove(PREF_AVAILABLE_URL)
+                .remove("app_update_available_date")
                 .remove(PREF_AVAILABLE_CODE)
                 .remove("app_update_required")
                 .apply();
@@ -453,7 +481,8 @@ public class AppUpdateChecker {
             activity.runOnUiThread(activity::hideAppUpdateBanner);
             return;
         }
-        UpdateInfo info = new UpdateInfo(version, build, url, code, required);
+        UpdateInfo info = new UpdateInfo(version, build, url, code, required,
+                prefs.getString("app_update_available_date", ""));
         activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
     }
 

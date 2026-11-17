@@ -124,9 +124,11 @@ public class CacheCleanerFragment extends Fragment {
         android.content.SharedPreferences accessibility = requireContext().getSharedPreferences(
                 CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE);
         if (accessibility.getBoolean(CacheCleanerAccessibilityService.KEY_RUNNING, false)) {
-            renderAccessibilityProgress(accessibility);
+            // Returning to CodeHub must never replay the Settings autoclicker.
+            CacheCleanerAccessibilityService.stopWhenUserReturns(requireContext());
             accessibilityProgressHandler.removeCallbacks(accessibilityProgressPoll);
-            accessibilityProgressHandler.post(accessibilityProgressPoll);
+            renderAccessibilityResult(requireContext().getSharedPreferences(
+                    CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE));
         } else if (accessibility.getBoolean(CacheCleanerAccessibilityService.KEY_RESULT_PENDING, false)) {
             renderAccessibilityResult(accessibility);
         } else if (!hasMeasurement || adapter == null || adapter.getApps().isEmpty()) {
@@ -575,12 +577,17 @@ public class CacheCleanerFragment extends Fragment {
         measurementStale = true;
         int done = prefs.getInt(CacheCleanerAccessibilityService.KEY_DONE, 0);
         int failed = prefs.getInt(CacheCleanerAccessibilityService.KEY_FAILED, 0);
+        int total = Math.max(0, prefs.getInt("total", 0));
+        int attempted = done + failed;
+        int progress = total == 0 ? 0 : Math.min(100, Math.round(attempted * 100f / total));
+        boolean completed = total > 0 && attempted >= total;
         long freed = prefs.getLong(CacheCleanerAccessibilityService.KEY_FREED, 0L);
         String error = prefs.getString(CacheCleanerAccessibilityService.KEY_ERROR, "");
         String result = "Turbo Tasker · Accesibilidad · " + done + " apps confirmadas · "
                 + CacheAppAdapter.formatBytes(freed) + " liberados verificados · " + failed + " fallidas";
-        binding.codesuCacheProgress.setProgress(100);
-        binding.codesuCacheProgressText.setText("100% · Automatización terminada");
+        binding.codesuCacheProgress.setProgress(progress);
+        binding.codesuCacheProgressText.setText(completed
+                ? "100% · Automatización terminada" : "Tarea detenida · " + progress + "%");
         binding.codesuCacheProgress.setVisibility(View.GONE);
         binding.codesuCacheProgressText.setVisibility(View.GONE);
         binding.codesuCacheCleanButton.setEnabled(false);
@@ -589,7 +596,6 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheTotal.setText("Medición anterior · toca Actualizar para ver los tamaños actuales antes de otra limpieza.");
         binding.codesuCacheResult.setText(result + (error == null || error.trim().isEmpty() ? "" : "\n" + error));
         binding.codesuCacheResult.setVisibility(View.VISIBLE);
-        int attempted = done + failed;
         int rate = attempted == 0 ? 0 : Math.round(done * 100f / attempted);
         long target = prefs.getLong(CacheCleanerAccessibilityService.KEY_TARGET, 0L);
         int spaceRate = target <= 0L ? 0 : Math.min(100, Math.round(freed * 100f / target));

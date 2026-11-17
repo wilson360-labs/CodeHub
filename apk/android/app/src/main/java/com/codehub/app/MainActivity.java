@@ -329,7 +329,7 @@ public class MainActivity extends Activity {
         if (info == null || isFinishing()) return;
         pendingAppUpdate = info;
         if (nativeHome != null) nativeHome.showAppUpdateAvailable(
-                info.version, info.buildLabel, ShizukuInstaller.isReady(), info.required);
+                info.version, info.buildLabel, info.publishedDate, ShizukuInstaller.isReady(), info.required);
         if (info.required) showRequiredUpdateDialog(info);
         else dismissRequiredUpdateDialog();
     }
@@ -348,6 +348,7 @@ public class MainActivity extends Activity {
             .setTitle("Actualización obligatoria")
             .setMessage("Esta versión de CodeHub ya no tiene soporte. Actualiza a v" + info.version
                 + (info.buildLabel == null || info.buildLabel.trim().isEmpty() ? "" : " · " + info.buildLabel)
+                + (info.publishedDate == null || info.publishedDate.trim().isEmpty() ? "" : "\n" + info.publishedDate)
                 + " para seguir usando la aplicación.")
             .setPositiveButton("Actualizar ahora", (dialog, which) -> startAppUpdate())
             .setNegativeButton("Cerrar CodeHub", (dialog, which) -> finish())
@@ -448,6 +449,9 @@ public class MainActivity extends Activity {
                                 if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
                                 if (message != null && !message.isEmpty())
                                     Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                            } else if (status == NativeStoreApkInstaller.Status.SIGNATURE_MISMATCH) {
+                                clearPendingSelfUpdate();
+                                if (nativeHome != null) nativeHome.showAppUpdateError(message);
                             } else {
                                 clearPendingSelfUpdate();
                                 if (nativeHome != null) nativeHome.showAppUpdateError(message);
@@ -1372,7 +1376,8 @@ public class MainActivity extends Activity {
             } else {
                 clearPendingSelfUpdate();
                 if (nativeHome != null) nativeHome.showAppUpdateAvailable(
-                    pendingAppUpdate.version, pendingAppUpdate.buildLabel, ShizukuInstaller.isReady(), pendingAppUpdate.required);
+                    pendingAppUpdate.version, pendingAppUpdate.buildLabel, pendingAppUpdate.publishedDate,
+                    ShizukuInstaller.isReady(), pendingAppUpdate.required);
                 if (pendingAppUpdate.required) showRequiredUpdateDialog(pendingAppUpdate);
             }
         }

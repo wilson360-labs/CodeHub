@@ -107,7 +107,7 @@ object NativeStoreInstallFlow {
             val connected = ShizukuInstaller.isBinderAlive()
             val granted = connected && ShizukuInstaller.hasPermission()
             diagnostic.text = when {
-                granted -> "CodeHub ya tiene permiso para instalar y actualizar apps sin repetir la confirmación de Android."
+                granted -> "CodeHub ya tiene permiso de Shizuku para intentar la instalación automática. Android puede pedir confirmación según la versión, el origen y las políticas del dispositivo."
                 connected -> "Shizuku está activo. Autoriza CodeHub en la solicitud del sistema para continuar."
                 installed -> "Shizuku está instalado, pero su servicio no está activo. Ábrelo, inicia el servicio y vuelve a CodeHub."
                 else -> "No se detectó Shizuku. Puedes instalarlo y activar su servicio; la tienda volverá a comprobarlo automáticamente."
