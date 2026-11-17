@@ -41,7 +41,7 @@ public class ShizukuPlusUtils {
                 .daemon(false)
                 .processNameSuffix("codesu")
                 .debuggable(false)
-                .version(5);
+                .version(6);
     }
 
     public static boolean checkShizuku() {
@@ -134,5 +134,11 @@ public class ShizukuPlusUtils {
             return "Shizuku no pudo ejecutar la limpieza: "
                     + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         }
+    }
+
+    public static void cancelCurrentCacheClear() {
+        if (!ensureServiceBound()) return;
+        try { killAppService.cancelCurrentCacheClear(); }
+        catch (Exception ignored) { }
     }
 }

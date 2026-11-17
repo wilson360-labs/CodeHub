@@ -18,6 +18,8 @@ import com.codehub.app.codesu.IKillAppService;
  */
 public class ShizukuUserService extends IKillAppService.Stub {
 
+    private volatile Process activeCacheClearProcess;
+
     private static final long CACHE_CLEAR_BASE_TIMEOUT_MS = 60_000L;
     private static final long CACHE_CLEAR_MAX_TIMEOUT_MS = 180_000L;
     private static final long CACHE_CLEAR_BYTES_PER_EXTRA_10S = 100L * 1024L * 1024L;
@@ -88,6 +90,7 @@ public class ShizukuUserService extends IKillAppService.Stub {
             process = new ProcessBuilder("/system/bin/cmd", "package", "clear", "--user", "current", "--cache-only", pkgName)
                     .redirectErrorStream(true)
                     .start();
+            activeCacheClearProcess = process;
             Process running = process;
             ByteArrayOutputStream captured = new ByteArrayOutputStream();
             Thread outputReader = new Thread(() -> {
@@ -141,7 +144,14 @@ public class ShizukuUserService extends IKillAppService.Stub {
             return "Shizuku no pudo limpiar la caché: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         } finally {
             if (process != null) process.destroy();
+            if (activeCacheClearProcess == process) activeCacheClearProcess = null;
         }
+    }
+
+    @Override
+    public void cancelCurrentCacheClear() {
+        Process running = activeCacheClearProcess;
+        if (running != null) running.destroy();
     }
 
     private static String outputSuffix(ByteArrayOutputStream captured) {

@@ -286,6 +286,12 @@ public final class CacheCleaner {
     /** Clears cache only for eligible packages; app data and credentials are untouched. */
     public static ClearResult clearEligibleCaches(Context context, List<CacheAppInfo> apps, ProgressListener listener)
             throws Exception {
+        return clearEligibleCaches(context, apps, listener, null);
+    }
+
+    public static ClearResult clearEligibleCaches(Context context, List<CacheAppInfo> apps,
+                                                    ProgressListener listener,
+                                                    CancellationCheck cancellation) throws Exception {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
             throw new IllegalStateException("La limpieza selectiva con protección de apps requiere Android 11 o posterior.");
         if (!isShizukuReady()) throw new SecurityException("Shizuku no está activo o CodeSu no tiene autorización.");
@@ -308,17 +314,25 @@ public final class CacheCleaner {
         int unmeasured = 0;
         List<String> failures = new ArrayList<>();
         for (int index = 0; index < targets.size(); index++) {
+            if (cancellation != null && cancellation.isCancelled())
+                throw new InterruptedException("Limpieza cancelada por el usuario.");
             CacheAppInfo target = targets.get(index);
             if (listener != null) listener.onProgress(index, targets.size(), target.packageName,
-                    false, verifiedFreed, unmeasured);
+                    false, false, verifiedFreed, unmeasured);
             String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName, target.cacheBytes);
             boolean cleared = detail.isEmpty();
             long freed = 0L;
             if (cleared) {
                 try {
                     freed = Math.max(0L, target.cacheBytes - queryCacheBytes(context, target.packageName));
+                    if (freed == 0L && failures.size() < 5)
+                        failures.add(target.label + " (" + target.packageName
+                                + "): Android aceptó la orden, pero no se verificaron bytes liberados.");
                 } catch (Exception ignored) {
                     unmeasured++;
+                    if (failures.size() < 5)
+                        failures.add(target.label + " (" + target.packageName
+                                + "): Android aceptó la orden, pero no se pudo medir el resultado.");
                 }
             } else if (failures.size() < 5) {
                 failures.add(target.label + " (" + target.packageName + "): " + detail);
@@ -326,7 +340,7 @@ public final class CacheCleaner {
             if (cleared) success++; else failure++;
             verifiedFreed += freed;
             if (listener != null) listener.onProgress(index + 1, targets.size(), target.packageName,
-                    cleared, verifiedFreed, unmeasured);
+                    true, cleared, verifiedFreed, unmeasured);
         }
         String failureSummary = android.text.TextUtils.join("\n", failures);
         return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes, failureSummary);
@@ -350,8 +364,12 @@ public final class CacheCleaner {
     }
 
     public interface ProgressListener {
-        void onProgress(int completed, int total, String packageName, boolean cleared,
+        void onProgress(int completed, int total, String packageName, boolean finished, boolean cleared,
                         long verifiedFreedBytes, int unmeasuredApps);
+    }
+
+    public interface CancellationCheck {
+        boolean isCancelled();
     }
 
     public interface MeasurementProgressListener {

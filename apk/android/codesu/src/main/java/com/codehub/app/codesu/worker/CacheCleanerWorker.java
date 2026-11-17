@@ -79,10 +79,12 @@ public final class CacheCleanerWorker extends Worker {
 
             publish(5, "Turbo Shizuku", "Usando la medición visible", 0, eligible, 0L, 0L);
             CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(context, apps,
-                    (completed, total, packageName, cleared, freed, unmeasured) -> {
+                    (completed, total, packageName, finished, accepted, freed, unmeasured) -> {
                         int percent = total == 0 ? 95 : 5 + (int) (completed * 90L / total);
-                        publish(percent, "Shizuku · limpiando caché", packageName, completed, total, freed, 0L);
-                    });
+                        String phase = !finished ? "EJECUTANDO · Package Manager"
+                                : accepted ? "Android aceptó la orden" : "Android rechazó la orden";
+                        publish(percent, phase, packageName, completed, total, freed, 0L);
+                    }, this::isStopped);
             int attempted = result.cleared + result.failed;
             int successRate = attempted == 0 ? 0 : Math.round(result.cleared * 100f / attempted);
             int spaceRate = result.targetBytes <= 0 ? 0
@@ -105,9 +107,12 @@ public final class CacheCleanerWorker extends Worker {
                             : result.failureSummary)
                     .build();
             publish(100, result.failed == 0 ? "Limpieza completada" : "Limpieza parcial",
-                    result.cleared + " apps confirmadas", result.cleared, result.failed,
+                    result.cleared + " órdenes aceptadas", result.cleared, result.failed,
                     result.verifiedFreedBytes, result.targetBytes);
             return result.cleared == 0 ? Result.failure(output) : Result.success(output);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return failure("Limpieza cancelada antes de iniciar la siguiente app.");
         } catch (SecurityException e) {
             return failure("Shizuku perdió el permiso durante la limpieza. Vuelve a autorizar CodeSu.");
         } catch (Exception e) {
@@ -118,6 +123,12 @@ public final class CacheCleanerWorker extends Worker {
             if (screenWakeLock != null && screenWakeLock.isHeld()) screenWakeLock.release();
             CacheCleaner.removeCleanupSnapshot(context, snapshotId);
         }
+    }
+
+    @Override
+    public void onStopped() {
+        super.onStopped();
+        com.codehub.app.codesu.util.ShizukuPlusUtils.cancelCurrentCacheClear();
     }
 
     private Result failure(String message) {

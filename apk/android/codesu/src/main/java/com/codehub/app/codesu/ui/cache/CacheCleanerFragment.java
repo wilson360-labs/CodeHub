@@ -341,7 +341,7 @@ public class CacheCleanerFragment extends Fragment {
                     if (stats.contains("last_success_rate")) {
                         int rate = stats.getInt("last_success_rate", 0);
                         int spaceRate = stats.getInt("last_space_rate", 0);
-                        binding.codesuCacheSuccessRate.setText("Última limpieza · " + rate + "% apps OK · " + spaceRate + "% del objetivo liberado · "
+                        binding.codesuCacheSuccessRate.setText("Última limpieza · " + rate + "% órdenes aceptadas · " + spaceRate + "% del objetivo liberado · "
                                 + CacheAppAdapter.formatBytes(stats.getLong("last_freed_bytes", 0L)) + " verificados");
                         binding.codesuCacheSuccessRate.setTextColor(rate >= 80 ? 0xFF41C99A : 0xFFE7838B);
                     } else {
@@ -691,29 +691,45 @@ public class CacheCleanerFragment extends Fragment {
     private void renderCleanupWork(WorkInfo info) {
         if (binding == null || info == null) return;
         WorkInfo.State state = info.getState();
-        boolean active = state == WorkInfo.State.ENQUEUED || state == WorkInfo.State.RUNNING
-                || state == WorkInfo.State.BLOCKED;
-        if (active) {
+        boolean executing = state == WorkInfo.State.RUNNING;
+        boolean waiting = state == WorkInfo.State.ENQUEUED || state == WorkInfo.State.BLOCKED;
+        if (executing || waiting) {
             cleaning = true;
             loading = false;
             refreshEngineUi();
             binding.codesuCacheCleanButton.setEnabled(false);
             binding.codesuCacheRefresh.setEnabled(false);
             binding.codesuCacheRefresh.setAlpha(0.55f);
+            binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
+            binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
+            binding.codesuCacheCancelButton.setText("Cancelar tarea");
+            binding.codesuCacheCancelButton.setEnabled(true);
+            if (waiting) {
+                binding.codesuCacheProgress.setVisibility(View.GONE);
+                String waitingText = state == WorkInfo.State.BLOCKED
+                        ? "Esperando dependencia · Worker detenido"
+                        : "En cola · Worker aún no iniciado";
+                binding.codesuCacheCleanButton.setText(state == WorkInfo.State.BLOCKED ? "En espera" : "En cola");
+                binding.codesuCacheProgressText.setText(waitingText);
+                binding.codesuCacheTotal.setText(waitingText);
+                updateKeepScreenOnFlag(false);
+                return;
+            }
             binding.codesuCacheProgress.setIndeterminate(false);
             binding.codesuCacheProgress.setVisibility(View.VISIBLE);
-            binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
             Data progress = info.getProgress();
             int percent = progress.getInt(CacheCleanerWorker.KEY_PERCENT, 0);
             String phase = progress.getString(CacheCleanerWorker.KEY_PHASE);
             String current = progress.getString(CacheCleanerWorker.KEY_CURRENT);
             binding.codesuCacheProgress.setProgress(percent);
             binding.codesuCacheCleanButton.setText("Limpiando · " + percent + "%");
-            binding.codesuCacheCancelButton.setText("Cancelar tarea");
-            binding.codesuCacheCancelButton.setEnabled(true);
-            binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
             updateKeepScreenOnFlag(true);
-            binding.codesuCacheProgressText.setText((phase == null ? "Limpieza en segundo plano" : phase)
+            int completed = progress.getInt(CacheCleanerWorker.KEY_CLEARED, 0);
+            int total = progress.getInt(CacheCleanerWorker.KEY_FAILED, 0);
+            int currentIndex = Math.min(total, completed + 1);
+            boolean commandRunning = "EJECUTANDO · Package Manager".equals(phase);
+            binding.codesuCacheProgressText.setText((phase == null ? "Estado de la orden" : phase)
+                    + (commandRunning && total > 0 ? " · app " + currentIndex + "/" + total : "")
                     + " · " + percent + "%" + (current == null || current.isEmpty() ? "" : " · " + current));
             binding.codesuCacheTotal.setText("La limpieza continúa aunque salgas de CodeSu");
             return;
@@ -740,14 +756,15 @@ public class CacheCleanerFragment extends Fragment {
         long freed = output.getLong(CacheCleanerWorker.KEY_FREED, 0L);
         String error = output.getString(CacheCleanerWorker.KEY_ERROR);
         String result = state == WorkInfo.State.SUCCEEDED && failed == 0
-                ? "Limpieza completada · " + cleared + " apps confirmadas · " + CacheAppAdapter.formatBytes(freed) + " liberados"
+                ? "Limpieza completada · " + cleared + " órdenes aceptadas por Android · " + CacheAppAdapter.formatBytes(freed) + " liberados verificados"
                 : state == WorkInfo.State.SUCCEEDED
-                ? "Limpieza parcial · " + cleared + " confirmadas · " + CacheAppAdapter.formatBytes(freed) + " liberados"
+                ? "Limpieza parcial · " + cleared + " órdenes aceptadas · " + CacheAppAdapter.formatBytes(freed) + " liberados verificados"
                 : state == WorkInfo.State.CANCELLED ? "Limpieza cancelada por el usuario"
                 : "Limpieza no completada · " + (error == null ? "Shizuku no confirmó el borrado." : error);
         binding.codesuCacheProgress.setProgress(state == WorkInfo.State.SUCCEEDED ? 100 : 0);
         binding.codesuCacheProgressText.setText(state == WorkInfo.State.SUCCEEDED ? "100% · Tarea finalizada" : "Limpieza detenida");
-        binding.codesuCacheResult.setText(result + (failed > 0 ? " · " + failed + " sin confirmar" + (error == null || error.trim().isEmpty() ? "" : "\n" + error) : ""));
+        binding.codesuCacheResult.setText(result + (failed > 0 ? " · " + failed + " órdenes rechazadas" : "")
+                + (error == null || error.trim().isEmpty() ? "" : "\n" + error));
         binding.codesuCacheResult.setVisibility(View.VISIBLE);
         binding.codesuCacheProgress.setVisibility(View.GONE);
         binding.codesuCacheProgressText.setVisibility(View.GONE);
