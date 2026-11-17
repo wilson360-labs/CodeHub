@@ -396,7 +396,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setHorizontallyScrolling(false)
             minLines = 2
             maxLines = 6
-            imeOptions = EditorInfo.IME_ACTION_SEND
+            imeOptions = EditorInfo.IME_ACTION_SEND or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+            isFocusable = true
+            isFocusableInTouchMode = true
             setOnEditorActionListener { _, actionId, event ->
                 if ((actionId == EditorInfo.IME_ACTION_SEND && event?.isShiftPressed != true)
                     || (event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER && !event.isShiftPressed)) {
@@ -615,10 +617,10 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             Toast.makeText(this, "Este modo admite hasta $limit caracteres por mensaje.", Toast.LENGTH_LONG).show()
             return
         }
-        input.setText("")
-        keepComposerReady()
         if (raw.startsWith("/")) {
+            input.setText("")
             handleCommand(raw)
+            keepComposerReady()
             return
         }
         val textValue = raw.ifBlank {
@@ -628,15 +630,17 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 else -> "Describe y analiza la imagen adjunta."
             }
         }
-        if (pendingAttachment == null && isImageGenerationRequest(raw)) {
-            messages.add(ChatMessage("user", raw))
-            persistHistory(); renderHistory()
-            generateImage(raw)
-            return
-        }
         if (dailyUsageLoaded && dailyLimit > 0 && dailyUsed >= dailyLimit) {
             status.text = "Límite diario alcanzado. Se renueva mañana."
             Toast.makeText(this, "Ya usaste tus $dailyLimit mensajes de IA de hoy.", Toast.LENGTH_LONG).show()
+            return
+        }
+        input.setText("")
+        if (pendingAttachment == null && isImageGenerationRequest(raw)) {
+            messages.add(ChatMessage("user", raw))
+            persistHistory(); renderHistory()
+            keepComposerReady()
+            generateImage(raw)
             return
         }
         val userText = textValue + if (pendingAttachmentLabel.isNotBlank()) "\n\nAdjunto: $pendingAttachmentLabel" else ""
@@ -654,6 +658,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         renderHistory()
         showThinking("JARVIS está preparando una respuesta")
         scrollToBottom()
+        keepComposerReady()
         status.text = if (handsFreeEnabled) "JARVIS · enviando tu voz a la IA en línea…" else "Conectando con los proveedores de IA…"
         setSendButtonState(true)
         streamChat(request, assistant)
@@ -661,12 +666,12 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun keepComposerReady() {
         if (!::input.isInitialized || isFinishing || isDestroyed) return
-        input.requestFocus()
         input.postDelayed({
             if (isFinishing || isDestroyed || !input.isAttachedToWindow) return@postDelayed
+            input.requestFocus()
             val manager = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager ?: return@postDelayed
             manager.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
-        }, 120L)
+        }, 180L)
     }
 
     private fun streamChat(payload: JSONObject, assistant: ChatMessage) {
@@ -714,6 +719,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 activeCall = null
                 setSendButtonState(false)
                 persistHistory(); renderHistory()
+                keepComposerReady()
                 streamingBodyView = null
                 if (error == null && readRepliesAloud && assistant.text.isNotBlank()) {
                     speechFriendly(assistant.text).takeIf { it.isNotBlank() }?.let {
@@ -1329,7 +1335,15 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         scrollToBottom()
     }
 
-    private fun scrollToBottom() { if (::messageScroll.isInitialized) messageScroll.post { messageScroll.fullScroll(View.FOCUS_DOWN) } }
+    private fun scrollToBottom() {
+        if (!::messageScroll.isInitialized) return
+        messageScroll.post {
+            val content = messageScroll.getChildAt(0) ?: return@post
+            // Scrolling via fullScroll can move Android focus to a message action
+            // button, which dismisses the soft keyboard after sending.
+            messageScroll.scrollTo(0, content.bottom)
+        }
+    }
 
     private fun speechFriendly(value: String): String = value
         .replace(Regex("(?s)```.*?```"), " código omitido ")

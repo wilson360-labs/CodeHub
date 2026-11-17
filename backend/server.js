@@ -471,20 +471,39 @@ async function getJarvisUsage(key) {
   return entry.count;
 }
 
-async function incrJarvisUsage(key) {
+// Reserve a prompt as soon as the server accepts it. The conditional Mongo
+// update prevents parallel requests from exceeding the configured daily limit.
+async function reserveJarvisUsage(key, limit) {
   const today = new Date().toISOString().slice(0, 10);
   if (dbConnected) {
-    try {
-      const doc = await EmiUsage.findOneAndUpdate(
-        { key, date: today }, { $inc: { count: 1 } }, { upsert: true, new: true }
-      ).lean();
-      return doc.count;
-    } catch (e) { /* fall through to memory */ }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const doc = await EmiUsage.findOneAndUpdate(
+          { key, date: today, count: { $lt: limit } },
+          { $inc: { count: 1 }, $setOnInsert: { key, date: today } },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        ).lean();
+        return { used: doc.count, allowed: true };
+      } catch (e) {
+        // An upsert against an existing exhausted row can report duplicate key.
+        // Re-read it to distinguish the limit from a first-write race.
+        try {
+          const current = await EmiUsage.findOne({ key, date: today }).lean();
+          if (current && current.count >= limit) return { used: current.count, allowed: false };
+          if (attempt === 1) break;
+        } catch (_) { /* fall through to process-local fallback */ }
+      }
+    }
   }
+
   const entry = _jarvisFallback.get(key);
-  if (!entry || entry.date !== today) { _jarvisFallback.set(key, { date: today, count: 1 }); return 1; }
+  if (!entry || entry.date !== today) {
+    _jarvisFallback.set(key, { date: today, count: 1 });
+    return { used: 1, allowed: true };
+  }
+  if (entry.count >= limit) return { used: entry.count, allowed: false };
   entry.count++;
-  return entry.count;
+  return { used: entry.count, allowed: true };
 }
 app.use('/api/chat',  chatLimiter);
 app.use('/api/admin', adminLimiter);
@@ -3012,10 +3031,6 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   // ── Límite diario server-side ─────────────────────────────────
   const jarvisKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
   const jarvisLimit = await getJarvisLimit(!!req.authUser);
-  const jarvisUsed = await getJarvisUsage(jarvisKey);
-  if (jarvisUsed >= jarvisLimit) {
-    return res.status(429).json({ error: `Límite diario alcanzado (${jarvisLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: jarvisUsed });
-  }
 
   // ── Imagen / PDF escaneado adjunto: valida formato/tamaño antes de gastar una llamada ──
   // "image" es una imagen suelta (data URL). "images" es un array de páginas
@@ -3032,6 +3047,11 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({ error: 'El análisis de imágenes no está disponible en este momento.' });
     }
+  }
+
+  const reservation = await reserveJarvisUsage(jarvisKey, jarvisLimit);
+  if (!reservation.allowed) {
+    return res.status(429).json({ error: `Límite diario alcanzado (${jarvisLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: reservation.used });
   }
 
   // Recuperar historial real de MongoDB (ultimos 10 mensajes de la sesion)
@@ -3119,8 +3139,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
     tgAlert('chat', () => `💬 <b>Chat con JARVIS</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
-    const jarvisNow = await incrJarvisUsage(jarvisKey);
-    res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: jarvisNow, limit: jarvisLimit } });
+    res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: reservation.used, limit: jarvisLimit } });
     // JARVIS: aprende hechos del mensaje del usuario (memoria entrenable)
     const memU = memUserOf(req, sessionId);
     if (dbConnected && memU && memEnabledOf(req)) {
@@ -3202,9 +3221,9 @@ app.post('/api/cv/assist', cvAssistLimiter, requireAuth, async (req, res) => {
   }
   const jarvisKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
   const jarvisLimit = await getJarvisLimit(!!req.authUser);
-  const jarvisUsed = await getJarvisUsage(jarvisKey);
-  if (jarvisUsed >= jarvisLimit) {
-    return res.status(429).json({ error: `Alcanzaste el límite diario de ayuda con IA (${jarvisLimit}).`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: jarvisUsed });
+  const reservation = await reserveJarvisUsage(jarvisKey, jarvisLimit);
+  if (!reservation.allowed) {
+    return res.status(429).json({ error: `Alcanzaste el límite diario de ayuda con IA (${jarvisLimit}).`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: reservation.used });
   }
 
   const taskInstructions = {
@@ -3237,11 +3256,10 @@ app.post('/api/cv/assist', cvAssistLimiter, requireAuth, async (req, res) => {
     const candidate = String(completion.reply || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
     const result = JSON.parse(candidate);
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Formato de respuesta inválido');
-    const used = await incrJarvisUsage(jarvisKey);
     // No ChatMessage insert, session history, memory, prompt logging or Telegram
     // alert here; CV content stays out of the shared chat data path.
     trackEvent('cv_ai', null, { task, model: completion.model });
-    res.json({ result, model: completion.model, emi: { used, limit: jarvisLimit } });
+    res.json({ result, model: completion.model, emi: { used: reservation.used, limit: jarvisLimit } });
   } catch (error) {
     console.warn('CV assistant provider failure:', error?.status || error?.message || 'unknown');
     res.status(502).json({ error: 'No se pudo completar la sugerencia. Tu borrador local sigue guardado.' });
@@ -4353,49 +4371,99 @@ async function describeImage(rawPrompt, refinedPrompt) {
 }
 
 // ── Búsqueda web en vivo ─────────────────────────────────────────────
-// Si la consulta parece pedir información actual/noticias, busca en la web
-// (DuckDuckGo Instant Answer + Wikipedia, gratuitos y sin clave) y devuelve
-// un contexto breve para que JARVIS responda con datos reales y recientes.
-// Devuelve string vacío si no aplica o falla.
+// Verifica preguntas actuales y geográficas con buscadores de servidor.
+// Devuelve resultados con fuente y URL para evitar afirmaciones sin respaldo.
 async function liveWebContext(message) {
   const q = String(message || '').trim();
   if (!q || q.length < 6) return '';
   const low = q.toLowerCase();
   const signalWords = ['última', 'último', 'noticia', 'hoy', '2024', '2025', '2026', 'cuál es la hora', 'mejor', 'más reciente', 'actualidad', 'resultado', 'presidente', 'guerra', 'elecciones', 'clima', 'efeméride', 'lanzamiento', 'noticias', 'recién', 'acaba'];
   const curiosity = /(qué (es|pasó|hubo|ganó|dijo)|quién (es|ganó)|cuándo|cómo está|latest|today|news|who won|what happened)/i;
-  const wantsLive = signalWords.some(w => low.includes(w)) || curiosity.test(low);
+  const geography = /(d[oó]nde (queda|est[aá]|est[aá] ubicado)|de qu[eé] (departamento|municipio|pa[ií]s)|a qu[eé] departamento pertenece|municipio|departamento|aldea|localidad|pueblo|ciudad|ubicaci[oó]n|soy de|vivo en|nac[ií] en|me refiero a|queda en|est[aá] en|pertenece a)/i;
+  const explicitSearch = /^(busca|buscar|investiga|search|googlea|websearch|averigua)\b/i.test(q);
+  const wantsLive = explicitSearch || geography.test(q) || signalWords.some(w => low.includes(w)) || curiosity.test(low);
   if (!wantsLive) return '';
 
-  const out = [];
-  // 1) DuckDuckGo Instant Answer (abstract + descripción)
+  // Quita correcciones conversacionales y mejora la consulta local sin alterar
+  // el topónimo que escribió el usuario.
+  let searchQuery = q
+    .replace(/^(?:mentira|mentirosa|no|perd[oó]n)[,!.;:\s]+/i, '')
+    .replace(/^(?:(?:yo\s+)?(?:me refiero a|hablo de)|(?:soy de|vivo en|nac[ií] en))\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/\b(jalapa|jutiapa|guatemala|quetzaltenango|chiquimula|escuintla)\b/i.test(searchQuery)
+      && !/\bguatemala\b/i.test(searchQuery)) searchQuery += ', Guatemala';
+
+  const sources = [];
+  const addSource = (title, snippet, url) => {
+    const cleanTitle = String(title || '').trim();
+    const cleanSnippet = String(snippet || '').replace(/\s+/g, ' ').trim();
+    const cleanUrl = String(url || '').trim();
+    if (cleanTitle && cleanSnippet && /^https?:\/\//i.test(cleanUrl)) {
+      sources.push({ title: cleanTitle.slice(0, 180), snippet: cleanSnippet.slice(0, 600), url: cleanUrl.slice(0, 500) });
+    }
+  };
+
+  // Tavily suele ofrecer extractos más útiles para consultas factuales.
+  if (process.env.TAVILY_API_KEY) {
+    try {
+      const r = await fetch('https://api.tavily.com/search', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: process.env.TAVILY_API_KEY, query: searchQuery, max_results: 5, include_answer: true }),
+        signal: AbortSignal.timeout(7000),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        for (const item of (data.results || []).slice(0, 5)) addSource(item.title, item.content, item.url);
+      }
+    } catch (_) { /* intentar el siguiente proveedor */ }
+  }
+
+  // SerpAPI sirve como segundo proveedor y como fuente de resultados locales.
+  if (sources.length < 2 && process.env.SERPAPI_KEY) {
+    try {
+      const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&hl=es&gl=gt&num=5&api_key=${process.env.SERPAPI_KEY}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (r.ok) {
+        const data = await r.json();
+        for (const item of (data.organic_results || []).slice(0, 5)) addSource(item.title, item.snippet, item.link);
+      }
+    } catch (_) { /* intentar fuentes abiertas */ }
+  }
+
+  // Respaldo gratuito cuando no hay claves o los proveedores fallan.
+  if (!sources.length) {
   try {
     const ctrl = AbortSignal.timeout(5000);
-    const r = await fetch('https://api.duckduckgo.com/?q=' + encodeURIComponent(q) + '&format=json&no_html=1&skip_disambig=1', { signal: ctrl });
+    const r = await fetch('https://api.duckduckgo.com/?q=' + encodeURIComponent(searchQuery) + '&format=json&no_html=1&skip_disambig=1', { signal: ctrl });
     if (r.ok) {
       const d = await r.json();
-      const abstract = (d && (d.AbstractText || d.Answer)) || '';
-      if (abstract) out.push('DuckDuckGo: ' + String(abstract).slice(0, 400));
-      const defs = (d && d.RelatedTopics) || [];
-      for (const t of defs.slice(0, 3)) {
-        const txt = t.Text || (t.Topics && t.Topics[0] && t.Topics[0].Text) || '';
-        if (txt) out.push('DuckDuckGo: ' + String(txt).slice(0, 250));
+      if (d?.AbstractText && d?.AbstractURL) addSource(d.Heading || 'DuckDuckGo', d.AbstractText, d.AbstractURL);
+      for (const t of (d?.RelatedTopics || []).slice(0, 3)) {
+        if (t.Text && t.FirstURL) addSource('DuckDuckGo', t.Text, t.FirstURL);
       }
     }
   } catch (e) { /* ignorar */ }
 
-  // 2) Wikipedia (summary)
+  // Wikipedia solo se usa como pista secundaria, no como confirmación única.
   try {
     const ctrl = AbortSignal.timeout(5000);
-    const r = await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(q.replace(/[¿?¡!.,;:]/g, ' ').trim().split(' ').slice(0, 5).join('_')), { signal: ctrl, headers: { 'Accept': 'application/json' } });
+    const title = searchQuery.replace(/[¿?¡!.,;:]/g, ' ').trim().split(' ').slice(0, 6).join('_');
+    const r = await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title), { signal: ctrl, headers: { 'Accept': 'application/json' } });
     if (r.ok) {
       const d = await r.json();
-      const extract = (d && d.extract) || '';
-      if (extract) out.push('Wikipedia: ' + String(extract).slice(0, 500));
+      if (d?.extract && d?.content_urls?.desktop?.page) addSource('Wikipedia · ' + (d.title || title), d.extract, d.content_urls.desktop.page);
     }
   } catch (e) { /* ignorar */ }
+  }
 
-  if (!out.length) return '';
-  return 'REFERENCIA WEB EN VIVO (consulta "' + q.slice(0, 80) + '") — usa esto solo si responde a lo preguntado; si no hay relación, ignóralo:\n' + out.join('\n').slice(0, 2500);
+  if (!sources.length) return '';
+  const unique = [...new Map(sources.map(s => [s.url, s])).values()].slice(0, 5);
+  return [
+    `FUENTES WEB PARA VERIFICAR (${searchQuery.slice(0, 120)}):`,
+    'Responde la pregunta concreta con estos resultados. Para lugares, distingue municipio, departamento y aldea/localidad; no los intercambies. Prioriza fuentes oficiales (por ejemplo, INE o gobierno local). Si la evidencia no confirma el dato o las fuentes discrepan, dilo claramente y no inventes una ubicación. Incluye al menos un enlace de las fuentes que respalde la respuesta.',
+    ...unique.map((s, i) => `[${i + 1}] ${s.title}\nExtracto: ${s.snippet}\nURL: ${s.url}`),
+  ].join('\n\n').slice(0, 4500);
 }
 
 // ── Herramienta de cómputo (agent) ──────────────────────────────────
@@ -7566,9 +7634,9 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   // ── Límite diario server-side ──
   const jarvisKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
   const jarvisLimit = await getJarvisLimit(!!req.authUser);
-  const jarvisUsed = await getJarvisUsage(jarvisKey);
-  if (jarvisUsed >= jarvisLimit) {
-    return res.status(429).json({ error: `Límite diario alcanzado (${jarvisLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: jarvisUsed });
+  const reservation = await reserveJarvisUsage(jarvisKey, jarvisLimit);
+  if (!reservation.allowed) {
+    return res.status(429).json({ error: `Límite diario alcanzado (${jarvisLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'JARVIS_DAILY_LIMIT', limit: jarvisLimit, used: reservation.used });
   }
 
   // ── Recuperar historial ──
@@ -7648,6 +7716,8 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     if (res.destroyed) return;
     res.write('event: ' + evt + '\ndata: ' + JSON.stringify(data) + '\n\n');
   }
+
+  sendSSE('quota', { used: reservation.used, limit: jarvisLimit });
 
   // SSE idle watchdog: aborta si pasan SSE_TIMEOUT_MS sin datos nuevos.
   // Leaked streams en providers lentos ya no acumulan sockets → OOM.
@@ -7818,7 +7888,6 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       { sessionId, role: 'assistant', content: fullReply, tokens: usage.output, model: modelName },
     ]).catch(() => {});
 
-    const jarvisNow = await incrJarvisUsage(jarvisKey);
     broadcast('chat_used', { model: modelName, tokens: usage.input + usage.output });
     trackEvent('chat', null, { model: modelName, tokens: usage.input + usage.output });
     tgAlert('chat', () => 'Chat con JARVIS (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
@@ -7835,7 +7904,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       }
     }
 
-    sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: jarvisNow, limit: jarvisLimit } });
+    sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: reservation.used, limit: jarvisLimit } });
     res.end();
 
   } catch (err) {
