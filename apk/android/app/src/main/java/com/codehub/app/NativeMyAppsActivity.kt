@@ -561,8 +561,10 @@ class NativeMyAppsActivity : Activity() {
                                         Toast.makeText(this@NativeMyAppsActivity, "${app.name} se actualizó.", Toast.LENGTH_LONG).show()
                                         NativeAppUpdateTracker.recordInstalled(applicationContext, app.id, app.latestVersion)
                                     }
-                                    NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeMyAppsActivity, "APK lista · confirma la actualización de ${app.name}.", Toast.LENGTH_LONG).show()
-                                    NativeStoreApkInstaller.Status.READY_BACKGROUND -> Toast.makeText(this@NativeMyAppsActivity, "Actualización lista en segundo plano · toca la notificación para instalar.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeMyAppsActivity,
+                                        (message.takeIf { it.isNotBlank() }?.plus(" · ") ?: "") + "APK lista · confirma la actualización de ${app.name}.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.READY_BACKGROUND -> Toast.makeText(this@NativeMyAppsActivity,
+                                        (message.takeIf { it.isNotBlank() }?.plus(" · ") ?: "") + "Actualización lista en segundo plano · toca la notificación para instalar.", Toast.LENGTH_LONG).show()
                                     NativeStoreApkInstaller.Status.CANCELLED -> Toast.makeText(this@NativeMyAppsActivity, "Actualización cancelada.", Toast.LENGTH_SHORT).show()
                                     NativeStoreApkInstaller.Status.FAILED -> AlertDialog.Builder(this@NativeMyAppsActivity)
                                         .setTitle("No se pudo actualizar ${app.name}")
@@ -616,7 +618,7 @@ class NativeMyAppsActivity : Activity() {
         val storeInstallInProgress = storeTransfer is ApkTransferState.Downloading ||
             storeTransfer is ApkTransferState.Verifying ||
             storeTransfer == ApkTransferState.ReadyToInstall ||
-            storeTransfer == ApkTransferState.AwaitingUserConfirmation
+            storeTransfer is ApkTransferState.AwaitingUserConfirmation
         if (app.id in activeTransfers || storeInstallInProgress) {
             Toast.makeText(this, "Espera a que termine la descarga o instalación de ${app.name}.", Toast.LENGTH_LONG).show()
             return

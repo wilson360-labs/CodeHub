@@ -1390,8 +1390,11 @@ class NativeStoreActivity : Activity() {
                             }
                             NativeStoreApkInstaller.Status.INSTALLER_OPENED -> {
                                 detailRing?.setDone()
-                                detailCta?.text = "Descarga lista · confirma la instalación de ${app.name}."
-                                Toast.makeText(this@NativeStoreActivity, "Descarga lista · confirma la instalación de ${app.name}.", Toast.LENGTH_LONG).show()
+                                detailCta?.text = if (message.isBlank()) "Descarga lista · confirma la instalación de ${app.name}."
+                                    else "Instalador Android abierto · revisa el motivo de fallback."
+                                val text = if (message.isBlank()) "Descarga lista · confirma la instalación de ${app.name}."
+                                    else "$message. Confirma la instalación de ${app.name} en Android."
+                                Toast.makeText(this@NativeStoreActivity, text, Toast.LENGTH_LONG).show()
                             }
                             NativeStoreApkInstaller.Status.READY_BACKGROUND -> {
                                 detailRing?.setDone()

@@ -42,7 +42,7 @@ sealed interface ApkTransferState {
     data class Downloading(val downloadedBytes: Long, val totalBytes: Long) : ApkTransferState
     data object Verifying : ApkTransferState
     data object ReadyToInstall : ApkTransferState
-    data object AwaitingUserConfirmation : ApkTransferState
+    data class AwaitingUserConfirmation(val detail: String = "") : ApkTransferState
     data object Installed : ApkTransferState
     data class Failed(val message: String) : ApkTransferState
     data object Cancelled : ApkTransferState
@@ -167,6 +167,7 @@ object NativeStoreApkInstaller {
                 )
 
                 setState(appId, ApkTransferState.ReadyToInstall)
+                var silentInstallFailure = ""
                 if (preferSilent && ShizukuInstaller.isReady()) {
                     try {
                         withContext(Dispatchers.IO) {
@@ -183,9 +184,13 @@ object NativeStoreApkInstaller {
                         setState(appId, ApkTransferState.Installed)
                         main.post { listener?.onFinished(Status.INSTALLED) }
                         return@launch
-                    } catch (_: Exception) {
-                        // Shizuku failure falls back to Android's explicit user confirmation.
+                    } catch (error: Exception) {
+                        // Keep the real Package Manager reason visible when we fall back.
+                        silentInstallFailure = error.message?.take(240)
+                            ?.takeIf { it.isNotBlank() } ?: "Shizuku no devolvió un resultado válido."
                     }
+                } else if (preferSilent) {
+                    silentInstallFailure = "Shizuku no está activo o CodeHub no tiene permiso."
                 }
 
                 val alive = activity != null && !activity.isFinishing && !activity.isDestroyed
@@ -195,16 +200,20 @@ object NativeStoreApkInstaller {
                 if (launched) {
                     // Keep it long enough for Package Installer and clean stale APKs later.
                     scheduleApkCleanup(appId, destination)
-                    setState(appId, ApkTransferState.AwaitingUserConfirmation)
-                    main.post { listener?.onFinished(Status.INSTALLER_OPENED) }
+                    val detail = silentInstallFailure.takeIf { it.isNotBlank() }
+                        ?.let { "Shizuku no completó la instalación automática: $it" }.orEmpty()
+                    setState(appId, ApkTransferState.AwaitingUserConfirmation(detail))
+                    main.post { listener?.onFinished(Status.INSTALLER_OPENED, detail) }
                 } else {
                     // App in background: the download service shows "Listo para
                     // instalar". Background activity starts are restricted, so
                     // the finish happens when the user taps the notification.
                     pendingApks[appId] = destination
                     scheduleApkCleanup(appId, destination, installerFileMaxAgeMs)
-                    setState(appId, ApkTransferState.AwaitingUserConfirmation)
-                    main.post { listener?.onFinished(Status.READY_BACKGROUND) }
+                    val detail = silentInstallFailure.takeIf { it.isNotBlank() }
+                        ?.let { "Shizuku no completó la instalación automática: $it" }.orEmpty()
+                    setState(appId, ApkTransferState.AwaitingUserConfirmation(detail))
+                    main.post { listener?.onFinished(Status.READY_BACKGROUND, detail) }
                 }
             } catch (cancelled: CancellationException) {
                 partial.delete()

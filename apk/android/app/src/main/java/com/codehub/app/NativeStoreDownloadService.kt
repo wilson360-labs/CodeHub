@@ -189,18 +189,19 @@ class NativeStoreDownloadService : Service() {
                         .build())
                 }
                 ApkTransferState.ReadyToInstall -> hasActive = true
-                ApkTransferState.AwaitingUserConfirmation -> {
+                is ApkTransferState.AwaitingUserConfirmation -> {
                     hasActive = true
                     if (NativeStoreApkInstaller.pendingApkFile(appId) != null) {
                         val name = NativeStoreApkInstaller.displayName(appId)
                         val selfUpdate = appId == NativeStoreApkInstaller.SELF_UPDATE_ID
+                        val detail = state.detail.take(110)
                         val notification = builder()
                             .apply {
                                 setOngoing(true)
                                 setOnlyAlertOnce(true)
                                 setSmallIcon(android.R.drawable.stat_sys_download_done)
                                 setContentTitle(if (selfUpdate) "Actualización de CodeHub lista" else "Listo para instalar")
-                                setContentText(if (selfUpdate) "Toca para continuar con el instalador de Android" else "Confirma la instalación de $name")
+                                setContentText(if (detail.isNotBlank()) detail else if (selfUpdate) "Toca para continuar con el instalador de Android" else "Confirma la instalación de $name")
                                 setGroup(GROUP_KEY)
                             }
                             .setContentIntent(if (selfUpdate) openSelfUpdateIntent(this) else openStoreIntent(this, appId, name))

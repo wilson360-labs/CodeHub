@@ -441,9 +441,13 @@ public class MainActivity extends Activity {
                             } else if (status == NativeStoreApkInstaller.Status.INSTALLER_OPENED) {
                                 appUpdateAwaitingConfirmation = true;
                                 if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
+                                if (message != null && !message.isEmpty())
+                                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                             } else if (status == NativeStoreApkInstaller.Status.READY_BACKGROUND) {
                                 appUpdateAwaitingConfirmation = true;
                                 if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
+                                if (message != null && !message.isEmpty())
+                                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                             } else {
                                 clearPendingSelfUpdate();
                                 if (nativeHome != null) nativeHome.showAppUpdateError(message);

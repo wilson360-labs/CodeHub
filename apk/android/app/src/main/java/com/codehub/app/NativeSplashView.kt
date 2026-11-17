@@ -11,7 +11,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
-import android.view.Choreographer
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -28,11 +27,8 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val startedAt = SystemClock.elapsedRealtime()
-    private val choreographer = Choreographer.getInstance()
     private var dismissed = false
     private var dismissRequested = false
-    private var dismissStartedAt = 0L
-    private var framePosted = false
     private var onDismissed: OnDismissedListener? = null
     private lateinit var logoView: View
     private lateinit var orbitalRings: OrbitalRingsView
@@ -45,7 +41,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
     init {
         isClickable = true
         isFocusable = true
-        setBackgroundColor(Color.rgb(21, 21, 34))  // 0xFF080B11 brand bg
+        setBackgroundColor(Color.rgb(8, 11, 17))
 
         auroraBackground = AuroraBackground(context)
         addView(auroraBackground, LayoutParams(-1, -1))
@@ -157,6 +153,13 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         })
 
         addView(content, LayoutParams(-2, -2, Gravity.CENTER))
+        auroraBackground.setAnimationTime(0L)
+        alpha = 0f
+        logoView.alpha = 0f
+        logoView.scaleX = .84f
+        logoView.scaleY = .84f
+        logoView.translationY = dp(10).toFloat()
+        orbitalRings.alpha = 0f
     }
 
     /** Lets a visible splash reflect WebView progress when a web route is opened during startup. */
@@ -178,68 +181,50 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         onDismissed = callback
     }
 
-    /** Keeps the splash visible briefly for a polished transition, even on fast networks. */
+    /** Keeps the entrance readable briefly, then fades into the native home. */
     fun dismiss() {
         if (dismissRequested || dismissed) return
         dismissRequested = true
-        val remaining = (3500L - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0L)
+        val remaining = (850L - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0L)
         mainHandler.postDelayed({
             if (dismissed) return@postDelayed
-            dismissStartedAt = SystemClock.elapsedRealtime()
+            animate().cancel()
+            animate().alpha(0f).scaleX(1.015f).scaleY(1.015f)
+                .setDuration(240L)
+                .withEndAction {
+                    dismissed = true
+                    visibility = View.GONE
+                    onDismissed?.onDismissed()
+                    onDismissed = null
+                }
+                .start()
         }, remaining)
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        postAnimationFrame()
+        animate().alpha(1f).scaleX(1f).scaleY(1f)
+            .setDuration(220L)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .start()
+        logoView.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+            .setDuration(560L)
+            .setInterpolator(android.view.animation.OvershootInterpolator(0.75f))
+            .start()
+        orbitalRings.animate().alpha(1f).rotation(42f)
+            .setDuration(620L)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .start()
+        haloView.animate().alpha(1f).setDuration(520L).start()
     }
 
     override fun onDetachedFromWindow() {
         mainHandler.removeCallbacksAndMessages(null)
-        if (framePosted) choreographer.removeFrameCallback(frameCallback)
-        framePosted = false
+        animate().cancel()
+        logoView.animate().cancel()
+        orbitalRings.animate().cancel()
+        haloView.animate().cancel()
         super.onDetachedFromWindow()
-    }
-
-    private val frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
-        framePosted = false
-        if (!isAttachedToWindow || dismissed) return@FrameCallback
-
-        val now = SystemClock.elapsedRealtime()
-        val elapsed = now - startedAt
-        auroraBackground.setAnimationTime(elapsed)
-        val entrance = (elapsed / 720f).coerceIn(0f, 1f)
-        val easedEntrance = 1f - (1f - entrance) * (1f - entrance) * (1f - entrance)
-        alpha = (elapsed / 450f).coerceIn(0f, 1f)
-        logoView.scaleX = .78f + .22f * easedEntrance
-        logoView.scaleY = .78f + .22f * easedEntrance
-        val floatPhase = ((elapsed - 720L).coerceAtLeast(0L) % 3_000L) / 3_000.0
-        logoView.translationY = (-dp(5) * ((1.0 - kotlin.math.cos(floatPhase * Math.PI * 2.0)) / 2.0)).toFloat()
-        orbitalRings.setRotationDegrees((elapsed % 7_000L) * 360f / 7_000f)
-        val pulse = ((kotlin.math.sin(elapsed / 2_250.0 * Math.PI * 2.0) + 1.0) / 2.0).toFloat()
-        haloView.alpha = .62f + .38f * pulse
-
-        if (dismissStartedAt > 0L) {
-            val exit = ((now - dismissStartedAt) / 420f).coerceIn(0f, 1f)
-            alpha = 1f - exit
-            scaleX = 1f + .025f * exit
-            scaleY = 1f + .025f * exit
-            if (exit >= 1f) {
-                dismissed = true
-                visibility = View.GONE
-                onDismissed?.onDismissed()
-                onDismissed = null
-                return@FrameCallback
-            }
-        }
-        postAnimationFrame()
-    }
-
-    private fun postAnimationFrame() {
-        if (!framePosted && isAttachedToWindow && !dismissed) {
-            framePosted = true
-            choreographer.postFrameCallback(frameCallback)
-        }
     }
 
     private fun greetingText(): String {
