@@ -439,6 +439,17 @@
       "source": "/games/rps.html",
       "destination": "/rps",
       "permanent": true
-    }
+    },
+    { "source": "/translate", "destination": "/", "permanent": true },
+    { "source": "/search", "destination": "/", "permanent": true },
+    { "source": "/review", "destination": "/", "permanent": true },
+    { "source": "/resumen", "destination": "/", "permanent": true },
+    { "source": "/model", "destination": "/", "permanent": true },
+    { "source": "/memoria", "destination": "/", "permanent": true },
+    { "source": "/img", "destination": "/", "permanent": true },
+    { "source": "/entrenar", "destination": "/", "permanent": true },
+    { "source": "/enhance-img", "destination": "/", "permanent": true },
+    { "source": "/edit-img", "destination": "/", "permanent": true },
+    { "source": "/skills", "destination": "/#skills", "permanent": true }
   ]
 }

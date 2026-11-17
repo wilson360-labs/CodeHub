@@ -252,7 +252,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Mantener pantalla encendida para Turbo Accesibilidad"
+                android:text="Mantener pantalla encendida durante la limpieza"
                 android:textColor="@color/codesu_text_primary"
                 android:textSize="13sp" />
 
@@ -260,7 +260,7 @@
                 android:id="@+id/codesu_cache_screen_hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Shizuku no necesita mantener la pantalla encendida. Accesibilidad sí; el bloqueo se libera al terminar."
+                android:text="Se aplica a Shizuku y Accesibilidad. Turbo Tasker también requiere el teléfono desbloqueado; la pantalla se mantiene encendida hasta terminar."
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="11sp" />
 

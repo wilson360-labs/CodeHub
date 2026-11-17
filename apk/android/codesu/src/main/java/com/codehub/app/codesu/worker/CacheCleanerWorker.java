@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
+import android.os.PowerManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -48,6 +49,7 @@ public final class CacheCleanerWorker extends Worker {
     public Result doWork() {
         Context context = getApplicationContext();
         String snapshotId = getInputData().getString(KEY_SNAPSHOT_ID);
+        PowerManager.WakeLock screenWakeLock = null;
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
                 return failure("La limpieza protegida requiere Android 11 o posterior.");
@@ -56,6 +58,16 @@ public final class CacheCleanerWorker extends Worker {
             if (!CacheCleaner.isShizukuReady())
                 return failure("Shizuku está apagado o CodeSu no tiene permiso.");
             setForegroundAsync(foregroundInfo(0, "Preparando limpieza segura…")).get();
+            if (context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .getBoolean(KEEP_SCREEN_ON, true)) {
+                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                if (powerManager != null) {
+                    screenWakeLock = powerManager.newWakeLock(
+                            PowerManager.SCREEN_DIM_WAKE_LOCK, "CodeSu:ShizukuCacheCleaner");
+                    screenWakeLock.setReferenceCounted(false);
+                    screenWakeLock.acquire();
+                }
+            }
 
             List<CacheAppInfo> apps = CacheCleaner.loadCleanupSnapshot(context, snapshotId);
             int eligible = 0;
@@ -103,6 +115,7 @@ public final class CacheCleanerWorker extends Worker {
             return failure(detail == null || detail.trim().isEmpty()
                     ? "Error inesperado durante la limpieza de caché." : detail);
         } finally {
+            if (screenWakeLock != null && screenWakeLock.isHeld()) screenWakeLock.release();
             CacheCleaner.removeCleanupSnapshot(context, snapshotId);
         }
     }
