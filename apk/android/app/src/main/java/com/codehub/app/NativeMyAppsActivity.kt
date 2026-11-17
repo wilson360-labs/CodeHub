@@ -568,8 +568,17 @@ class NativeMyAppsActivity : Activity() {
                                         .setMessage(message)
                                         .setNegativeButton("Cancelar", null)
                                         .setPositiveButton("Desinstalar y reinstalar") { _, _ ->
-                                            NativeStoreApkInstaller.reinstallAfterSignatureChange(
-                                                applicationContext, app.id, app.packageName, this@NativeMyAppsActivity, this)
+                                            val packageName = app.packageName?.takeIf { it.isNotBlank() }
+                                            if (packageName == null) {
+                                                Toast.makeText(
+                                                    this@NativeMyAppsActivity,
+                                                    "No se pudo identificar el paquete de ${app.name}; no se desinstaló nada.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            } else {
+                                                NativeStoreApkInstaller.reinstallAfterSignatureChange(
+                                                    applicationContext, app.id, packageName, this@NativeMyAppsActivity, this)
+                                            }
                                         }
                                         .show()
                                     NativeStoreApkInstaller.Status.READY_BACKGROUND -> Toast.makeText(this@NativeMyAppsActivity,
