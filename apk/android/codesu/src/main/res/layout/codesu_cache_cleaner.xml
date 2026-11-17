@@ -234,15 +234,18 @@
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="11sp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/codesu_cache_engine_action"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:minHeight="40dp"
                 android:text="Conectar motor"
-                android:textColor="@color/codesu_accent_text"
-                android:visibility="gone" />
+                android:textColor="@color/white"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                app:backgroundTint="@color/codesu_accent_dark"
+                app:cornerRadius="12dp" />
 
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/codesu_cache_keep_screen_on"
@@ -261,14 +264,17 @@
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="11sp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/codesu_usage_access_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Permitir acceso al uso"
-                android:textColor="@color/codesu_accent_text"
-                android:visibility="gone" />
+                android:textColor="@color/white"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                app:backgroundTint="@color/codesu_accent_dark"
+                app:cornerRadius="12dp" />
 
             <ProgressBar
                 android:id="@+id/codesu_cache_progress"
