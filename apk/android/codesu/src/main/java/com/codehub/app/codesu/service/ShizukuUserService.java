@@ -20,9 +20,9 @@ public class ShizukuUserService extends IKillAppService.Stub {
 
     private volatile Process activeCacheClearProcess;
 
-    private static final long CACHE_CLEAR_BASE_TIMEOUT_MS = 60_000L;
-    private static final long CACHE_CLEAR_MAX_TIMEOUT_MS = 180_000L;
-    private static final long CACHE_CLEAR_BYTES_PER_EXTRA_10S = 100L * 1024L * 1024L;
+    private static final long CACHE_CLEAR_BASE_TIMEOUT_MS = 30_000L;
+    private static final long CACHE_CLEAR_MAX_TIMEOUT_MS = 45_000L;
+    private static final long CACHE_CLEAR_BYTES_PER_EXTRA_5S = 100L * 1024L * 1024L;
 
     /** Paquete host donde vive el módulo (App.context no está inicializado aquí). */
     public static final String HOST_PACKAGE = "com.codehub.app";
@@ -84,9 +84,9 @@ public class ShizukuUserService extends IKillAppService.Stub {
         if (isProtectedCacheTarget(pkgName)) return "Paquete protegido por seguridad.";
         Process process = null;
         try {
-            long extraSteps = Math.max(0L, estimatedCacheBytes) / CACHE_CLEAR_BYTES_PER_EXTRA_10S;
+            long extraSteps = Math.max(0L, estimatedCacheBytes) / CACHE_CLEAR_BYTES_PER_EXTRA_5S;
             long timeoutMs = Math.min(CACHE_CLEAR_MAX_TIMEOUT_MS,
-                    CACHE_CLEAR_BASE_TIMEOUT_MS + extraSteps * 10_000L);
+                    CACHE_CLEAR_BASE_TIMEOUT_MS + extraSteps * 5_000L);
             process = new ProcessBuilder("/system/bin/cmd", "package", "clear", "--user", "current", "--cache-only", pkgName)
                     .redirectErrorStream(true)
                     .start();

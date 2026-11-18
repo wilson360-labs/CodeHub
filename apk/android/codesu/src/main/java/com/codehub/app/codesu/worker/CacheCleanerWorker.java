@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
-import android.os.PowerManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -49,7 +48,6 @@ public final class CacheCleanerWorker extends Worker {
     public Result doWork() {
         Context context = getApplicationContext();
         String snapshotId = getInputData().getString(KEY_SNAPSHOT_ID);
-        PowerManager.WakeLock screenWakeLock = null;
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
                 return failure("La limpieza protegida requiere Android 11 o posterior.");
@@ -58,31 +56,26 @@ public final class CacheCleanerWorker extends Worker {
             if (!CacheCleaner.isShizukuReady())
                 return failure("Shizuku está apagado o CodeSu no tiene permiso.");
             setForegroundAsync(foregroundInfo(0, "Preparando limpieza segura…")).get();
-            if (context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                    .getBoolean(KEEP_SCREEN_ON, true)) {
-                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-                if (powerManager != null) {
-                    screenWakeLock = powerManager.newWakeLock(
-                            PowerManager.SCREEN_DIM_WAKE_LOCK, "CodeSu:ShizukuCacheCleaner");
-                    screenWakeLock.setReferenceCounted(false);
-                    screenWakeLock.acquire();
-                }
-            }
-
             List<CacheAppInfo> apps = CacheCleaner.loadCleanupSnapshot(context, snapshotId);
             int eligible = 0;
             for (CacheAppInfo app : apps) {
-                if (app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES
-                        && !app.protectedApp && !CacheCleaner.isProtected(app.packageName)) eligible++;
+                if (CacheCleaner.isDeepCleanCandidate(app)) eligible++;
             }
             if (eligible == 0) return failure("Ninguna app segura supera 1 MB de caché.");
 
             publish(5, "Turbo Shizuku", "Usando la medición visible", 0, eligible, 0L, 0L);
             CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(context, apps,
                     (completed, total, packageName, finished, accepted, freed, unmeasured) -> {
+                        boolean global = packageName != null && packageName.startsWith("Limpieza global");
                         int percent = total == 0 ? 95 : 5 + (int) (completed * 90L / total);
-                        String phase = !finished ? "EJECUTANDO · Package Manager"
-                                : accepted ? "Android aceptó la orden" : "Android rechazó la orden";
+                        String phase;
+                        if (!finished) {
+                            phase = "EJECUTANDO · limpieza global";
+                        } else if (global) {
+                            phase = accepted ? "Limpieza global completada" : "Limpieza global rechazada";
+                        } else {
+                            phase = accepted ? "Verificando caché liberada" : "Android rechazó la orden";
+                        }
                         publish(percent, phase, packageName, completed, total, freed, 0L);
                     }, this::isStopped);
             int attempted = result.cleared + result.failed;
@@ -106,7 +99,7 @@ public final class CacheCleanerWorker extends Worker {
                             ? (result.cleared == 0 ? "Shizuku no confirmó la limpieza de ninguna app." : "")
                             : result.failureSummary)
                     .build();
-            publish(100, result.failed == 0 ? "Limpieza completada" : "Limpieza parcial",
+            publish(100, result.failed == 0 ? "Limpieza completada" : "Tanda detenida tras un error",
                     result.cleared + " órdenes aceptadas", result.cleared, result.failed,
                     result.verifiedFreedBytes, result.targetBytes);
             return result.cleared == 0 ? Result.failure(output) : Result.success(output);
@@ -120,7 +113,6 @@ public final class CacheCleanerWorker extends Worker {
             return failure(detail == null || detail.trim().isEmpty()
                     ? "Error inesperado durante la limpieza de caché." : detail);
         } finally {
-            if (screenWakeLock != null && screenWakeLock.isHeld()) screenWakeLock.release();
             CacheCleaner.removeCleanupSnapshot(context, snapshotId);
         }
     }

@@ -308,47 +308,160 @@ public final class CacheCleaner {
         long targetBytes = 0L;
         for (CacheAppInfo target : targets) targetBytes += target.cacheBytes;
 
-        int success = 0;
-        int failure = 0;
+        // Ruta global (trim-caches): una sola orden a Package Manager. Evita el bucle
+        // per-app que congela/reinicia el dispositivo en Android 14-17 (PM se satura).
+        if (listener != null) listener.onProgress(0, targets.size(), "Limpieza global de caché",
+                false, false, 0L, 0);
+        final java.util.concurrent.atomic.AtomicBoolean trimDone = new java.util.concurrent.atomic.AtomicBoolean(false);
+        final int totalTargets = targets.size();
+        Thread ticker = null;
+        if (listener != null) {
+            ticker = new Thread(() -> {
+                int step = 0;
+                while (!trimDone.get()) {
+                    step++;
+                    // Progreso estimado 0-70% mientras trim-caches corre.
+                    int pseudo = Math.min(totalTargets > 0 ? totalTargets - 1 : 0,
+                            (int) (totalTargets * Math.min(step, 70) / 100L));
+                    try {
+                        listener.onProgress(pseudo, totalTargets, "Limpieza global de caché",
+                                false, false, 0L, 0);
+                    } catch (Exception ignored) {}
+                    try { Thread.sleep(1500L); } catch (InterruptedException e) { return; }
+                }
+            }, "codesu-trim-ticker");
+            ticker.setDaemon(true);
+            ticker.start();
+        }
+        String trimError;
+        try {
+            trimError = runTrimCachesCommand(cancellation);
+        } finally {
+            trimDone.set(true);
+            if (ticker != null) ticker.interrupt();
+        }
+        if (cancellation != null && cancellation.isCancelled())
+            throw new InterruptedException("Limpieza cancelada por el usuario.");
+
         long verifiedFreed = 0L;
         int unmeasured = 0;
         List<String> failures = new ArrayList<>();
-        for (int index = 0; index < targets.size(); index++) {
+        if (trimError != null && !trimError.isEmpty()) {
+            if (failures.size() < 5) failures.add("trim-caches: " + trimError);
+            if (listener != null) listener.onProgress(totalTargets, totalTargets, "Limpieza global",
+                    true, false, 0L, 0);
+            return new ClearResult(0, totalTargets, 0L, 0, targetBytes,
+                    android.text.TextUtils.join("\n", failures));
+        }
+
+        // Medición post-limpieza por lote para estimar bytes liberados sin re-escanear todo.
+        int completed = 0;
+        for (CacheAppInfo target : targets) {
             if (cancellation != null && cancellation.isCancelled())
                 throw new InterruptedException("Limpieza cancelada por el usuario.");
-            CacheAppInfo target = targets.get(index);
-            if (listener != null) listener.onProgress(index, targets.size(), target.packageName,
-                    false, false, verifiedFreed, unmeasured);
-            String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName, target.cacheBytes);
-            boolean cleared = detail.isEmpty();
-            long freed = 0L;
-            if (cleared) {
-                try {
-                    freed = Math.max(0L, target.cacheBytes - queryCacheBytes(context, target.packageName));
-                    if (freed == 0L && failures.size() < 5)
-                        failures.add(target.label + " (" + target.packageName
-                                + "): Android aceptó la orden, pero no se verificaron bytes liberados.");
-                } catch (Exception ignored) {
-                    unmeasured++;
-                    if (failures.size() < 5)
-                        failures.add(target.label + " (" + target.packageName
-                                + "): Android aceptó la orden, pero no se pudo medir el resultado.");
-                }
-            } else if (failures.size() < 5) {
-                failures.add(target.label + " (" + target.packageName + "): " + detail);
+            long after = 0L;
+            try {
+                after = queryCacheBytes(context, target.packageName);
+                verifiedFreed += Math.max(0L, target.cacheBytes - after);
+            } catch (Exception ignored) {
+                unmeasured++;
             }
-            if (cleared) success++; else failure++;
-            verifiedFreed += freed;
-            if (listener != null) listener.onProgress(index + 1, targets.size(), target.packageName,
-                    true, cleared, verifiedFreed, unmeasured);
+            completed++;
+            if (listener != null) listener.onProgress(completed, totalTargets, target.packageName,
+                    true, true, verifiedFreed, unmeasured);
         }
+        if (listener != null) listener.onProgress(totalTargets, totalTargets, "Limpieza global completada",
+                true, true, verifiedFreed, unmeasured);
         String failureSummary = android.text.TextUtils.join("\n", failures);
-        return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes, failureSummary);
+        return new ClearResult(totalTargets - unmeasured, 0, verifiedFreed, unmeasured, targetBytes, failureSummary);
     }
 
-    private static boolean isDeepCleanCandidate(CacheAppInfo app) {
+    /**
+     * Ejecuta una sola orden global de recorte de caché vía Shizuku shell.
+     * Mucho más seguro que limpiar app por app (evita saturar PackageManager y
+     * congelar/reiniciar el dispositivo en Android 14-17). Devuelve null/"" si OK.
+     */
+    public static String runTrimCachesCommand(CancellationCheck cancellation) {
+        Process process = null;
+        try {
+            java.lang.reflect.Method newProcess = Shizuku.class.getDeclaredMethod(
+                    "newProcess", String[].class, String[].class, String.class);
+            newProcess.setAccessible(true);
+            // Long.MAX_VALUE para pedir al sistema que libere toda la caché posible.
+            process = (Process) newProcess.invoke(null,
+                    new String[]{"sh", "-c", "cmd package trim-caches 9223372036854775807"}, null, null);
+            final Process running = process;
+            Thread killer = null;
+            if (cancellation != null) {
+                killer = new Thread(() -> {
+                    while (!cancellation.isCancelled()) {
+                        try {
+                            running.exitValue();
+                            return;
+                        } catch (IllegalThreadStateException stillRunning) {
+                            try { Thread.sleep(200L); } catch (InterruptedException e) { return; }
+                        }
+                    }
+                    try { running.destroy(); } catch (Exception ignored) {}
+                }, "codesu-trim-cancel");
+                killer.setDaemon(true);
+                killer.start();
+            }
+            java.io.ByteArrayOutputStream captured = new java.io.ByteArrayOutputStream();
+            Thread outputReader = new Thread(() -> {
+                try (java.io.InputStream stream = running.getInputStream()) {
+                    byte[] buffer = new byte[512];
+                    int count;
+                    while ((count = stream.read(buffer)) >= 0) {
+                        if (count > 0) synchronized (captured) { captured.write(buffer, 0, count); }
+                    }
+                } catch (Exception ignored) { }
+                try (java.io.InputStream err = running.getErrorStream()) {
+                    byte[] buffer = new byte[512];
+                    int count;
+                    while ((count = err.read(buffer)) >= 0) {
+                        if (count > 0) synchronized (captured) { captured.write(buffer, 0, count); }
+                    }
+                } catch (Exception ignored) { }
+            }, "codesu-trim-output");
+            outputReader.setDaemon(true);
+            outputReader.start();
+
+            boolean finished = running.waitFor(120, java.util.concurrent.TimeUnit.SECONDS);
+            if (!finished) {
+                try { running.destroy(); } catch (Exception ignored) {}
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    try { running.destroyForcibly(); } catch (Exception ignored) {}
+                }
+                return "La limpieza global superó 120 s y fue detenida para proteger el sistema.";
+            }
+            try { outputReader.join(1500L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            if (cancellation != null && cancellation.isCancelled()) return "Limpieza cancelada por el usuario.";
+            int exit = running.exitValue();
+            String output;
+            synchronized (captured) {
+                output = new String(captured.toByteArray(), java.nio.charset.StandardCharsets.UTF_8).trim();
+            }
+            if (exit != 0) {
+                if (output.length() > 200) output = output.substring(0, 200) + "…";
+                return "trim-caches terminó con código " + exit + (output.isEmpty() ? "" : ": " + output);
+            }
+            return "";
+        } catch (Exception e) {
+            return "No se pudo ejecutar trim-caches: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        } finally {
+            if (process != null) {
+                try { process.destroy(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    public static boolean isDeepCleanCandidate(CacheAppInfo app) {
         return app != null && app.cacheBytes > DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
-                && !isProtected(app.packageName);
+                && !isProtected(app.packageName)
+                // Android 16 system packages can include OEM UI and service components.
+                && !(Build.VERSION.SDK_INT >= 36 && app.systemApp);
     }
 
     public static long queryCacheBytes(Context context, String packageName) throws Exception {

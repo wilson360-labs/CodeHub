@@ -329,8 +329,7 @@ public class CacheCleanerFragment extends Fragment {
                     long totalBytes = 0L;
                     int appsWithCache = 0;
                     for (CacheAppInfo app : apps) {
-                        if (!app.protectedApp && !CacheCleaner.isProtected(app.packageName)
-                                && app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES) {
+                        if (CacheCleaner.isDeepCleanCandidate(app)) {
                             totalBytes += app.cacheBytes;
                             appsWithCache++;
                         }
@@ -357,6 +356,8 @@ public class CacheCleanerFragment extends Fragment {
                     binding.codesuCacheSafetyNote.setText(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
                             ? "Turbo Shizuku · limpieza secuencial estable. Recomendable: caché >1 MB; no recomendable: servicios protegidos. No desinstala apps ni borra datos o sesiones."
                             : "La limpieza selectiva con exclusión de apps protegidas requiere Android 11+. Puedes consultar los tamaños.");
+                    if (Build.VERSION.SDK_INT >= 36)
+                        binding.codesuCacheSafetyNote.append(" En Android 16 se excluyen las apps del sistema para proteger la interfaz y servicios OEM.");
                     refreshEngineUi();
                 });
             } catch (SecurityException e) {
@@ -422,8 +423,7 @@ public class CacheCleanerFragment extends Fragment {
         List<CacheAppInfo> targets = new java.util.ArrayList<>();
         long estimate = 0L;
         for (CacheAppInfo app : apps) {
-            if (app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES && !app.protectedApp
-                    && !CacheCleaner.isProtected(app.packageName)) {
+            if (CacheCleaner.isDeepCleanCandidate(app)) {
                 targets.add(app);
                 estimate += app.cacheBytes;
             }
@@ -667,7 +667,10 @@ public class CacheCleanerFragment extends Fragment {
         if (getActivity() == null) return;
         boolean enabled = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
                 .getBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, true);
-        if (active && enabled)
+        boolean accessibilityRunning = requireContext().getSharedPreferences(
+                CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE)
+                .getBoolean(CacheCleanerAccessibilityService.KEY_RUNNING, false);
+        if (active && enabled && accessibilityRunning)
             getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }

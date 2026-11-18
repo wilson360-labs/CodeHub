@@ -42,10 +42,11 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
         holder.name.setText(app.label);
         holder.packageName.setText((app.protectedApp ? "Protegida · " : app.systemApp ? "Sistema · " : "App · ")
                 + app.packageName);
-        boolean recommended = app.cacheBytes > CacheCleaner.DEEP_CLEAN_MIN_CACHE_BYTES
-                && !app.protectedApp && !CacheCleaner.isProtected(app.packageName);
+        boolean recommended = CacheCleaner.isDeepCleanCandidate(app);
         holder.advice.setText(recommended ? "RECOMENDABLE · limpieza segura" : app.protectedApp
                 || CacheCleaner.isProtected(app.packageName) ? "NO RECOMENDABLE · app protegida"
+                : app.systemApp && android.os.Build.VERSION.SDK_INT >= 36
+                ? "PROTEGIDA · sistema Android 16"
                 : "NO RECOMENDABLE · menos de 1 MB");
         holder.advice.setTextColor(recommended ? 0xFF41C99A : 0xFFE7838B);
         holder.itemView.setAlpha(app.protectedApp ? 0.72f : 1f);

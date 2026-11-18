@@ -37,7 +37,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public static final String KEY_TARGET = "target";
     public static final String KEY_ERROR = "error";
     public static final String KEY_CURRENT_APP = "current_app";
-    private static final long STEP_TIMEOUT_MS = 12_000L;
+    private static final long STEP_TIMEOUT_MS = 20_000L;
+    private static final long SERVICE_CONNECT_GRACE_MS = 60_000L;
     private static final int MAX_CACHE_VERIFY_ATTEMPTS = 3;
     private static final long CACHE_VERIFY_RETRY_MS = 1_500L;
     private static final String SETTINGS_PREFS = "settings";
@@ -74,9 +75,22 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 .putString(KEY_SNAPSHOT_ID, snapshotId).putInt(KEY_INDEX, 0)
                 .putInt(KEY_DONE, 0).putInt(KEY_FAILED, 0).putLong(KEY_FREED, 0L)
                 .putLong(KEY_TARGET, total).putString(KEY_ERROR, "")
-                .putInt("total", targets.size()).putString("phase", "Preparando Turbo Tasker")
+                .putInt("total", targets.size()).putString("phase", "APP_INFO")
+                .putString(KEY_CURRENT_APP, targets.get(0).label)
+                .putLong("started_at", android.os.SystemClock.elapsedRealtime())
                 .apply();
-        openAppInfo(context, targets.get(0).packageName);
+        try {
+            CacheCleanerAccessibilityService service = activeInstance;
+            if (service != null) service.handler.post(service::armStepTimeout);
+            openAppInfo(context, targets.get(0).packageName);
+        } catch (RuntimeException error) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putBoolean(KEY_RUNNING, false).putBoolean(KEY_RESULT_PENDING, true)
+                    .putString(KEY_ERROR, "Android no pudo abrir Ajustes para iniciar Turbo Tasker.")
+                    .putString("phase", "Tarea detenida").apply();
+            CacheCleaner.removeCleanupSnapshot(context, snapshotId);
+            throw error;
+        }
     }
 
     public static void openAccessibilitySettings(Context context) {
@@ -103,7 +117,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
             info.notificationTimeout = 100;
             info.flags |= AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-                    | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+                    | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+                    | AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS;
             setServiceInfo(info);
         }
         stopOrphanedRun();
@@ -160,7 +175,9 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 }
             }
             AccessibilityNodeInfo clear = findAction(root, new String[]{
-                    "clear cache", "borrar caché", "borrar cache", "vaciar caché", "vaciar cache", "limpiar caché", "limpiar cache"
+                    "clear cache", "borrar caché", "borrar cache", "vaciar caché", "vaciar cache",
+                    "limpiar caché", "limpiar cache", "eliminar caché", "eliminar cache",
+                    "borrar memoria caché", "borrar memoria cache", "limpar cache"
             });
             if (clear != null && phase.equals("STORAGE")) {
                 try {
@@ -174,10 +191,16 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                     return;
                 } finally { clear.recycle(); }
             }
+            if (phase.equals("STORAGE")) {
+                // Botón aún no visible: intentar desplazar para encontrarlo.
+                scrollForward(root);
+                return;
+            }
             if (phase.equals("APP_INFO")) {
                 AccessibilityNodeInfo storage = findAction(root, new String[]{
-                        "storage & cache", "storage and cache", "storage", "almacenamiento y caché",
-                        "almacenamiento y cache", "almacenamiento"
+                        "storage & cache", "storage and cache", "storage cache", "storage",
+                        "almacenamiento y caché", "almacenamiento y cache", "almacenamiento y memoria",
+                        "almacenamiento", "almacenament", "memoria", "espacio de almacenamiento"
                 });
                 if (storage != null) {
                     try {
@@ -186,7 +209,24 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                             armStepTimeout();
                         }
                     } finally { storage.recycle(); }
+                    return;
                 }
+                // En algunas versiones el botón "Borrar caché" aparece directo en info de app.
+                AccessibilityNodeInfo directClear = findAction(root, new String[]{
+                        "clear cache", "borrar caché", "borrar cache", "vaciar caché", "vaciar cache",
+                        "limpiar caché", "limpiar cache", "eliminar caché", "eliminar cache"
+                });
+                if (directClear != null) {
+                    try {
+                        if (clickNode(directClear)) {
+                            clearStepTimeout();
+                            prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0).apply();
+                            scheduleCacheVerification(targets.get(index), 2_000L);
+                        }
+                    } finally { directClear.recycle(); }
+                    return;
+                }
+                scrollForward(root);
             }
         } finally {
             root.recycle();
@@ -196,7 +236,19 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     private void stopOrphanedRun() {
         android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
-        // A service reconnect must never replay Settings automation by itself.
+        long startedAt = prefs.getLong("started_at", 0L);
+        long age = android.os.SystemClock.elapsedRealtime() - startedAt;
+        if (startedAt > 0L && age >= 0L && age <= SERVICE_CONNECT_GRACE_MS && loadTargets(prefs)) {
+            int index = prefs.getInt(KEY_INDEX, 0);
+            if (index >= 0 && index < targets.size()) {
+                // Accessibility can finish connecting just after the user starts the task.
+                prefs.edit().putString("phase", "APP_INFO")
+                        .putString(KEY_CURRENT_APP, targets.get(index).label).apply();
+                armStepTimeout();
+                return;
+            }
+        }
+        // Never replay a stale run after a later service reconnection.
         finishRun("La tarea anterior se detuvo y no se reanudó automáticamente. Iníciala de nuevo desde Cache Cleaner.");
     }
 
@@ -442,10 +494,17 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
 
     private boolean matches(CharSequence value, String[] labels) {
         if (value == null) return false;
-        String text = value.toString().trim().toLowerCase(Locale.ROOT);
+        String text = normalize(value.toString());
+        if (text.isEmpty()) return false;
         for (String label : labels) {
-            String needle = label.toLowerCase(Locale.ROOT);
-            if (text.equals(needle) || text.startsWith(needle + " ") || text.endsWith(" " + needle)) return true;
+            String needle = normalize(label);
+            if (needle.isEmpty()) continue;
+            if (text.equals(needle)) return true;
+            // Coincidencia flexible: contiene la etiqueta completa (para títulos largos/OEM).
+            if (text.contains(needle) || needle.contains(text)) {
+                // Evita falsos positivos muy cortos.
+                if (Math.min(text.length(), needle.length()) >= 4) return true;
+            }
         }
         return false;
     }
@@ -465,6 +524,26 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         }
         if (current != null && current != node) current.recycle();
         return false;
+    }
+
+    private void scrollForward(AccessibilityNodeInfo node) {
+        if (node == null) return;
+        if (node.isScrollable()) {
+            try { node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD); } catch (Exception ignored) {}
+            return;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            boolean scrollable = child.isScrollable();
+            if (scrollable) {
+                try { child.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD); } catch (Exception ignored) {}
+                child.recycle();
+                return;
+            }
+            scrollForward(child);
+            child.recycle();
+        }
     }
 
     @SuppressWarnings("deprecation")
