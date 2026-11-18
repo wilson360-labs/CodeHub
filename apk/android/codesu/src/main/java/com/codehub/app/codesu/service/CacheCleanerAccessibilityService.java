@@ -39,8 +39,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public static final String KEY_CURRENT_APP = "current_app";
     private static final long STEP_TIMEOUT_MS = 20_000L;
     private static final long SERVICE_CONNECT_GRACE_MS = 60_000L;
-    private static final int MAX_CACHE_VERIFY_ATTEMPTS = 3;
-    private static final long CACHE_VERIFY_RETRY_MS = 1_500L;
+    private static final int MAX_CACHE_VERIFY_ATTEMPTS = 4;
+    private static final long CACHE_VERIFY_RETRY_MS = 500L;
     private static final String SETTINGS_PREFS = "settings";
     private static volatile CacheCleanerAccessibilityService activeInstance;
 
@@ -149,9 +149,12 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         try {
             String phase = prefs.getString("phase", "APP_INFO");
             if (phase.equals("CACHE_CONFIRM_WAIT")) {
+                // Confirmación explícita de "borrar caché" (diálogo).
                 if (hasCacheClearConfirmation(root)) {
                     AccessibilityNodeInfo positive = findClickableAction(root, new String[]{
-                            "clear cache", "borrar cache", "vaciar cache", "clear", "ok", "aceptar", "delete", "borrar", "limpiar"
+                            "clear cache", "borrar cache", "vaciar cache", "limpiar cache",
+                            "clear", "ok", "aceptar", "delete", "borrar", "limpiar",
+                            "eliminar", "eliminar cache", "vaciar"
                     });
                     if (positive == null) {
                         finishRun("Android mostró una confirmación de caché no reconocida. La tarea se pausó sin aceptarla.");
@@ -166,13 +169,16 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                         return;
                     }
                     prefs.edit().putString("phase", "VERIFYING").putInt("verify_attempts", 0).apply();
-                    scheduleCacheVerification(targets.get(index), CACHE_VERIFY_RETRY_MS);
+                    scheduleCacheVerification(targets.get(index), 300L);
                     return;
                 }
-                if (hasClickableAction(root, new String[]{"cancel", "cancelar", "not now", "ahora no", "no"})) {
-                    finishRun("Apareció una confirmación que no se identificó como Borrar caché. La tarea se pausó sin aceptarla.");
-                    return;
-                }
+                // Sin diálogo: muchos dispositivos limpian al instante. Verificación rápida en cada evento.
+                if (trySoftVerify(targets.get(index))) return;
+                // Si hay botones de cancelar pero no reconocimos diálogo de caché, no abortar de inmediato;
+                // seguir esperando (puede ser otra UI transitoria) hasta timeout/verificación.
+            }
+            if (phase.equals("VERIFYING")) {
+                if (trySoftVerify(targets.get(index))) return;
             }
             AccessibilityNodeInfo clear = findAction(root, new String[]{
                     "clear cache", "borrar caché", "borrar cache", "vaciar caché", "vaciar cache",
@@ -187,7 +193,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                     }
                     clearStepTimeout();
                     prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0).apply();
-                    scheduleCacheVerification(targets.get(index), 2_000L);
+                    scheduleCacheVerification(targets.get(index), 600L);
                     return;
                 } finally { clear.recycle(); }
             }
@@ -221,7 +227,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                         if (clickNode(directClear)) {
                             clearStepTimeout();
                             prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0).apply();
-                            scheduleCacheVerification(targets.get(index), 2_000L);
+                            scheduleCacheVerification(targets.get(index), 600L);
                         }
                     } finally { directClear.recycle(); }
                     return;
@@ -357,6 +363,28 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]+", " ").trim();
+    }
+
+    /** Verificación rápida oportunista: si la caché ya bajó, avanza sin esperar al timer/reintentos. */
+    private boolean trySoftVerify(CacheAppInfo app) {
+        android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (!prefs.getBoolean(KEY_RUNNING, false) || app == null) return false;
+        long remaining;
+        try {
+            remaining = CacheCleaner.queryCacheBytes(this, app.packageName);
+        } catch (Exception e) {
+            return false;
+        }
+        long freed = Math.max(0L, app.cacheBytes - remaining);
+        if (freed <= 0L) return false;
+        clearCacheVerificationTask();
+        clearStepTimeout();
+        int index = prefs.getInt(KEY_INDEX, 0) + 1;
+        prefs.edit().putInt(KEY_INDEX, index).putInt(KEY_DONE, prefs.getInt(KEY_DONE, 0) + 1)
+                .putLong(KEY_FREED, prefs.getLong(KEY_FREED, 0L) + freed)
+                .putString("phase", "APP_INFO").apply();
+        advanceOrFinish();
+        return true;
     }
 
     private void verifyAndAdvance(CacheAppInfo app) {
