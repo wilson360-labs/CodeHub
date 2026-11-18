@@ -308,72 +308,55 @@ public final class CacheCleaner {
         long targetBytes = 0L;
         for (CacheAppInfo target : targets) targetBytes += target.cacheBytes;
 
-        // Ruta global (trim-caches): una sola orden a Package Manager. Evita el bucle
-        // per-app que congela/reinicia el dispositivo en Android 14-17 (PM se satura).
-        if (listener != null) listener.onProgress(0, targets.size(), "Limpieza global de caché",
-                false, false, 0L, 0);
-        final java.util.concurrent.atomic.AtomicBoolean trimDone = new java.util.concurrent.atomic.AtomicBoolean(false);
-        final int totalTargets = targets.size();
-        Thread ticker = null;
-        if (listener != null) {
-            ticker = new Thread(() -> {
-                int step = 0;
-                while (!trimDone.get()) {
-                    step++;
-                    // Progreso estimado 0-70% mientras trim-caches corre.
-                    int pseudo = Math.min(totalTargets > 0 ? totalTargets - 1 : 0,
-                            (int) (totalTargets * Math.min(step, 70) / 100L));
-                    try {
-                        listener.onProgress(pseudo, totalTargets, "Limpieza global de caché",
-                                false, false, 0L, 0);
-                    } catch (Exception ignored) {}
-                    try { Thread.sleep(1500L); } catch (InterruptedException e) { return; }
-                }
-            }, "codesu-trim-ticker");
-            ticker.setDaemon(true);
-            ticker.start();
-        }
-        String trimError;
-        try {
-            trimError = runTrimCachesCommand(cancellation);
-        } finally {
-            trimDone.set(true);
-            if (ticker != null) ticker.interrupt();
-        }
-        if (cancellation != null && cancellation.isCancelled())
-            throw new InterruptedException("Limpieza cancelada por el usuario.");
-
+        // Limpieza per-app secuencial con pausas largas. Evita saturar PackageManager
+        // (freeze/reinicio en Android 14-17) y no borra caché de WebView/host como haría
+        // trim-caches global (que puede cerrar CodeHub).
+        int success = 0;
+        int failure = 0;
         long verifiedFreed = 0L;
         int unmeasured = 0;
         List<String> failures = new ArrayList<>();
-        if (trimError != null && !trimError.isEmpty()) {
-            if (failures.size() < 5) failures.add("trim-caches: " + trimError);
-            if (listener != null) listener.onProgress(totalTargets, totalTargets, "Limpieza global",
-                    true, false, 0L, 0);
-            return new ClearResult(0, totalTargets, 0L, 0, targetBytes,
-                    android.text.TextUtils.join("\n", failures));
-        }
-
-        // Medición post-limpieza por lote para estimar bytes liberados sin re-escanear todo.
-        int completed = 0;
-        for (CacheAppInfo target : targets) {
+        int consecutiveFailures = 0;
+        for (int index = 0; index < targets.size(); index++) {
             if (cancellation != null && cancellation.isCancelled())
                 throw new InterruptedException("Limpieza cancelada por el usuario.");
-            long after = 0L;
-            try {
-                after = queryCacheBytes(context, target.packageName);
-                verifiedFreed += Math.max(0L, target.cacheBytes - after);
-            } catch (Exception ignored) {
-                unmeasured++;
+            CacheAppInfo target = targets.get(index);
+            if (listener != null) listener.onProgress(index, targets.size(), target.packageName,
+                    false, false, verifiedFreed, unmeasured);
+            String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName, target.cacheBytes);
+            boolean cleared = detail.isEmpty();
+            long freed = 0L;
+            if (cleared) {
+                consecutiveFailures = 0;
+                try {
+                    freed = Math.max(0L, target.cacheBytes - queryCacheBytes(context, target.packageName));
+                } catch (Exception ignored) {
+                    unmeasured++;
+                }
+                success++;
+                verifiedFreed += freed;
+                if (listener != null) listener.onProgress(index + 1, targets.size(), target.packageName,
+                        true, true, verifiedFreed, unmeasured);
+            } else {
+                consecutiveFailures++;
+                failure++;
+                if (failures.size() < 5)
+                    failures.add(target.label + " (" + target.packageName + "): " + detail);
+                if (listener != null) listener.onProgress(index + 1, targets.size(), target.packageName,
+                        true, false, verifiedFreed, unmeasured);
             }
-            completed++;
-            if (listener != null) listener.onProgress(completed, totalTargets, target.packageName,
-                    true, true, verifiedFreed, unmeasured);
+            if (index + 1 < targets.size()) {
+                if (cancellation != null && cancellation.isCancelled())
+                    throw new InterruptedException("Limpieza cancelada por el usuario.");
+                // Pausa generosa entre apps para no saturar PackageManager (causa de freeze).
+                long pause = cleared ? 1200L : 3000L;
+                // Si hay fallos seguidos, dar más respiro al sistema.
+                if (consecutiveFailures >= 2) pause = Math.max(pause, 5000L);
+                Thread.sleep(pause);
+            }
         }
-        if (listener != null) listener.onProgress(totalTargets, totalTargets, "Limpieza global completada",
-                true, true, verifiedFreed, unmeasured);
         String failureSummary = android.text.TextUtils.join("\n", failures);
-        return new ClearResult(totalTargets - unmeasured, 0, verifiedFreed, unmeasured, targetBytes, failureSummary);
+        return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes, failureSummary);
     }
 
     /**

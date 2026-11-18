@@ -66,15 +66,14 @@ public final class CacheCleanerWorker extends Worker {
             publish(5, "Turbo Shizuku", "Usando la medición visible", 0, eligible, 0L, 0L);
             CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(context, apps,
                     (completed, total, packageName, finished, accepted, freed, unmeasured) -> {
-                        boolean global = packageName != null && packageName.startsWith("Limpieza global");
                         int percent = total == 0 ? 95 : 5 + (int) (completed * 90L / total);
                         String phase;
                         if (!finished) {
-                            phase = "EJECUTANDO · limpieza global";
-                        } else if (global) {
-                            phase = accepted ? "Limpieza global completada" : "Limpieza global rechazada";
+                            phase = "EJECUTANDO · Package Manager";
+                        } else if (accepted) {
+                            phase = "Caché limpiada";
                         } else {
-                            phase = accepted ? "Verificando caché liberada" : "Android rechazó la orden";
+                            phase = "Android rechazó la orden";
                         }
                         publish(percent, phase, packageName, completed, total, freed, 0L);
                     }, this::isStopped);
