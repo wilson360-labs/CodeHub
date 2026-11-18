@@ -382,15 +382,15 @@ public final class CacheCleaner {
      * congelar/reiniciar el dispositivo en Android 14-17). Devuelve null/"" si OK.
      */
     public static String runTrimCachesCommand(CancellationCheck cancellation) {
-        Process process = null;
+        java.lang.Process process = null;
         try {
             java.lang.reflect.Method newProcess = Shizuku.class.getDeclaredMethod(
                     "newProcess", String[].class, String[].class, String.class);
             newProcess.setAccessible(true);
             // Long.MAX_VALUE para pedir al sistema que libere toda la caché posible.
-            process = (Process) newProcess.invoke(null,
+            process = (java.lang.Process) newProcess.invoke(null,
                     new String[]{"sh", "-c", "cmd package trim-caches 9223372036854775807"}, null, null);
-            final Process running = process;
+            final java.lang.Process running = process;
             Thread killer = null;
             if (cancellation != null) {
                 killer = new Thread(() -> {
