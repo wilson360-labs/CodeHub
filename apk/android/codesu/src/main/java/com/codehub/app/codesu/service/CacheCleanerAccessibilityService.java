@@ -37,6 +37,9 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public static final String KEY_TARGET = "target";
     public static final String KEY_ERROR = "error";
     public static final String KEY_CURRENT_APP = "current_app";
+    public static final String KEY_BASELINE = "baseline_bytes";
+    public static final String KEY_SKIPPED = "skipped";
+    private static final long MIN_CLEAR_BYTES = 64L * 1024L; // evitar tareas vacías (<64 KB)
     private static final long STEP_TIMEOUT_MS = 20_000L;
     private static final long SERVICE_CONNECT_GRACE_MS = 60_000L;
     private static final int MAX_CACHE_VERIFY_ATTEMPTS = 4;
@@ -73,7 +76,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean(KEY_RUNNING, true).putBoolean(KEY_RESULT_PENDING, false)
                 .putString(KEY_SNAPSHOT_ID, snapshotId).putInt(KEY_INDEX, 0)
-                .putInt(KEY_DONE, 0).putInt(KEY_FAILED, 0).putLong(KEY_FREED, 0L)
+                .putInt(KEY_DONE, 0).putInt(KEY_FAILED, 0).putInt(KEY_SKIPPED, 0)
+                .putLong(KEY_FREED, 0L).putLong(KEY_BASELINE, -1L)
                 .putLong(KEY_TARGET, total).putString(KEY_ERROR, "")
                 .putInt("total", targets.size()).putString("phase", "APP_INFO")
                 .putString(KEY_CURRENT_APP, targets.get(0).label)
@@ -187,18 +191,24 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             });
             if (clear != null && phase.equals("STORAGE")) {
                 try {
+                    long baseline = resolveBaseline(targets.get(index));
+                    if (baseline < MIN_CLEAR_BYTES) {
+                        skipCurrent("Sin caché suficiente para borrar.");
+                        return;
+                    }
                     if (!clickNode(clear)) {
                         failCurrent("El botón Borrar caché no estaba disponible.");
                         return;
                     }
                     clearStepTimeout();
-                    prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0).apply();
+                    prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0)
+                            .putLong(KEY_BASELINE, baseline).apply();
                     scheduleCacheVerification(targets.get(index), 600L);
                     return;
                 } finally { clear.recycle(); }
             }
             if (phase.equals("STORAGE")) {
-                // Botón aún no visible: intentar desplazar para encontrarlo.
+                // Botón aún no visible o pantalla cargando: intentar desplazar y esperar.
                 scrollForward(root);
                 return;
             }
@@ -211,7 +221,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 if (storage != null) {
                     try {
                         if (clickNode(storage)) {
-                            prefs.edit().putString("phase", "STORAGE").apply();
+                            prefs.edit().putString("phase", "STORAGE").putLong(KEY_BASELINE, -1L).apply();
                             armStepTimeout();
                         }
                     } finally { storage.recycle(); }
@@ -224,9 +234,15 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 });
                 if (directClear != null) {
                     try {
+                        long baseline = resolveBaseline(targets.get(index));
+                        if (baseline < MIN_CLEAR_BYTES) {
+                            skipCurrent("Sin caché suficiente para borrar.");
+                            return;
+                        }
                         if (clickNode(directClear)) {
                             clearStepTimeout();
-                            prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0).apply();
+                            prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0)
+                                    .putLong(KEY_BASELINE, baseline).apply();
                             scheduleCacheVerification(targets.get(index), 600L);
                         }
                     } finally { directClear.recycle(); }
@@ -365,24 +381,27 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 .replaceAll("[^a-z0-9]+", " ").trim();
     }
 
-    /** Verificación rápida oportunista: si la caché ya bajó, avanza sin esperar al timer/reintentos. */
+    /** Verificación rápida oportunista: si la caché bajó respecto al baseline real, avanza. */
     private boolean trySoftVerify(CacheAppInfo app) {
         android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false) || app == null) return false;
+        long baseline = prefs.getLong(KEY_BASELINE, app == null ? 0L : app.cacheBytes);
+        if (baseline <= 0L) baseline = app.cacheBytes;
         long remaining;
         try {
             remaining = CacheCleaner.queryCacheBytes(this, app.packageName);
         } catch (Exception e) {
             return false;
         }
-        long freed = Math.max(0L, app.cacheBytes - remaining);
-        if (freed <= 0L) return false;
+        long freed = Math.max(0L, baseline - remaining);
+        // Confirmado si liberó bytes o si quedó por debajo del umbral mínimo.
+        if (freed <= 0L && remaining >= MIN_CLEAR_BYTES) return false;
         clearCacheVerificationTask();
         clearStepTimeout();
         int index = prefs.getInt(KEY_INDEX, 0) + 1;
         prefs.edit().putInt(KEY_INDEX, index).putInt(KEY_DONE, prefs.getInt(KEY_DONE, 0) + 1)
-                .putLong(KEY_FREED, prefs.getLong(KEY_FREED, 0L) + freed)
-                .putString("phase", "APP_INFO").apply();
+                .putLong(KEY_FREED, prefs.getLong(KEY_FREED, 0L) + Math.max(0L, freed))
+                .putString("phase", "APP_INFO").putLong(KEY_BASELINE, -1L).apply();
         advanceOrFinish();
         return true;
     }
@@ -391,6 +410,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
         int attempts = prefs.getInt("verify_attempts", 0) + 1;
+        long baseline = prefs.getLong(KEY_BASELINE, app.cacheBytes);
+        if (baseline <= 0L) baseline = app.cacheBytes;
         long remaining;
         try {
             remaining = CacheCleaner.queryCacheBytes(this, app.packageName);
@@ -398,15 +419,16 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             retryOrFailVerification(app, attempts, "Android no permitió verificar el resultado de caché.");
             return;
         }
-        long freed = Math.max(0L, app.cacheBytes - remaining);
-        if (freed == 0L) {
+        long freed = Math.max(0L, baseline - remaining);
+        boolean clearedEnough = freed > 0L || remaining < MIN_CLEAR_BYTES;
+        if (!clearedEnough) {
             retryOrFailVerification(app, attempts, "Ajustes no confirmó espacio liberado para esta app.");
             return;
         }
         int index = prefs.getInt(KEY_INDEX, 0) + 1;
         prefs.edit().putInt(KEY_INDEX, index).putInt(KEY_DONE, prefs.getInt(KEY_DONE, 0) + 1)
-                .putLong(KEY_FREED, prefs.getLong(KEY_FREED, 0L) + freed)
-                .putString("phase", "APP_INFO").apply();
+                .putLong(KEY_FREED, prefs.getLong(KEY_FREED, 0L) + Math.max(0L, freed))
+                .putString("phase", "APP_INFO").putLong(KEY_BASELINE, -1L).apply();
         advanceOrFinish();
     }
 
@@ -417,20 +439,42 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             scheduleCacheVerification(app, CACHE_VERIFY_RETRY_MS);
             return;
         }
-        failCurrent(reason + " (" + attempts + " intentos). ");
+        failCurrent(reason + " (" + attempts + " intentos).");
+    }
+
+    private void skipCurrent(String reason) {
+        android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (!prefs.getBoolean(KEY_RUNNING, false)) return;
+        clearCacheVerificationTask();
+        clearStepTimeout();
+        int index = prefs.getInt(KEY_INDEX, 0) + 1;
+        prefs.edit().putInt(KEY_INDEX, index).putInt(KEY_SKIPPED, prefs.getInt(KEY_SKIPPED, 0) + 1)
+                .putString("phase", "APP_INFO").putLong(KEY_BASELINE, -1L).apply();
+        advanceOrFinish();
     }
 
     private void failCurrent(String reason) {
         android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
+        clearCacheVerificationTask();
+        clearStepTimeout();
         int index = prefs.getInt(KEY_INDEX, 0) + 1;
         String old = prefs.getString(KEY_ERROR, "");
         String label = index > 0 && index <= targets.size() ? targets.get(index - 1).label : "App";
         String failure = label + ": " + reason;
         if (old.length() < 800) old = old.isEmpty() ? failure : old + "\n" + failure;
         prefs.edit().putInt(KEY_INDEX, index).putInt(KEY_FAILED, prefs.getInt(KEY_FAILED, 0) + 1)
-                .putString(KEY_ERROR, old).putString("phase", "APP_INFO").apply();
+                .putString(KEY_ERROR, old).putString("phase", "APP_INFO").putLong(KEY_BASELINE, -1L).apply();
         advanceOrFinish();
+    }
+
+    private long resolveBaseline(CacheAppInfo app) {
+        if (app == null) return 0L;
+        try {
+            long now = CacheCleaner.queryCacheBytes(this, app.packageName);
+            if (now >= 0L) return now;
+        } catch (Exception ignored) { }
+        return app.cacheBytes;
     }
 
     private void advanceOrFinish() {
@@ -466,6 +510,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         if (reason != null && !reason.isEmpty()) existing = existing.isEmpty() ? reason : existing + "\n" + reason;
         int done = prefs.getInt(KEY_DONE, 0);
         int failed = prefs.getInt(KEY_FAILED, 0);
+        int skipped = prefs.getInt(KEY_SKIPPED, 0);
         long freed = prefs.getLong(KEY_FREED, 0L);
         String snapshotId = prefs.getString(KEY_SNAPSHOT_ID, null);
         prefs.edit().putBoolean(KEY_RUNNING, false).putBoolean(KEY_RESULT_PENDING, true)
@@ -473,8 +518,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                         reason == null || reason.isEmpty() ? "Limpieza terminada" : "Tarea detenida").apply();
         CacheCleaner.removeCleanupSnapshot(this, snapshotId);
         releaseScreenWakeLock();
-        Toast.makeText(this, "Turbo Tasker · Accesibilidad · " + done + " apps · "
-                + failed + " fallidas · " + CacheAppInfoBytes.format(freed) + " verificados",
+        Toast.makeText(this, "Turbo Tasker · Accesibilidad · " + done + " limpiadas · "
+                + skipped + " sin caché · " + failed + " fallidas · " + CacheAppInfoBytes.format(freed) + " verificados",
                 Toast.LENGTH_LONG).show();
     }
 

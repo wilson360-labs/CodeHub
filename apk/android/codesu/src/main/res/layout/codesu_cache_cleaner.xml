@@ -316,7 +316,7 @@
         android:layout_height="56dp"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="18dp"
-        android:contentDescription="Iniciar limpieza de caché"
+        android:contentDescription="Iniciar o detener limpieza de caché"
         android:elevation="8dp"
         android:text="Iniciar limpieza"
         android:textColor="@color/white"
@@ -326,22 +326,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:backgroundTint="@color/codesu_accent" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/codesu_cache_cancel_button"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="22dp"
-        android:text="Cancelar tarea"
-        android:textAllCaps="false"
-        android:visibility="gone"
-        app:backgroundTint="@color/codesu_surface"
-        app:cornerRadius="14dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:strokeColor="@color/codesu_accent_text"
-        app:strokeWidth="1dp" />
 
     <TextView
         android:id="@+id/codesu_cache_empty"

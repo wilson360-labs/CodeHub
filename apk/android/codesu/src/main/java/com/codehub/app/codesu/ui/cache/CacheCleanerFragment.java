@@ -93,8 +93,7 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheApps.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.codesuCacheApps.setAdapter(adapter);
         binding.codesuUsageAccessButton.setOnClickListener(v -> openUsageAccessSettings());
-        binding.codesuCacheCleanButton.setOnClickListener(v -> confirmGlobalCacheClear());
-        binding.codesuCacheCancelButton.setOnClickListener(v -> cancelCleanup());
+        binding.codesuCacheCleanButton.setOnClickListener(v -> onPrimaryAction());
         binding.codesuCacheEngineShizuku.setOnClickListener(v -> configureEngine(ENGINE_SHIZUKU));
         binding.codesuCacheEngineAccessibility.setOnClickListener(v -> configureEngine(ENGINE_ACCESSIBILITY));
         binding.codesuCacheEngineAction.setOnClickListener(v -> showEngineSetupChooser());
@@ -184,7 +183,8 @@ public class CacheCleanerFragment extends Fragment {
             binding.codesuCacheSafetyNote.setText("CodeSu puede consultar tamaños, pero no iniciar la limpieza protegida en esta versión de Android.");
         }
         binding.codesuCacheEngineAction.setVisibility(supportedApi ? View.VISIBLE : View.GONE);
-        binding.codesuCacheCleanButton.setEnabled(!cleaning && !loading && !measurementStale && supportedApi);
+        if (!cleaning) binding.codesuCacheCleanButton.setText("Iniciar limpieza");
+        binding.codesuCacheCleanButton.setEnabled(cleaning || (!loading && !measurementStale && supportedApi));
         binding.codesuCacheEngineShizuku.setEnabled(!cleaning);
         binding.codesuCacheEngineAccessibility.setEnabled(!cleaning);
         binding.codesuCacheEngineAction.setEnabled(!cleaning);
@@ -409,6 +409,14 @@ public class CacheCleanerFragment extends Fragment {
         }
     }
 
+    private void onPrimaryAction() {
+        if (cleaning) {
+            cancelCleanup();
+        } else {
+            confirmGlobalCacheClear();
+        }
+    }
+
     private void confirmGlobalCacheClear() {
         if (binding == null || cleaning || loading) return;
         if (measurementStale) {
@@ -538,7 +546,6 @@ public class CacheCleanerFragment extends Fragment {
 
     private void setCleanupUi(String label, int percent) {
         refreshEngineUi();
-        binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheRefresh.setEnabled(false);
         binding.codesuCacheRefresh.setAlpha(0.55f);
         binding.codesuCacheProgress.setIndeterminate(false);
@@ -547,10 +554,9 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
         binding.codesuCacheResult.setVisibility(View.GONE);
         binding.codesuCacheProgressText.setText(label + " · " + percent + "%");
-        binding.codesuCacheCleanButton.setText("Limpiando · " + percent + "%");
-        binding.codesuCacheCancelButton.setText("Cancelar tarea");
-        binding.codesuCacheCancelButton.setEnabled(true);
-        binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
+        binding.codesuCacheCleanButton.setVisibility(View.VISIBLE);
+        binding.codesuCacheCleanButton.setEnabled(true);
+        binding.codesuCacheCleanButton.setText("Detener · " + percent + "%");
         updateKeepScreenOnFlag(true);
     }
 
@@ -562,7 +568,6 @@ public class CacheCleanerFragment extends Fragment {
         int current = prefs.getInt(CacheCleanerAccessibilityService.KEY_INDEX, 0);
         int percent = Math.min(99, current * 100 / total);
         String phase = prefs.getString("phase", "Turbo Accesibilidad");
-        binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheRefresh.setEnabled(false);
         binding.codesuCacheRefresh.setAlpha(0.55f);
         binding.codesuCacheProgress.setIndeterminate(false);
@@ -571,14 +576,15 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
         String stage = phase;
         if ("APP_INFO".equals(phase)) stage = "Abriendo ajustes de la app";
-        else if ("STORAGE".equals(phase)) stage = "Abriendo almacenamiento";
-        else if ("CACHE_CONFIRM_WAIT".equals(phase)) stage = "Procesando confirmación de caché";
+        else if ("STORAGE".equals(phase)) stage = "Esperando información de la app";
+        else if ("CACHE_CONFIRM_WAIT".equals(phase)) stage = "Procesando borrado de caché";
         else if ("VERIFYING".equals(phase)) stage = "Verificando caché liberada";
         String app = prefs.getString(CacheCleanerAccessibilityService.KEY_CURRENT_APP, "");
         binding.codesuCacheProgressText.setText(stage + " · " + percent + "% · " + current + "/" + total + " apps"
                 + (app == null || app.trim().isEmpty() ? "" : " · " + app));
-        binding.codesuCacheCleanButton.setText("Limpiando · " + percent + "%");
-        binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
+        binding.codesuCacheCleanButton.setVisibility(View.VISIBLE);
+        binding.codesuCacheCleanButton.setEnabled(true);
+        binding.codesuCacheCleanButton.setText("Detener · " + percent + "%");
         updateKeepScreenOnFlag(true);
         binding.codesuCacheTotal.setText("Automatización visible de Ajustes · no apagues ni bloquees el teléfono");
     }
@@ -589,31 +595,31 @@ public class CacheCleanerFragment extends Fragment {
         measurementStale = true;
         int done = prefs.getInt(CacheCleanerAccessibilityService.KEY_DONE, 0);
         int failed = prefs.getInt(CacheCleanerAccessibilityService.KEY_FAILED, 0);
+        int skipped = prefs.getInt(CacheCleanerAccessibilityService.KEY_SKIPPED, 0);
         int total = Math.max(0, prefs.getInt("total", 0));
-        int attempted = done + failed;
-        int progress = total == 0 ? 0 : Math.min(100, Math.round(attempted * 100f / total));
-        boolean completed = total > 0 && attempted >= total;
+        int processed = done + failed + skipped;
+        int progress = total == 0 ? 0 : Math.min(100, Math.round(processed * 100f / total));
+        boolean completed = total > 0 && processed >= total;
         long freed = prefs.getLong(CacheCleanerAccessibilityService.KEY_FREED, 0L);
         String error = prefs.getString(CacheCleanerAccessibilityService.KEY_ERROR, "");
-        String result = "Turbo Tasker · Accesibilidad · " + done + " apps confirmadas · "
-                + CacheAppAdapter.formatBytes(freed) + " liberados verificados · " + failed + " fallidas";
+        String result = "Turbo Tasker · Accesibilidad · " + done + " limpiadas · " + skipped + " sin caché · "
+                + failed + " fallidas · " + CacheAppAdapter.formatBytes(freed) + " liberados verificados";
         binding.codesuCacheProgress.setProgress(progress);
-        binding.codesuCacheCancelButton.setVisibility(View.GONE);
-        binding.codesuCacheCancelButton.setEnabled(true);
-        binding.codesuCacheCancelButton.setText("Cancelar tarea");
+        binding.codesuCacheCleanButton.setVisibility(View.VISIBLE);
+        binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheCleanButton.setText("Iniciar limpieza");
         updateKeepScreenOnFlag(false);
         binding.codesuCacheProgressText.setText(completed
                 ? "100% · Automatización terminada" : "Tarea detenida · " + progress + "%");
         binding.codesuCacheProgress.setVisibility(View.GONE);
         binding.codesuCacheProgressText.setVisibility(View.GONE);
-        binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
         binding.codesuCacheTotal.setText("Medición anterior · toca Actualizar para ver los tamaños actuales antes de otra limpieza.");
         binding.codesuCacheResult.setText(result + (error == null || error.trim().isEmpty() ? "" : "\n" + error));
         binding.codesuCacheResult.setVisibility(View.VISIBLE);
-        int rate = attempted == 0 ? 0 : Math.round(done * 100f / attempted);
+        int attempted = done + failed;
+        int rate = attempted == 0 ? 100 : Math.round(done * 100f / attempted);
         long target = prefs.getLong(CacheCleanerAccessibilityService.KEY_TARGET, 0L);
         int spaceRate = target <= 0L ? 0 : Math.min(100, Math.round(freed * 100f / target));
         android.content.SharedPreferences stats = requireContext().getSharedPreferences(CLEANER_PREFS, Context.MODE_PRIVATE);
@@ -628,10 +634,9 @@ public class CacheCleanerFragment extends Fragment {
         cleaning = false;
         if (binding == null) return;
         refreshEngineUi();
+        binding.codesuCacheCleanButton.setVisibility(View.VISIBLE);
         binding.codesuCacheCleanButton.setText("Iniciar limpieza");
-        binding.codesuCacheCancelButton.setVisibility(View.GONE);
-        binding.codesuCacheCancelButton.setEnabled(true);
-        binding.codesuCacheCancelButton.setText("Cancelar tarea");
+        binding.codesuCacheCleanButton.setEnabled(!measurementStale && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
         binding.codesuCacheProgress.setVisibility(View.GONE);
@@ -641,8 +646,8 @@ public class CacheCleanerFragment extends Fragment {
 
     private void cancelCleanup() {
         if (binding == null || !cleaning) return;
-        binding.codesuCacheCancelButton.setEnabled(false);
-        binding.codesuCacheCancelButton.setText("Cancelando…");
+        binding.codesuCacheCleanButton.setEnabled(false);
+        binding.codesuCacheCleanButton.setText("Deteniendo…");
         android.content.SharedPreferences accessibility = requireContext().getSharedPreferences(
                 CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE);
         if (accessibility.getBoolean(CacheCleanerAccessibilityService.KEY_RUNNING, false)) {
@@ -700,19 +705,17 @@ public class CacheCleanerFragment extends Fragment {
             cleaning = true;
             loading = false;
             refreshEngineUi();
-            binding.codesuCacheCleanButton.setEnabled(false);
             binding.codesuCacheRefresh.setEnabled(false);
             binding.codesuCacheRefresh.setAlpha(0.55f);
             binding.codesuCacheProgressText.setVisibility(View.VISIBLE);
-            binding.codesuCacheCancelButton.setVisibility(View.VISIBLE);
-            binding.codesuCacheCancelButton.setText("Cancelar tarea");
-            binding.codesuCacheCancelButton.setEnabled(true);
+            binding.codesuCacheCleanButton.setVisibility(View.VISIBLE);
+            binding.codesuCacheCleanButton.setEnabled(true);
             if (waiting) {
                 binding.codesuCacheProgress.setVisibility(View.GONE);
                 String waitingText = state == WorkInfo.State.BLOCKED
                         ? "Esperando dependencia · Worker detenido"
                         : "En cola · Worker aún no iniciado";
-                binding.codesuCacheCleanButton.setText(state == WorkInfo.State.BLOCKED ? "En espera" : "En cola");
+                binding.codesuCacheCleanButton.setText("Detener");
                 binding.codesuCacheProgressText.setText(waitingText);
                 binding.codesuCacheTotal.setText(waitingText);
                 updateKeepScreenOnFlag(false);
@@ -725,7 +728,7 @@ public class CacheCleanerFragment extends Fragment {
             String phase = progress.getString(CacheCleanerWorker.KEY_PHASE);
             String current = progress.getString(CacheCleanerWorker.KEY_CURRENT);
             binding.codesuCacheProgress.setProgress(percent);
-            binding.codesuCacheCleanButton.setText("Limpiando · " + percent + "%");
+            binding.codesuCacheCleanButton.setText("Detener · " + percent + "%");
             updateKeepScreenOnFlag(true);
             int completed = progress.getInt(CacheCleanerWorker.KEY_CLEARED, 0);
             int total = progress.getInt(CacheCleanerWorker.KEY_FAILED, 0);
@@ -738,12 +741,10 @@ public class CacheCleanerFragment extends Fragment {
             return;
         }
         cleaning = false;
-        binding.codesuCacheCancelButton.setVisibility(View.GONE);
-        binding.codesuCacheCancelButton.setEnabled(true);
-        binding.codesuCacheCancelButton.setText("Cancelar tarea");
+        binding.codesuCacheCleanButton.setVisibility(View.VISIBLE);
+        binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheCleanButton.setText("Iniciar limpieza");
         updateKeepScreenOnFlag(false);
-        binding.codesuCacheCleanButton.setEnabled(false);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
         binding.codesuCacheTotal.setText("Medición anterior · toca Actualizar para ver los tamaños actuales antes de otra limpieza.");
