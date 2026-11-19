@@ -129,18 +129,15 @@ public final class DebloaterFragment extends Fragment {
             @Override public void afterTextChanged(Editable s) { }
         });
 
-        binding.codesuDebloaterFilters.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == View.NO_ID) return;
-            if (checkedId == R.id.codesu_filter_all) activeFilter = FILTER_ALL;
-            else if (checkedId == R.id.codesu_filter_recommended) activeFilter = FILTER_RECOMMENDED;
-            else if (checkedId == R.id.codesu_filter_advanced) activeFilter = FILTER_ADVANCED;
-            else if (checkedId == R.id.codesu_filter_expert) activeFilter = FILTER_EXPERT;
-            else if (checkedId == R.id.codesu_filter_unclassified) activeFilter = FILTER_UNCLASSIFIED;
-            else if (checkedId == R.id.codesu_filter_disabled) activeFilter = FILTER_DISABLED;
-            else if (checkedId == R.id.codesu_filter_removed) activeFilter = FILTER_REMOVED;
-            applyFilters();
-        });
-        binding.codesuFilterAll.setChecked(true);
+        binding.codesuFilterAll.setOnClickListener(v -> setFilter(FILTER_ALL));
+        binding.codesuFilterRecommended.setOnClickListener(v -> setFilter(FILTER_RECOMMENDED));
+        binding.codesuFilterAdvanced.setOnClickListener(v -> setFilter(FILTER_ADVANCED));
+        binding.codesuFilterExpert.setOnClickListener(v -> setFilter(FILTER_EXPERT));
+        binding.codesuFilterUnclassified.setOnClickListener(v -> setFilter(FILTER_UNCLASSIFIED));
+        binding.codesuFilterDisabled.setOnClickListener(v -> setFilter(FILTER_DISABLED));
+        binding.codesuFilterRemoved.setOnClickListener(v -> setFilter(FILTER_REMOVED));
+        binding.codesuDebloaterFilters.check(R.id.codesu_filter_all);
+        activeFilter = FILTER_ALL;
 
         binding.codesuDebloaterRefresh.setOnClickListener(v -> loadApps());
         binding.codesuDebloaterConnect.setOnClickListener(v -> connectShizuku());
@@ -266,6 +263,11 @@ public final class DebloaterFragment extends Fragment {
                 DebloaterCatalog.descriptionFor(app.packageName), removed);
         info.selected = selectedPackages.contains(app.packageName);
         return info;
+    }
+
+    private void setFilter(String filter) {
+        activeFilter = filter;
+        applyFilters();
     }
 
     private void applyFilters() {

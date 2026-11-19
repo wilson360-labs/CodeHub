@@ -10,12 +10,18 @@
     <color name="codesu_text_secondary">#FF526267</color>
     <color name="codesu_result_surface">#FFE5F4F3</color>
     <color name="codesu_error">#FFB3261E</color>
-    <color name="codesu_badge_system">#FF526267</color>
+    <color name="codesu_badge_system">#FFB3261E</color>
     <color name="codesu_badge_recommended">#FF2E7D32</color>
     <color name="codesu_badge_advanced">#FFB26A00</color>
     <color name="codesu_badge_expert">#FFB3261E</color>
     <color name="codesu_badge_disabled">#FF6A1B9A</color>
     <color name="codesu_badge_removed">#FF8E1B1B</color>
+    <color name="codesu_badge_system_bg">#FFFFEBEE</color>
+    <color name="codesu_badge_recommended_bg">#FFE8F5E9</color>
+    <color name="codesu_badge_advanced_bg">#FFFFF3E0</color>
+    <color name="codesu_badge_expert_bg">#FFFFEBEE</color>
+    <color name="codesu_badge_disabled_bg">#FFF3E5F5</color>
+    <color name="codesu_badge_removed_bg">#FFFFEBEE</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

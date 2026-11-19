@@ -1,7 +1,6 @@
 package com.codehub.app.codesu.ui.debloater;
 
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -72,6 +71,8 @@ final class DebloaterAdapter extends RecyclerView.Adapter<DebloaterAdapter.Holde
         void bind(DebloaterAppInfo app) {
             PackageManager pm = binding.getRoot().getContext().getPackageManager();
             binding.codesuDebloaterItemName.setText(app.label);
+            binding.codesuDebloaterItemName.setTextColor(ContextCompat.getColor(
+                    binding.getRoot().getContext(), categoryColorRes(app.category)));
             binding.codesuDebloaterItemPackage.setText(app.packageName);
             try {
                 binding.codesuDebloaterItemIcon.setImageDrawable(app.appInfo.loadIcon(pm));
@@ -111,33 +112,39 @@ final class DebloaterAdapter extends RecyclerView.Adapter<DebloaterAdapter.Holde
         private void renderBadges(DebloaterAppInfo app) {
             LinearLayout badges = binding.codesuDebloaterItemBadges;
             badges.removeAllViews();
-            addBadge(badges, "SISTEMA", R.color.codesu_badge_system);
+            addBadge(badges, "SISTEMA", R.color.codesu_badge_system, R.color.codesu_badge_system_bg);
             if (app.removed) {
-                addBadge(badges, "RETIRADA", R.color.codesu_badge_removed);
+                addBadge(badges, "RETIRADA", R.color.codesu_badge_removed, R.color.codesu_badge_removed_bg);
             } else if (app.isDisabledApp()) {
-                addBadge(badges, "DESACTIVADA", R.color.codesu_badge_disabled);
+                addBadge(badges, "DESACTIVADA", R.color.codesu_badge_disabled, R.color.codesu_badge_disabled_bg);
             }
-            int categoryColor;
-            if (DebloaterCatalog.RECOMMENDED.equals(app.category)) {
-                categoryColor = R.color.codesu_badge_recommended;
-            } else if (DebloaterCatalog.ADVANCED.equals(app.category)) {
-                categoryColor = R.color.codesu_badge_advanced;
-            } else if (DebloaterCatalog.EXPERT.equals(app.category)) {
-                categoryColor = R.color.codesu_badge_expert;
-            } else {
-                categoryColor = R.color.codesu_badge_system;
-            }
-            addBadge(badges, DebloaterCatalog.label(app.category), categoryColor);
+            addBadge(badges, DebloaterCatalog.label(app.category), categoryColorRes(app.category),
+                    categoryBackgroundRes(app.category));
         }
 
-        private void addBadge(LinearLayout parent, String label, int colorRes) {
+        private int categoryColorRes(String category) {
+            if (DebloaterCatalog.RECOMMENDED.equals(category)) return R.color.codesu_badge_recommended;
+            if (DebloaterCatalog.ADVANCED.equals(category)) return R.color.codesu_badge_advanced;
+            if (DebloaterCatalog.EXPERT.equals(category)) return R.color.codesu_badge_expert;
+            return R.color.codesu_badge_system;
+        }
+
+        private int categoryBackgroundRes(String category) {
+            if (DebloaterCatalog.RECOMMENDED.equals(category)) return R.color.codesu_badge_recommended_bg;
+            if (DebloaterCatalog.ADVANCED.equals(category)) return R.color.codesu_badge_advanced_bg;
+            if (DebloaterCatalog.EXPERT.equals(category)) return R.color.codesu_badge_expert_bg;
+            return R.color.codesu_badge_system_bg;
+        }
+
+        private void addBadge(LinearLayout parent, String label, int textColorRes, int backgroundColorRes) {
             TextView badge = new TextView(parent.getContext());
             badge.setText(label);
             badge.setTextSize(9f);
-            badge.setTextColor(Color.WHITE);
+            badge.setTextColor(ContextCompat.getColor(parent.getContext(), textColorRes));
             badge.setPadding(dp(5), dp(2), dp(5), dp(2));
             GradientDrawable background = new GradientDrawable();
-            background.setColor(ContextCompat.getColor(parent.getContext(), colorRes));
+            background.setColor(ContextCompat.getColor(parent.getContext(), backgroundColorRes));
+            background.setStroke(dp(1), ContextCompat.getColor(parent.getContext(), textColorRes));
             background.setCornerRadius(dp(8));
             badge.setBackground(background);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
