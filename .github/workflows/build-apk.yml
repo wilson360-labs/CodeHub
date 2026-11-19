@@ -112,6 +112,22 @@ jobs:
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
         continue-on-error: true
 
+      # ── Caché de compilación en Supabase Storage (privado) ──
+      # Misma filosofía que el keystore: mejor esfuerzo. restore nunca
+      # falla el job; si el manifest no existe o el key cambió, se
+      # compila desde cero igual que siempre. Las particiones se validan
+      # al descomprimir y se descartan si vienen corruptas.
+      - name: Restaurar particiones de build desde Supabase
+        continue-on-error: true
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BUILD_CACHE_SUPABASE_PATH: ${{ vars.BUILD_CACHE_SUPABASE_PATH || 'codehub/build' }}
+          BUILD_CACHE_MAX_MB_PER_PART: ${{ vars.BUILD_CACHE_MAX_MB_PER_PART || '280' }}
+          BUILD_CACHE_INCLUDE_DEPS: ${{ vars.BUILD_CACHE_INCLUDE_DEPS || 'false' }}
+        run: bash scripts/build-cache.sh restore
+
       - name: Accept SDK licenses
         run: |
           # Verificar que el SDK esté disponible (ya pre-instalado o vía setup-android)
@@ -136,7 +152,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          gradle assembleDebug --stacktrace > "$RUNNER_TEMP/compile-debug.log" 2>&1
+          gradle assembleDebug --build-cache --stacktrace > "$RUNNER_TEMP/compile-debug.log" 2>&1
           rc=$?
           echo "gradle_rc=$rc" >> "$GITHUB_ENV"
           if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/compile-debug-ok"; fi
@@ -366,7 +382,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
-          gradle assembleRelease --stacktrace \
+          gradle assembleRelease --build-cache --stacktrace \
             -PKEYSTORE_PATH="${{ github.workspace }}/apk/android/app/release.jks" \
             -PKEYSTORE_PASSWORD="${KEYSTORE_PASSWORD}" \
             -PKEY_PASSWORD="${KEY_PASSWORD}" > "$RUNNER_TEMP/release-build.log" 2>&1
@@ -546,6 +562,20 @@ jobs:
             fi
             echo "Firma verificada: $(basename "$APK") · $DIGEST"
           done
+
+      # Se guarda solo tras un build válido. `continue-on-error` garantiza
+      # que un problema de Storage no convierta un build correcto en fallo.
+      - name: Guardar particiones de build en Supabase
+        if: success() && hashFiles('apk/android/**/*.apk') != ''
+        continue-on-error: true
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BUILD_CACHE_SUPABASE_PATH: ${{ vars.BUILD_CACHE_SUPABASE_PATH || 'codehub/build' }}
+          BUILD_CACHE_MAX_MB_PER_PART: ${{ vars.BUILD_CACHE_MAX_MB_PER_PART || '280' }}
+          BUILD_CACHE_INCLUDE_DEPS: ${{ vars.BUILD_CACHE_INCLUDE_DEPS || 'false' }}
+        run: bash scripts/build-cache.sh save
 
       - name: Upload APK artifact
         if: always() && hashFiles('apk/android/**/*.apk') != ''
