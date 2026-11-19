@@ -97,6 +97,7 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheEngineShizuku.setOnClickListener(v -> configureEngine(ENGINE_SHIZUKU));
         binding.codesuCacheEngineAccessibility.setOnClickListener(v -> configureEngine(ENGINE_ACCESSIBILITY));
         binding.codesuCacheEngineAction.setOnClickListener(v -> showEngineSetupChooser());
+        binding.codesuCacheRestrictedSettingsButton.setOnClickListener(v -> openCodeHubAppInfo());
         android.content.SharedPreferences settings = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE);
         binding.codesuCacheKeepScreenOn.setChecked(settings.getBoolean(CacheCleanerWorker.KEEP_SCREEN_ON, true));
         binding.codesuCacheKeepScreenOn.setOnCheckedChangeListener((button, checked) -> {

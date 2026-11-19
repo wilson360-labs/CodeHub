@@ -247,6 +247,19 @@
                 app:backgroundTint="@color/codesu_accent_dark"
                 app:cornerRadius="12dp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/codesu_cache_restricted_settings_button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:minHeight="40dp"
+                android:text="Ajustes restringidos (CodeHub)"
+                android:textAllCaps="false"
+                android:textColor="@color/codesu_accent_text"
+                app:cornerRadius="12dp"
+                app:strokeColor="@color/codesu_accent_text" />
+
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/codesu_cache_keep_screen_on"
                 android:layout_width="match_parent"

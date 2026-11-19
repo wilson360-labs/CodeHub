@@ -40,10 +40,10 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public static final String KEY_BASELINE = "baseline_bytes";
     public static final String KEY_SKIPPED = "skipped";
     private static final long MIN_CLEAR_BYTES = 64L * 1024L; // evitar tareas vacías (<64 KB)
-    private static final long STEP_TIMEOUT_MS = 20_000L;
+    private static final long STEP_TIMEOUT_MS = 90_000L; // la carga de Almacenamiento puede tardar según la app/dispositivo
     private static final long SERVICE_CONNECT_GRACE_MS = 60_000L;
-    private static final int MAX_CACHE_VERIFY_ATTEMPTS = 4;
-    private static final long CACHE_VERIFY_RETRY_MS = 500L;
+    private static final int MAX_CACHE_VERIFY_ATTEMPTS = 30;
+    private static final long CACHE_VERIFY_RETRY_MS = 1500L;
     private static final String SETTINGS_PREFS = "settings";
     private static volatile CacheCleanerAccessibilityService activeInstance;
 
@@ -196,20 +196,23 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                         skipCurrent("Sin caché suficiente para borrar.");
                         return;
                     }
-                    if (!clickNode(clear)) {
-                        failCurrent("El botón Borrar caché no estaba disponible.");
+                    if (clickNode(clear)) {
+                        clearStepTimeout();
+                        prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0)
+                                .putLong(KEY_BASELINE, baseline).apply();
+                        scheduleCacheVerification(targets.get(index), 600L);
                         return;
                     }
-                    clearStepTimeout();
-                    prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0)
-                            .putLong(KEY_BASELINE, baseline).apply();
-                    scheduleCacheVerification(targets.get(index), 600L);
-                    return;
+                    // Botón presente pero aún no habilitado/clicable (info cargando): esperar.
                 } finally { clear.recycle(); }
+                scrollForward(root);
+                armStepTimeout();
+                return;
             }
             if (phase.equals("STORAGE")) {
-                // Botón aún no visible o pantalla cargando: intentar desplazar y esperar.
+                // Botón aún no visible o pantalla cargando: mantener espera hasta que cargue la info y aparezca "Borrar caché".
                 scrollForward(root);
+                armStepTimeout();
                 return;
             }
             if (phase.equals("APP_INFO")) {
@@ -244,11 +247,16 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                             prefs.edit().putString("phase", "CACHE_CONFIRM_WAIT").putInt("verify_attempts", 0)
                                     .putLong(KEY_BASELINE, baseline).apply();
                             scheduleCacheVerification(targets.get(index), 600L);
+                            return;
                         }
+                        // presente pero aún no listo: esperar a que cargue/habilite
                     } finally { directClear.recycle(); }
+                    scrollForward(root);
+                    armStepTimeout();
                     return;
                 }
                 scrollForward(root);
+                armStepTimeout();
             }
         } finally {
             root.recycle();
