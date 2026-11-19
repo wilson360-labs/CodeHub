@@ -317,7 +317,7 @@ public final class CacheCleaner {
         // Ruta global primero en lotes grandes (como zip): binder freeStorageAndNotify + fallback trim-caches.
         // No borra datos/sesiones; solo recorte de caché. Se omite si no hay candidatos o lote pequeño.
         if (targets.size() >= 10 && targetBytes > 50L * 1024L * 1024L) {
-            if (listener != null) listener.onProgress(0, targets.size(), "Limpieza global", false, false, 0L, 0L);
+            if (listener != null) listener.onProgress(0, targets.size(), "Limpieza global", false, false, 0L, 0);
             runGlobalTrim(context, targets, beforeTotal, listener, cancellation);
             if (cancellation != null && cancellation.isCancelled())
                 throw new InterruptedException("Limpieza cancelada por el usuario.");
