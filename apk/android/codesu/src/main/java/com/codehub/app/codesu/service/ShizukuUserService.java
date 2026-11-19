@@ -1,11 +1,14 @@
 package com.codehub.app.codesu.service;
 
+import android.os.IBinder;
 import android.os.SystemClock;
 
-import java.io.IOException;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import com.codehub.app.codesu.IKillAppService;
@@ -82,12 +85,75 @@ public class ShizukuUserService extends IKillAppService.Stub {
     @Override
     public String clearAppCacheDetailedWithEstimate(String pkgName, long estimatedCacheBytes) {
         if (isProtectedCacheTarget(pkgName)) return "Paquete protegido por seguridad.";
+        // 1) Binder directo (deleteApplicationCacheFilesAsUser), estable en Android 15-17
+        String binder = tryBinderDeleteCache(pkgName);
+        if (binder.isEmpty()) return "";
+        // 2) Fallback shell per-app (sin trim-caches global)
+        String r0 = runCacheClearCommand(pkgName, "0", estimatedCacheBytes);
+        if (r0.isEmpty()) return "";
+        String rc = runCacheClearCommand(pkgName, "current", estimatedCacheBytes);
+        if (rc.isEmpty()) return "";
+        if (binder.contains("no disponible") || binder.contains("ServiceManager") || binder.contains("IPackageManager")) {
+            return rc;
+        }
+        return binder + " | " + rc;
+    }
+
+    /** Limpia caché por binder IPackageManager (vía ServiceManager en proceso Shizuku/shell). */
+    private String tryBinderDeleteCache(String pkgName) {
+        try {
+            Class<?> sm = Class.forName("android.os.ServiceManager");
+            Method getService = sm.getMethod("getService", String.class);
+            IBinder binder = (IBinder) getService.invoke(null, "package");
+            if (binder == null) return "ServiceManager no devolvió PackageManager.";
+            Class<?> stub = Class.forName("android.content.pm.IPackageManager$Stub");
+            Method asInterface = stub.getMethod("asInterface", IBinder.class);
+            Object pm = asInterface.invoke(null, binder);
+            if (pm == null) return "No se pudo obtener IPackageManager.";
+            for (Method m : pm.getClass().getMethods()) {
+                if (!"deleteApplicationCacheFilesAsUser".equals(m.getName())) continue;
+                Class<?>[] p = m.getParameterTypes();
+                try {
+                    m.setAccessible(true);
+                    if (p.length == 3) {
+                        m.invoke(pm, pkgName, 0, null);
+                        Thread.sleep(250L);
+                        return "";
+                    } else if (p.length == 4) {
+                        m.invoke(pm, pkgName, 0, null, null);
+                        Thread.sleep(250L);
+                        return "";
+                    }
+                } catch (InvocationTargetException ite) {
+                    Throwable c = ite.getCause() == null ? ite : ite.getCause();
+                    return "binder deleteAsUser: " + (c.getMessage() == null ? c.getClass().getSimpleName() : c.getMessage());
+                }
+            }
+            for (Method m : pm.getClass().getMethods()) {
+                if (!"deleteApplicationCacheFiles".equals(m.getName()) || m.getParameterTypes().length != 2) continue;
+                try {
+                    m.setAccessible(true);
+                    m.invoke(pm, pkgName, null);
+                    Thread.sleep(250L);
+                    return "";
+                } catch (InvocationTargetException ite) {
+                    Throwable c = ite.getCause() == null ? ite : ite.getCause();
+                    return "binder delete: " + (c.getMessage() == null ? c.getClass().getSimpleName() : c.getMessage());
+                }
+            }
+            return "método binder no disponible";
+        } catch (Exception e) {
+            return "binder: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    private String runCacheClearCommand(String pkgName, String user, long estimatedCacheBytes) {
         Process process = null;
         try {
             long extraSteps = Math.max(0L, estimatedCacheBytes) / CACHE_CLEAR_BYTES_PER_EXTRA_5S;
             long timeoutMs = Math.min(CACHE_CLEAR_MAX_TIMEOUT_MS,
                     CACHE_CLEAR_BASE_TIMEOUT_MS + extraSteps * 5_000L);
-            process = new ProcessBuilder("/system/bin/cmd", "package", "clear", "--user", "current", "--cache-only", pkgName)
+            process = new ProcessBuilder("/system/bin/cmd", "package", "clear", "--user", user, "--cache-only", pkgName)
                     .redirectErrorStream(true)
                     .start();
             activeCacheClearProcess = process;
