@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.60';
+const VERSION = 'codehub-v7.61';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -109,6 +109,7 @@ const PRECACHE = [
   // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
   '/dist/assets/js/auth.752c57f409.min.js',
   '/dist/assets/js/bug-reporter.9570ed6f8a.min.js',
+  '/dist/assets/js/changelog-dialog.72b508318f.min.js',
   '/dist/assets/js/connection-alert.93f5557731.min.js',
   '/dist/assets/js/consent-banner.65800153df.min.js',
   '/dist/assets/js/deep-search.0171f144d5.min.js',

@@ -1,9 +1,35 @@
 [
   {
+    "version": "v7.61",
+    "date": "2026-11-19",
+    "type": "feat",
+    "title": "CodeSu inteligente: Turbo fiable, cambios en vivo y ahorro de bateria",
+    "title_en": "Smarter CodeSu: reliable Turbo, live results and battery care",
+    "changes": [
+      "Turbo por Accesibilidad reescrito: sondeo real, gestos de respaldo y sin verificacion bloqueante.",
+      "Al terminar el tasker vuelve a CodeSu y la lista se actualiza con cache real y resultados por app en vivo.",
+      "Ahorro de bateria al 5%: cierra apps seguras y sugiere conectar el cargador antes de KillMyApps.",
+      "Modo juego: al detectar tu juego activa el perfil de rendimiento y libera apps en segundo plano.",
+      "Debloater con busqueda, filtros por categoria/estado, badges de color y acciones por lote.",
+      "Registro de cambios bilingue espanol/ingles con dialogo de actualizacion y boton cerrar.",
+      "CI genera el APK sin firma listo para instalar con MT Manager."
+    ],
+    "changes_en": [
+      "Accessibility Turbo rewritten: real polling, gesture fallback and no blocking verification.",
+      "When the task finishes it returns to CodeSu and the list refreshes with real cache and live per-app results.",
+      "Battery saver at 5%: closes safe apps and suggests plugging in before KillMyApps.",
+      "Game mode: detects your game, switches to the performance profile and frees background apps.",
+      "Debloater with search, category/status filters, color badges and batch actions.",
+      "Bilingual English/Spanish changelog with an update dialog and a close button.",
+      "CI builds an unsigned APK ready to install with MT Manager."
+    ]
+  },
+  {
     "version": "v7.55",
     "date": "2026-10-26",
     "type": "feat",
     "title": "CodeBeat rediseñada y deteccion de ubicacion mas rapida",
+    "title_en": "CodeBeat redesigned and faster location detection",
     "changes": [
       "CodeBeat: tarjeta del reproductor renovada con descripcion y distintivo PRO",
       "CodeBeat: control flotante con portada animada al reproducir y colores de marca",
@@ -11,6 +37,14 @@
       "El clima ya nunca muestra una ciudad ajena cuando la ubicacion esta apagada",
       "Iconos del clima compactos en la barra y el panel de notificaciones",
       "Compilacion de la app nativa mas ligera y estable en CI"
+    ],
+    "changes_en": [
+      "CodeBeat: renewed player card with description and PRO badge",
+      "CodeBeat: floating control with animated cover art and brand colors",
+      "Detect location button: paints the weather instantly and refines via GPS in the background",
+      "Weather no longer shows a foreign city when location is off",
+      "Compact weather icons in the status bar and notification panel",
+      "Lighter, more stable native app build in CI"
     ]
   },
   {
