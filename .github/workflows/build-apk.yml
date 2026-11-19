@@ -10,6 +10,7 @@ on:
       - 'index.html'
       - 'css/**'
       - 'js/**'
+      - 'scripts/build-cache.sh'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
