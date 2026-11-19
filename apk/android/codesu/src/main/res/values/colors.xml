@@ -9,6 +9,13 @@
     <color name="codesu_text_primary">#FF172327</color>
     <color name="codesu_text_secondary">#FF526267</color>
     <color name="codesu_result_surface">#FFE5F4F3</color>
+    <color name="codesu_error">#FFB3261E</color>
+    <color name="codesu_badge_system">#FF526267</color>
+    <color name="codesu_badge_recommended">#FF2E7D32</color>
+    <color name="codesu_badge_advanced">#FFB26A00</color>
+    <color name="codesu_badge_expert">#FFB3261E</color>
+    <color name="codesu_badge_disabled">#FF6A1B9A</color>
+    <color name="codesu_badge_removed">#FF8E1B1B</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

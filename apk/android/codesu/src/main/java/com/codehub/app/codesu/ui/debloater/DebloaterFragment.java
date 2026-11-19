@@ -1,219 +1,498 @@
 package com.codehub.app.codesu.ui.debloater;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Typeface;
 import android.os.Bundle;
-import android.view.Gravity;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+
 import com.codehub.app.codesu.R;
+import com.codehub.app.codesu.databinding.CodesuFragmentDebloaterBinding;
 import com.codehub.app.codesu.util.ShizukuPlusUtils;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import rikka.shizuku.Shizuku;
 
-/** Safely disable or restore system apps for the current Android user via Shizuku. */
+/** Canta-style system app manager: search, filters, badges, selection and batch actions. */
 public final class DebloaterFragment extends Fragment {
     private static final String PREFS = "codesu_debloater";
     private static final String KEY_REMOVED = "removed_system_packages";
+    private static final int REQ_SHIZUKU = 2107;
+
+    private static final String FILTER_ALL = "all";
+    private static final String FILTER_RECOMMENDED = DebloaterCatalog.RECOMMENDED;
+    private static final String FILTER_ADVANCED = DebloaterCatalog.ADVANCED;
+    private static final String FILTER_EXPERT = DebloaterCatalog.EXPERT;
+    private static final String FILTER_UNCLASSIFIED = DebloaterCatalog.UNCLASSIFIED;
+    private static final String FILTER_DISABLED = "disabled";
+    private static final String FILTER_REMOVED = "removed";
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private LinearLayout rows;
-    private TextView status;
-    private int filterMode;
+    private final List<DebloaterAppInfo> allApps = new ArrayList<>();
+    private final List<DebloaterAppInfo> visibleApps = new ArrayList<>();
+    private final Shizuku.OnRequestPermissionResultListener permissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != REQ_SHIZUKU || !isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    updateShizukuState();
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) loadApps();
+                });
+            };
+
+    private CodesuFragmentDebloaterBinding binding;
+    private DebloaterAdapter adapter;
+    private String activeFilter = FILTER_ALL;
+    private boolean loading;
+    private int loadGeneration;
 
     @Nullable @Override
-    public android.view.View onCreateView(@NonNull android.view.LayoutInflater inflater,
-            @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public android.view.View onCreateView(@NonNull LayoutInflater inflater,
+                                          @Nullable ViewGroup container,
+                                          @Nullable Bundle savedInstanceState) {
+        binding = CodesuFragmentDebloaterBinding.inflate(inflater, container, false);
         Context context = requireContext();
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(14), dp(16), dp(8));
-        root.setBackgroundColor(ContextCompat.getColor(context, R.color.codesu_background));
-        TextView eyebrow = text("CODESU · SISTEMA", 12, true);
-        eyebrow.setTextColor(ContextCompat.getColor(context, R.color.codesu_accent_text));
-        root.addView(eyebrow);
-        TextView title = text("Debloater", 24, true);
-        title.setTextColor(ContextCompat.getColor(context, R.color.codesu_text_primary));
-        root.addView(title);
-        TextView description = text("Deshabilita apps de fábrica para este usuario y reactívalas cuando las necesites. No se elimina ningún APK.", 13, false);
-        description.setTextColor(ContextCompat.getColor(context, R.color.codesu_text_secondary));
-        root.addView(description, matchWrap());
 
-        LinearLayout controls = new LinearLayout(context);
-        controls.setGravity(Gravity.CENTER_VERTICAL);
-        Button refresh = new Button(context);
-        refresh.setText("Actualizar");
-        refresh.setOnClickListener(v -> loadApps());
-        Button filter = new Button(context);
-        filter.setText("Ver deshabilitadas");
-        filter.setOnClickListener(v -> {
-            filterMode = (filterMode + 1) % 3;
-            filter.setText(filterMode == 0 ? "Ver deshabilitadas"
-                    : filterMode == 1 ? "Ver retiradas" : "Ver activas");
-            loadApps();
+        adapter = new DebloaterAdapter(new DebloaterAdapter.Listener() {
+            @Override
+            public void onSelectionChanged(DebloaterAppInfo app) {
+                updateSelectionUi();
+            }
+
+            @Override
+            public void onStateAction(DebloaterAppInfo app) {
+                if (app.removed) {
+                    confirmAction(3, Collections.singletonList(app));
+                } else {
+                    confirmAction(app.isEnabledApp() ? 0 : 1, Collections.singletonList(app));
+                }
+            }
+
+            @Override
+            public void onRemoveAction(DebloaterAppInfo app) {
+                confirmAction(app.removed ? 3 : 2, Collections.singletonList(app));
+            }
+
+            @Override
+            public void onInfoAction(DebloaterAppInfo app) {
+                showAppInfo(app);
+            }
         });
-        controls.addView(refresh, new LinearLayout.LayoutParams(0, dp(48), 1));
-        controls.addView(filter, new LinearLayout.LayoutParams(0, dp(48), 1));
-        root.addView(controls);
-        status = text("Conecta Shizuku y concede permiso a CodeHub para cargar la lista.", 12, false);
-        status.setTextColor(ContextCompat.getColor(context, R.color.codesu_text_secondary));
-        root.addView(status, matchWrap());
-        ScrollView scroll = new ScrollView(context);
-        rows = new LinearLayout(context);
-        rows.setOrientation(LinearLayout.VERTICAL);
-        scroll.addView(rows);
-        root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        binding.codesuDebloaterRecycler.setLayoutManager(new LinearLayoutManager(context));
+        binding.codesuDebloaterRecycler.setAdapter(adapter);
+        binding.codesuDebloaterRecycler.setHasFixedSize(true);
+        setupUi();
+        updateShizukuState();
         if (hasShizuku()) loadApps();
-        return root;
+        else applyFilters();
+        return binding.getRoot();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        Shizuku.addRequestPermissionResultListener(permissionListener);
+    }
+
+    @Override
+    public void onStop() {
+        Shizuku.removeRequestPermissionResultListener(permissionListener);
+        super.onStop();
+    }
+
+    private void setupUi() {
+        binding.codesuDebloaterSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { applyFilters(); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+
+        binding.codesuDebloaterFilters.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == View.NO_ID) return;
+            if (checkedId == R.id.codesu_filter_all) activeFilter = FILTER_ALL;
+            else if (checkedId == R.id.codesu_filter_recommended) activeFilter = FILTER_RECOMMENDED;
+            else if (checkedId == R.id.codesu_filter_advanced) activeFilter = FILTER_ADVANCED;
+            else if (checkedId == R.id.codesu_filter_expert) activeFilter = FILTER_EXPERT;
+            else if (checkedId == R.id.codesu_filter_unclassified) activeFilter = FILTER_UNCLASSIFIED;
+            else if (checkedId == R.id.codesu_filter_disabled) activeFilter = FILTER_DISABLED;
+            else if (checkedId == R.id.codesu_filter_removed) activeFilter = FILTER_REMOVED;
+            applyFilters();
+        });
+        binding.codesuFilterAll.setChecked(true);
+
+        binding.codesuDebloaterRefresh.setOnClickListener(v -> loadApps());
+        binding.codesuDebloaterConnect.setOnClickListener(v -> connectShizuku());
+        binding.codesuDebloaterBadgesInfo.setOnClickListener(v -> showBadgesInfo());
+        binding.codesuDebloaterSelectAll.setOnClickListener(v -> selectAllVisible());
+        binding.codesuDebloaterClearSelection.setOnClickListener(v -> clearSelection());
+        binding.codesuDebloaterBatchDisable.setOnClickListener(v -> requestBatch(0));
+        binding.codesuDebloaterBatchEnable.setOnClickListener(v -> requestBatch(1));
+        binding.codesuDebloaterBatchRemove.setOnClickListener(v -> requestBatch(2));
+        binding.codesuDebloaterBatchRestore.setOnClickListener(v -> requestBatch(3));
     }
 
     private boolean hasShizuku() {
-        try { return Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED; }
-        catch (RuntimeException e) { return false; }
+        try {
+            return Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private void updateShizukuState() {
+        if (binding == null) return;
+        boolean running;
+        try { running = Shizuku.pingBinder(); } catch (RuntimeException e) { running = false; }
+        boolean authorized = hasShizuku();
+        binding.codesuDebloaterShizukuState.setText(!running ? "Shizuku detenido"
+                : authorized ? "Shizuku conectado" : "Shizuku sin permiso");
+        binding.codesuDebloaterShizukuState.setTextColor(ContextCompat.getColor(requireContext(),
+                authorized ? R.color.codesu_badge_recommended : R.color.codesu_badge_advanced));
+        binding.codesuDebloaterConnect.setText(!running ? "Abrir Shizuku"
+                : authorized ? "Shizuku listo" : "Dar permiso");
+    }
+
+    private void connectShizuku() {
+        boolean running;
+        try { running = Shizuku.pingBinder(); } catch (RuntimeException e) { running = false; }
+        if (!running) {
+            Intent launch = requireContext().getPackageManager()
+                    .getLaunchIntentForPackage("moe.shizuku.privileged.api");
+            if (launch != null) {
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(launch);
+            } else {
+                Toast.makeText(requireContext(), "Instala e inicia Shizuku; después vuelve a CodeSu.",
+                        Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (hasShizuku()) {
+            Toast.makeText(requireContext(), "Shizuku ya está autorizado.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            Shizuku.requestPermission(REQ_SHIZUKU);
+        } catch (RuntimeException e) {
+            Toast.makeText(requireContext(), "No se pudo pedir el permiso de Shizuku.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void loadApps() {
-        if (rows == null) return;
+        if (binding == null) return;
+        updateShizukuState();
         if (!hasShizuku()) {
-            status.setText("Shizuku está desconectado o sin permiso. Autoriza CodeHub desde Settings de CodeSu.");
-            rows.removeAllViews();
+            allApps.clear();
+            applyFilters();
+            Toast.makeText(requireContext(), "Shizuku no está activo o CodeSu no tiene permiso.",
+                    Toast.LENGTH_LONG).show();
             return;
         }
-        status.setText("Cargando apps del sistema…");
-        Context context = requireContext().getApplicationContext();
+        int generation = ++loadGeneration;
+        loading = true;
+        binding.codesuDebloaterLoading.setVisibility(View.VISIBLE);
+        binding.codesuDebloaterStatus.setText("Cargando apps del sistema…");
+        Context appContext = requireContext().getApplicationContext();
+        Set<String> selectedPackages = new HashSet<>();
+        for (DebloaterAppInfo app : allApps) if (app.selected) selectedPackages.add(app.packageName);
+
         executor.execute(() -> {
-            PackageManager pm = context.getPackageManager();
-            List<ApplicationInfo> result = new ArrayList<>();
-            if (filterMode == 2) {
-                java.util.Set<String> removed = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                        .getStringSet(KEY_REMOVED, java.util.Collections.emptySet());
+            List<DebloaterAppInfo> loaded = new ArrayList<>();
+            try {
+                PackageManager pm = appContext.getPackageManager();
+                Set<String> removed = removedSet(appContext);
+                List<ApplicationInfo> installed = pm.getInstalledApplications(
+                        PackageManager.MATCH_DISABLED_COMPONENTS);
+                for (ApplicationInfo app : installed) {
+                    if ((app.flags & ApplicationInfo.FLAG_SYSTEM) == 0) continue;
+                    if (isProtected(app.packageName) || removed.contains(app.packageName)) continue;
+                    loaded.add(toInfo(app, false, selectedPackages, pm));
+                }
                 for (String pkg : removed) {
+                    if (isProtected(pkg)) continue;
                     try {
-                        ApplicationInfo app = pm.getApplicationInfo(pkg, PackageManager.MATCH_UNINSTALLED_PACKAGES);
-                        if ((app.flags & ApplicationInfo.FLAG_SYSTEM) != 0 && !isProtected(pkg)) result.add(app);
+                        ApplicationInfo app = pm.getApplicationInfo(pkg,
+                                PackageManager.MATCH_UNINSTALLED_PACKAGES
+                                        | PackageManager.MATCH_DISABLED_COMPONENTS);
+                        if ((app.flags & ApplicationInfo.FLAG_SYSTEM) == 0) continue;
+                        loaded.add(toInfo(app, true, selectedPackages, pm));
                     } catch (PackageManager.NameNotFoundException ignored) { }
                 }
-            } else {
-                List<ApplicationInfo> installed = pm.getInstalledApplications(PackageManager.MATCH_DISABLED_COMPONENTS);
-                for (ApplicationInfo app : installed) {
-                    if ((app.flags & ApplicationInfo.FLAG_SYSTEM) == 0 || isProtected(app.packageName)) continue;
-                    if (filterMode == 1 ? !app.enabled : app.enabled) result.add(app);
-                }
+                Collections.sort(loaded, (left, right) -> left.label.compareToIgnoreCase(right.label));
+            } catch (Exception e) {
+                loaded.clear();
             }
-            Collections.sort(result, (left, right) -> String.CASE_INSENSITIVE_ORDER.compare(
-                    String.valueOf(pm.getApplicationLabel(left)), String.valueOf(pm.getApplicationLabel(right))));
-            if (!isAdded()) return;
-            requireActivity().runOnUiThread(() -> renderApps(result));
+            if (!isAdded() || generation != loadGeneration) return;
+            requireActivity().runOnUiThread(() -> {
+                loading = false;
+                if (generation != loadGeneration || binding == null) return;
+                binding.codesuDebloaterLoading.setVisibility(View.GONE);
+                allApps.clear();
+                allApps.addAll(loaded);
+                applyFilters();
+            });
         });
     }
 
-    private void renderApps(List<ApplicationInfo> apps) {
-        if (rows == null) return;
-        rows.removeAllViews();
-        status.setText(apps.size() + (filterMode == 1 ? " apps deshabilitadas"
-                : filterMode == 2 ? " apps retiradas para este usuario" : " apps activas")
-                + " · acciones reversibles para este usuario");
-        PackageManager pm = requireContext().getPackageManager();
-        for (ApplicationInfo app : apps) {
-            LinearLayout card = new LinearLayout(requireContext());
-            card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(14), dp(10), dp(14), dp(10));
-            card.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.codesu_surface));
-            LinearLayout.LayoutParams cardParams = matchWrap();
-            cardParams.bottomMargin = dp(8);
-            rows.addView(card, cardParams);
-            TextView name = text(String.valueOf(pm.getApplicationLabel(app)), 15, true);
-            name.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_text_primary));
-            card.addView(name);
-            TextView packageName = text(app.packageName + (app.enabled ? " · activa" : " · deshabilitada"), 11, false);
-            packageName.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_text_secondary));
-            card.addView(packageName);
-            LinearLayout actions = new LinearLayout(requireContext());
-            Button stateAction = new Button(requireContext());
-            stateAction.setText(filterMode == 2 ? "Restaurar" : app.enabled ? "Deshabilitar" : "Reactivar");
-            actions.addView(stateAction, new LinearLayout.LayoutParams(0, dp(48), 1));
-            stateAction.setOnClickListener(v -> {
-                if (filterMode == 2) confirmRestore(app);
-                else confirm(app, !app.enabled);
-            });
-            if (filterMode != 2) {
-                Button remove = new Button(requireContext());
-                remove.setText("Retirar");
-                actions.addView(remove, new LinearLayout.LayoutParams(0, dp(48), 1));
-                remove.setOnClickListener(v -> confirmRemove(app));
-            }
-            card.addView(actions, matchWrap());
-        }
-        if (apps.isEmpty()) status.setText(filterMode == 1 ? "No hay apps deshabilitadas."
-                : filterMode == 2 ? "No hay apps retiradas para este usuario."
-                : "No hay apps del sistema disponibles para mostrar.");
+    private DebloaterAppInfo toInfo(ApplicationInfo app, boolean removed,
+                                    Set<String> selectedPackages, PackageManager pm) {
+        String label = String.valueOf(pm.getApplicationLabel(app));
+        if (label.trim().isEmpty()) label = app.packageName;
+        DebloaterAppInfo info = new DebloaterAppInfo(app, label,
+                DebloaterCatalog.categoryFor(app.packageName),
+                DebloaterCatalog.descriptionFor(app.packageName), removed);
+        info.selected = selectedPackages.contains(app.packageName);
+        return info;
     }
 
-    private void confirm(ApplicationInfo app, boolean enable) {
-        String name = String.valueOf(requireContext().getPackageManager().getApplicationLabel(app));
+    private void applyFilters() {
+        if (binding == null || adapter == null) return;
+        visibleApps.clear();
+        String query = binding.codesuDebloaterSearch.getText() == null ? ""
+                : binding.codesuDebloaterSearch.getText().toString().trim().toLowerCase(Locale.ROOT);
+        for (DebloaterAppInfo app : allApps) {
+            if (!matchesFilter(app)) continue;
+            if (!query.isEmpty() && !app.label.toLowerCase(Locale.ROOT).contains(query)
+                    && !app.packageName.toLowerCase(Locale.ROOT).contains(query)
+                    && !app.description.toLowerCase(Locale.ROOT).contains(query)) continue;
+            visibleApps.add(app);
+        }
+        adapter.submit(visibleApps);
+        binding.codesuDebloaterEmpty.setVisibility(visibleApps.isEmpty() ? View.VISIBLE : View.GONE);
+        binding.codesuDebloaterEmpty.setText(loading ? "Cargando…"
+                : "No hay apps para este filtro.");
+
+        int active = 0, disabled = 0, removed = 0;
+        for (DebloaterAppInfo app : allApps) {
+            if (app.removed) removed++;
+            else if (app.isEnabledApp()) active++;
+            else disabled++;
+        }
+        binding.codesuDebloaterStatus.setText("Mostrando " + visibleApps.size() + " de " + allApps.size()
+                + " · activas " + active + " · desactivadas " + disabled + " · retiradas " + removed);
+        updateSelectionUi();
+    }
+
+    private boolean matchesFilter(DebloaterAppInfo app) {
+        if (FILTER_ALL.equals(activeFilter)) return true;
+        if (FILTER_REMOVED.equals(activeFilter)) return app.removed;
+        if (app.removed) return false;
+        if (FILTER_DISABLED.equals(activeFilter)) return app.isDisabledApp();
+        return activeFilter.equals(app.category);
+    }
+
+    private void selectAllVisible() {
+        for (DebloaterAppInfo app : visibleApps) app.selected = true;
+        adapter.notifyDataSetChanged();
+        updateSelectionUi();
+    }
+
+    private void clearSelection() {
+        for (DebloaterAppInfo app : allApps) app.selected = false;
+        adapter.notifyDataSetChanged();
+        updateSelectionUi();
+    }
+
+    private void updateSelectionUi() {
+        if (binding == null) return;
+        int count = 0, enabled = 0, disabled = 0, removed = 0;
+        for (DebloaterAppInfo app : allApps) {
+            if (!app.selected) continue;
+            count++;
+            if (app.removed) removed++;
+            else if (app.isEnabledApp()) enabled++;
+            else disabled++;
+        }
+        binding.codesuDebloaterSelectionBar.setVisibility(count == 0 ? View.GONE : View.VISIBLE);
+        binding.codesuDebloaterSelectionCount.setText(count + " seleccionadas");
+        binding.codesuDebloaterBatchDisable.setEnabled(enabled > 0);
+        binding.codesuDebloaterBatchEnable.setEnabled(disabled > 0);
+        binding.codesuDebloaterBatchRemove.setEnabled(enabled + disabled > 0);
+        binding.codesuDebloaterBatchRestore.setEnabled(removed > 0);
+    }
+
+    private List<DebloaterAppInfo> selectedApps() {
+        List<DebloaterAppInfo> selected = new ArrayList<>();
+        for (DebloaterAppInfo app : allApps) if (app.selected) selected.add(app);
+        return selected;
+    }
+
+    private void requestBatch(int action) {
+        if (!hasShizuku()) {
+            Toast.makeText(requireContext(), "Shizuku no está disponible. No se hizo ningún cambio.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<DebloaterAppInfo> targets = selectedApps();
+        if (targets.isEmpty()) return;
+        confirmAction(action, targets);
+    }
+
+    private void confirmAction(int action, List<DebloaterAppInfo> targets) {
+        if (!hasShizuku()) {
+            Toast.makeText(requireContext(), "Shizuku no está disponible. No se hizo ningún cambio.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        String title;
+        String message;
+        String positive;
+        if (action == 0) {
+            title = "Deshabilitar apps";
+            message = "Se deshabilitarán para este usuario. Los APK permanecen instalados y se pueden reactivar.";
+            positive = "Deshabilitar";
+        } else if (action == 1) {
+            title = "Reactivar apps";
+            message = "Se volverán a habilitar para este usuario.";
+            positive = "Reactivar";
+        } else if (action == 2) {
+            title = "Retirar apps del usuario";
+            message = "Se desinstalarán solo para este usuario. Podrás restaurarlas desde “Retiradas”. "
+                    + "Algunas funciones del fabricante pueden dejar de estar disponibles.";
+            positive = "Retirar";
+        } else {
+            title = "Restaurar apps";
+            message = "Se reinstalarán para este usuario desde el paquete del sistema.";
+            positive = "Restaurar";
+        }
         new AlertDialog.Builder(requireContext())
-                .setTitle(enable ? "Reactivar app" : "Deshabilitar app")
-                .setMessage(enable ? "Se volverá a habilitar " + name + " para este usuario."
-                        : "Se deshabilitará " + name + " para este usuario. El APK permanece instalado. Algunas funciones del fabricante pueden dejar de estar disponibles.")
+                .setTitle(title)
+                .setMessage(message + "\n\n" + formatNames(targets))
                 .setNegativeButton("Cancelar", null)
-                .setPositiveButton(enable ? "Reactivar" : "Deshabilitar", (dialog, which) -> changeState(app, enable ? 1 : 0))
+                .setPositiveButton(positive, (dialog, which) -> applyBatch(action, targets))
                 .show();
     }
 
-    private void confirmRemove(ApplicationInfo app) {
-        String name = String.valueOf(requireContext().getPackageManager().getApplicationLabel(app));
-        new AlertDialog.Builder(requireContext()).setTitle("Retirar del usuario")
-                .setMessage("Se desinstalará " + name + " solo para este usuario. El paquete del sistema permanece en el dispositivo y podrás restaurarlo desde ‘Apps retiradas’. Algunas funciones del fabricante pueden dejar de estar disponibles.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Retirar", (dialog, which) -> changeState(app, 2)).show();
+    private String formatNames(List<DebloaterAppInfo> targets) {
+        StringBuilder builder = new StringBuilder();
+        int limit = Math.min(5, targets.size());
+        for (int i = 0; i < limit; i++) {
+            if (i > 0) builder.append("\n");
+            builder.append("• ").append(targets.get(i).label);
+        }
+        if (targets.size() > limit) builder.append("\n… y ").append(targets.size() - limit).append(" más");
+        return builder.toString();
     }
 
-    private void confirmRestore(ApplicationInfo app) {
-        String name = String.valueOf(requireContext().getPackageManager().getApplicationLabel(app));
-        new AlertDialog.Builder(requireContext()).setTitle("Restaurar app")
-                .setMessage("Se volverá a instalar " + name + " para este usuario.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Restaurar", (dialog, which) -> changeState(app, 3)).show();
-    }
+    private void applyBatch(int action, List<DebloaterAppInfo> targets) {
+        if (binding == null) return;
+        Context appContext = requireContext().getApplicationContext();
+        binding.codesuDebloaterBatchProgress.setMax(targets.size());
+        binding.codesuDebloaterBatchProgress.setProgress(0);
+        binding.codesuDebloaterBatchProgress.setVisibility(View.VISIBLE);
 
-    private void changeState(ApplicationInfo app, int action) {
-        status.setText(action == 1 || action == 3 ? "Restaurando…" : action == 2 ? "Retirando…" : "Deshabilitando…");
         executor.execute(() -> {
-            String result = ShizukuPlusUtils.manageSystemApp(app.packageName, action);
+            Set<String> removed = removedSet(appContext);
+            int ok = 0;
+            int failed = 0;
+            List<String> errors = new ArrayList<>();
+            for (int i = 0; i < targets.size(); i++) {
+                DebloaterAppInfo target = targets.get(i);
+                if (isProtected(target.packageName)) {
+                    failed++;
+                    if (errors.size() < 3) errors.add(target.label + ": protegida");
+                } else {
+                    String result = ShizukuPlusUtils.manageSystemApp(target.packageName, action);
+                    if (result != null && result.startsWith("OK:")) {
+                        ok++;
+                        if (action == 2) removed.add(target.packageName);
+                        if (action == 3) removed.remove(target.packageName);
+                    } else {
+                        failed++;
+                        if (errors.size() < 3) errors.add(target.label + ": " + result);
+                    }
+                }
+                final int done = i + 1;
+                if (isAdded()) {
+                    requireActivity().runOnUiThread(() -> {
+                        if (binding != null) binding.codesuDebloaterBatchProgress.setProgress(done);
+                    });
+                }
+            }
+            appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putStringSet(KEY_REMOVED, removed).apply();
             if (!isAdded()) return;
             requireActivity().runOnUiThread(() -> {
-                if (result != null && result.startsWith("OK:")) {
-                    java.util.Set<String> removed = new java.util.HashSet<>(requireContext()
-                            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                            .getStringSet(KEY_REMOVED, java.util.Collections.emptySet()));
-                    if (action == 2) removed.add(app.packageName);
-                    if (action == 3) removed.remove(app.packageName);
-                    requireContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                            .putStringSet(KEY_REMOVED, removed).apply();
-                }
-                android.widget.Toast.makeText(requireContext(), result, android.widget.Toast.LENGTH_LONG).show();
+                if (binding == null) return;
+                binding.codesuDebloaterBatchProgress.setVisibility(View.GONE);
+                String summary = "Correctas: " + ok + " · fallidas: " + failed;
+                if (!errors.isEmpty()) summary += "\n" + android.text.TextUtils.join("\n", errors);
+                Toast.makeText(requireContext(), summary, Toast.LENGTH_LONG).show();
+                clearSelection();
                 loadApps();
             });
         });
     }
 
+    private void showAppInfo(DebloaterAppInfo app) {
+        String state = app.removed ? "Retirada para este usuario"
+                : app.isEnabledApp() ? "Activa" : "Desactivada";
+        String message = "Paquete: " + app.packageName
+                + "\nEstado: " + state
+                + "\nNivel: " + DebloaterCatalog.label(app.category)
+                + "\n\n" + app.description;
+        new AlertDialog.Builder(requireContext())
+                .setTitle(app.label)
+                .setMessage(message)
+                .setNegativeButton(app.removed ? "Restaurar"
+                        : app.isEnabledApp() ? "Deshabilitar" : "Reactivar",
+                        (dialog, which) -> confirmAction(app.removed ? 3
+                                : app.isEnabledApp() ? 0 : 1, Collections.singletonList(app)))
+                .setNeutralButton(app.removed ? "Reinstalar" : "Retirar",
+                        (dialog, which) -> confirmAction(app.removed ? 3 : 2, Collections.singletonList(app)))
+                .setPositiveButton("Cerrar", null)
+                .show();
+    }
+
+    private void showBadgesInfo() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Niveles y seguridad")
+                .setMessage("SISTEMA: app preinstalada.\n\n"
+                        + "RECOMENDADA: pago o reemplazable por una alternativa.\n\n"
+                        + "AVANZADA: puede quitar funciones secundarias del fabricante.\n\n"
+                        + "EXPERTA: puede afectar funciones importantes. Revisa antes de aplicar.\n\n"
+                        + "RETIRADA: desinstalada solo para este usuario; se puede restaurar.\n\n"
+                        + "Las sugerencias son locales y orientativas. CodeHub no deshabilita nada automáticamente: "
+                        + "cada acción se confirma y pasa por las protecciones del servicio Shizuku.")
+                .setPositiveButton("Entendido", null)
+                .show();
+    }
+
+    private Set<String> removedSet(Context context) {
+        return new HashSet<>(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getStringSet(KEY_REMOVED, Collections.emptySet()));
+    }
+
     private boolean isProtected(String pkg) {
+        if (pkg == null) return true;
         return pkg.equals("com.codehub.app") || pkg.equals("android")
                 || pkg.equals("com.android.systemui") || pkg.equals("com.android.settings")
                 || pkg.equals("com.android.shell") || pkg.equals("com.android.phone")
+                || pkg.equals("com.android.bluetooth") || pkg.equals("com.android.nfc")
+                || pkg.equals("com.android.media") || pkg.equals("com.android.sharedstoragebackup")
                 || pkg.equals("com.android.permissioncontroller") || pkg.equals("com.android.packageinstaller")
                 || pkg.equals("com.google.android.gms") || pkg.equals("com.google.android.gsf")
                 || pkg.equals("com.google.android.vending") || pkg.equals("moe.shizuku.privileged.api")
@@ -228,16 +507,15 @@ public final class DebloaterFragment extends Fragment {
                 || pkg.startsWith("com.android.launcher") || pkg.startsWith("com.google.android.inputmethod");
     }
 
-    private TextView text(String value, int sp, boolean bold) {
-        TextView view = new TextView(requireContext());
-        view.setText(value);
-        view.setTextSize(sp);
-        if (bold) view.setTypeface(null, Typeface.BOLD);
-        return view;
+    @Override
+    public void onDestroyView() {
+        binding = null;
+        super.onDestroyView();
     }
-    private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + 0.5f); }
-    private LinearLayout.LayoutParams matchWrap() {
-        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+    @Override
+    public void onDestroy() {
+        executor.shutdownNow();
+        super.onDestroy();
     }
-    @Override public void onDestroy() { executor.shutdownNow(); super.onDestroy(); }
 }
