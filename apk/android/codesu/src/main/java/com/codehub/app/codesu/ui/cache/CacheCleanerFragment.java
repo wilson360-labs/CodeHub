@@ -31,6 +31,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.databinding.CodesuCacheCleanerBinding;
@@ -51,6 +54,7 @@ public class CacheCleanerFragment extends Fragment {
     private boolean hasMeasurement;
     private boolean measurementStale = true;
     private int loadGeneration;
+    private boolean autoRefreshScheduled;
     private static final String CLEANER_PREFS = "codesu_cache_cleaner";
     private static final String LAST_WORK_ID = "last_cleanup_work_id";
     private static final int ENGINE_SHIZUKU = 0;
@@ -69,6 +73,7 @@ public class CacheCleanerFragment extends Fragment {
             if (binding == null || !isAdded()) return;
             android.content.SharedPreferences prefs = requireContext().getSharedPreferences(
                     CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE);
+            applyLiveResults(prefs);
             if (prefs.getBoolean(CacheCleanerAccessibilityService.KEY_RUNNING, false)) {
                 renderAccessibilityProgress(prefs);
                 accessibilityProgressHandler.postDelayed(this, 500L);
@@ -325,6 +330,10 @@ public class CacheCleanerFragment extends Fragment {
                     binding.codesuCacheRefresh.setEnabled(true);
                     binding.codesuCacheRefresh.setAlpha(1f);
                     adapter.submit(apps);
+                    // Conserva el badge real (limpiada/omitida/fallida) tras el rescaneo,
+                    // pero mostrando el tamaño recién medido, no el viejo.
+                    applyLiveResults(requireContext().getSharedPreferences(
+                            CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE), true);
                     hasMeasurement = true;
                     measurementStale = false;
                     long totalBytes = 0L;
@@ -561,6 +570,30 @@ public class CacheCleanerFragment extends Fragment {
         updateKeepScreenOnFlag(true);
     }
 
+    /** Refresca fila por fila con el tamaño real medido por el tasker (apps en vivo). */
+    private void applyLiveResults(android.content.SharedPreferences prefs) {
+        applyLiveResults(prefs, false);
+    }
+
+    /** Tras el rescaneo mostramos el badge del tasker con el tamaño recién medido. */
+    private void applyLiveResults(android.content.SharedPreferences prefs, boolean freshSize) {
+        if (binding == null || adapter == null) return;
+        try {
+            JSONArray rows = new JSONArray(prefs.getString(
+                    CacheCleanerAccessibilityService.KEY_RESULTS, "[]"));
+            for (int i = 0; i < rows.length(); i++) {
+                JSONObject row = rows.optJSONObject(i);
+                if (row == null) continue;
+                String pkg = row.optString("pkg", "");
+                if (pkg.isEmpty()) continue;
+                long after = freshSize ? -1L : row.optLong("after", -1L);
+                adapter.setLiveResult(pkg, row.optString("status", ""), after);
+            }
+        } catch (Exception ignored) {
+            // Resultados informativos: una medición fallida no detiene la tarea.
+        }
+    }
+
     private void renderAccessibilityProgress(android.content.SharedPreferences prefs) {
         if (binding == null) return;
         cleaning = true;
@@ -616,7 +649,7 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgressText.setVisibility(View.GONE);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
-        binding.codesuCacheTotal.setText("Medición anterior · toca Actualizar para ver los tamaños actuales antes de otra limpieza.");
+        binding.codesuCacheTotal.setText("Actualizando tamaños reales automáticamente…");
         binding.codesuCacheResult.setText(result + (error == null || error.trim().isEmpty() ? "" : "\n" + error));
         binding.codesuCacheResult.setVisibility(View.VISIBLE);
         int attempted = done + failed;
@@ -628,7 +661,19 @@ public class CacheCleanerFragment extends Fragment {
                 .putLong("last_freed_bytes", freed).apply();
         prefs.edit().putBoolean(CacheCleanerAccessibilityService.KEY_RESULT_PENDING, false).apply();
         refreshEngineUi();
+        applyLiveResults(prefs);
         Toast.makeText(requireContext(), result, Toast.LENGTH_LONG).show();
+        scheduleAutoRefresh();
+    }
+
+    /** Rescanea la caché real tras limpiar, sin pedir al usuario que toque Actualizar. */
+    private void scheduleAutoRefresh() {
+        if (autoRefreshScheduled) return;
+        autoRefreshScheduled = true;
+        accessibilityProgressHandler.postDelayed(() -> {
+            autoRefreshScheduled = false;
+            loadCacheApps();
+        }, 700L);
     }
 
     private void resetCleanupUi() {
@@ -748,7 +793,7 @@ public class CacheCleanerFragment extends Fragment {
         updateKeepScreenOnFlag(false);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
-        binding.codesuCacheTotal.setText("Medición anterior · toca Actualizar para ver los tamaños actuales antes de otra limpieza.");
+        binding.codesuCacheTotal.setText("Actualizando tamaños reales automáticamente…");
         if (!state.isFinished()) return;
         measurementStale = true;
         String workId = info.getId().toString();
@@ -777,5 +822,6 @@ public class CacheCleanerFragment extends Fragment {
                 .putString("last_cleanup_shown_id", workId).apply();
         refreshEngineUi();
         Toast.makeText(requireContext(), result, Toast.LENGTH_LONG).show();
+        scheduleAutoRefresh();
     }
 }

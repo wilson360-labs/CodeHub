@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import com.codehub.app.codesu.model.CacheAppInfo;
 import com.codehub.app.codesu.util.CacheCleaner;
 import com.codehub.app.codesu.worker.CacheCleanerWorker;
@@ -52,6 +55,8 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public static final String KEY_CURRENT_APP = "current_app";
     public static final String KEY_BASELINE = "baseline_bytes";
     public static final String KEY_SKIPPED = "skipped";
+    /** Resultados por app (JSON) para la lista "live" de Cache Cleaner. */
+    public static final String KEY_RESULTS = "results";
     private static final long MIN_CLEAR_BYTES = 64L * 1024L; // evitar tareas vacías (<64 KB)
 
     // Sondeo: la pantalla de Almacenamiento puede tardar y no siempre emite eventos.
@@ -134,6 +139,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                 .putString(KEY_SNAPSHOT_ID, snapshotId).putInt(KEY_INDEX, 0)
                 .putInt(KEY_DONE, 0).putInt(KEY_FAILED, 0).putInt(KEY_SKIPPED, 0)
                 .putLong(KEY_FREED, 0L).putLong(KEY_BASELINE, -1L)
+                .putString(KEY_RESULTS, "[]")
                 .putLong(KEY_TARGET, total).putString(KEY_ERROR, "")
                 .putInt("total", loaded.size()).putString("phase", "APP_INFO")
                 .putString(KEY_CURRENT_APP, loaded.get(0).label)
@@ -394,7 +400,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
             }
         }
         // Nunca repetir una tarea vieja tras una reconexión posterior del servicio.
-        finishRun("La tarea anterior se detuvo y no se reanudó automáticamente. Iníciala de nuevo desde Cache Cleaner.");
+        finishRun("La tarea anterior se detuvo y no se reanudó automáticamente. Iníciala de nuevo desde Cache Cleaner.", false);
     }
 
     private boolean loadTargets(SharedPreferences prefs) {
@@ -410,17 +416,32 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         }
     }
 
+    /** Guarda el tamaño real medido después del borrado (-1 = no medible) para la lista en vivo. */
+    private void appendResult(SharedPreferences prefs, CacheAppInfo app, String status,
+                              long before, long after) {
+        try {
+            JSONArray rows = new JSONArray(prefs.getString(KEY_RESULTS, "[]"));
+            JSONObject row = new JSONObject().put("pkg", app.packageName).put("label", app.label)
+                    .put("status", status).put("before", before).put("after", after)
+                    .put("freed", after >= 0L ? Math.max(0L, before - after) : 0L);
+            rows.put(row);
+            prefs.edit().putString(KEY_RESULTS, rows.toString()).apply();
+        } catch (Exception ignored) {
+            // Los resultados son informativos: nunca bloquean la limpieza.
+        }
+    }
+
     private void countCleared(SharedPreferences prefs, int index, CacheAppInfo app) {
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
+        long after = -1L;
         long freed = 0L;
         try {
-            long remaining = CacheCleaner.queryCacheBytes(this, app.packageName);
-            if (remaining >= 0L && app.cacheBytes > 0L) {
-                freed = Math.max(0L, app.cacheBytes - remaining);
-            }
+            after = Math.max(0L, CacheCleaner.queryCacheBytes(this, app.packageName));
+            if (app.cacheBytes > 0L) freed = Math.max(0L, app.cacheBytes - after);
         } catch (Exception ignored) {
             // Sin permiso de uso de datos no se puede medir; la limpieza ya se ejecutó.
         }
+        appendResult(prefs, app, "cleared", app.cacheBytes, after);
         prefs.edit().putInt(KEY_INDEX, index + 1)
                 .putInt(KEY_DONE, prefs.getInt(KEY_DONE, 0) + 1)
                 .putLong(KEY_FREED, prefs.getLong(KEY_FREED, 0L) + freed)
@@ -432,7 +453,10 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     private void skipCurrent(String reason) {
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
-        int index = prefs.getInt(KEY_INDEX, 0) + 1;
+        int current = prefs.getInt(KEY_INDEX, 0);
+        if (current >= 0 && current < targets.size())
+            appendResult(prefs, targets.get(current), "skipped", targets.get(current).cacheBytes, -1L);
+        int index = current + 1;
         prefs.edit().putInt(KEY_INDEX, index)
                 .putInt(KEY_SKIPPED, prefs.getInt(KEY_SKIPPED, 0) + 1)
                 .putString("phase", "APP_INFO").putLong(KEY_BASELINE, -1L)
@@ -443,9 +467,12 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     private void failCurrent(String reason) {
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
-        int index = prefs.getInt(KEY_INDEX, 0) + 1;
+        int current = prefs.getInt(KEY_INDEX, 0);
+        CacheAppInfo app = current >= 0 && current < targets.size() ? targets.get(current) : null;
+        if (app != null) appendResult(prefs, app, "failed", app.cacheBytes, -1L);
+        int index = current + 1;
         String old = prefs.getString(KEY_ERROR, "");
-        String label = index > 0 && index <= targets.size() ? targets.get(index - 1).label : "App";
+        String label = app == null ? "App" : app.label;
         String failure = label + ": " + reason;
         if (old.length() < 800) old = old.isEmpty() ? failure : old + "\n" + failure;
         prefs.edit().putInt(KEY_INDEX, index)
@@ -489,6 +516,11 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     }
 
     private void finishRun(String reason) {
+        finishRun(reason, true);
+    }
+
+    /** Al terminar el tasker devolvemos el foco a CodeSu para ver el resultado en vivo. */
+    private void finishRun(String reason, boolean returnToApp) {
         stopPolling();
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         String existing = prefs.getString(KEY_ERROR, "");
@@ -510,6 +542,19 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
                         + skipped + " sin caché · " + failed + " fallidas · "
                         + CacheAppInfoBytes.format(freed) + " verificados",
                 Toast.LENGTH_LONG).show();
+        if (returnToApp) returnToCodesu();
+    }
+
+    private void returnToCodesu() {
+        try {
+            Intent intent = new Intent(this, com.codehub.app.codesu.MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            intent.putExtra("codesu_cache_task_finished", true);
+            startActivity(intent);
+        } catch (RuntimeException ignored) {
+            // Si el fabricante bloquea el retorno, el resultado sigue disponible en la notificación/toast.
+        }
     }
 
     /** A foreground return to CodeHub is an explicit stop, never a trigger to replay Settings taps. */
@@ -526,7 +571,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
         if (!prefs.getBoolean(KEY_RUNNING, false)) return;
         CacheCleanerAccessibilityService service = activeInstance;
         if (service != null) {
-            Runnable stop = () -> service.finishRun(reason);
+            Runnable stop = () -> service.finishRun(reason, false);
             if (Looper.myLooper() == Looper.getMainLooper()) stop.run();
             else service.handler.post(stop);
         } else {
@@ -742,7 +787,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     @Override
     public void onInterrupt() {
         if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_RUNNING, false)) {
-            finishRun("El servicio de Accesibilidad fue interrumpido.");
+            finishRun("El servicio de Accesibilidad fue interrumpido.", false);
         }
     }
 
@@ -750,7 +795,7 @@ public final class CacheCleanerAccessibilityService extends AccessibilityService
     public void onDestroy() {
         stopPolling();
         if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_RUNNING, false)) {
-            finishRun("El servicio de Accesibilidad se detuvo durante la limpieza.");
+            finishRun("El servicio de Accesibilidad se detuvo durante la limpieza.", false);
         }
         releaseScreenWakeLock();
         if (activeInstance == this) activeInstance = null;

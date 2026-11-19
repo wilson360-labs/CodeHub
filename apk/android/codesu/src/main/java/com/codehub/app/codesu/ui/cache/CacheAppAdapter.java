@@ -10,7 +10,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.model.CacheAppInfo;
@@ -18,14 +20,29 @@ import com.codehub.app.codesu.util.CacheCleaner;
 
 final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder> {
     private final List<CacheAppInfo> apps = new ArrayList<>();
+    private final Map<String, LiveResult> liveResults = new HashMap<>();
 
     void submit(List<CacheAppInfo> updated) {
         apps.clear();
         apps.addAll(updated);
+        liveResults.clear();
         notifyDataSetChanged();
     }
 
     List<CacheAppInfo> getApps() { return new ArrayList<>(apps); }
+
+    /** Resultado real de una app mientras corre el tasker (lista "live"). */
+    void setLiveResult(String packageName, String status, long afterBytes) {
+        LiveResult previous = liveResults.get(packageName);
+        if (previous != null && previous.status.equals(status) && previous.afterBytes == afterBytes) return;
+        liveResults.put(packageName, new LiveResult(status, afterBytes));
+        for (int i = 0; i < apps.size(); i++) {
+            if (packageName.equals(apps.get(i).packageName)) {
+                notifyItemChanged(i);
+                return;
+            }
+        }
+    }
 
     @NonNull
     @Override
@@ -51,6 +68,20 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
         holder.advice.setTextColor(recommended ? 0xFF41C99A : 0xFFE7838B);
         holder.itemView.setAlpha(app.protectedApp ? 0.72f : 1f);
         holder.size.setText(formatBytes(app.cacheBytes));
+        LiveResult live = liveResults.get(app.packageName);
+        if (live == null) return;
+        if ("cleared".equals(live.status)) {
+            holder.advice.setText("LIMPIADA · caché borrada");
+            holder.advice.setTextColor(0xFF41C99A);
+            holder.size.setText(live.afterBytes >= 0L ? formatBytes(live.afterBytes)
+                    : formatBytes(app.cacheBytes));
+        } else if ("skipped".equals(live.status)) {
+            holder.advice.setText("OMITIDA · sin caché suficiente");
+            holder.advice.setTextColor(0xFFB9BDD1);
+        } else if ("failed".equals(live.status)) {
+            holder.advice.setText("FALLIDA · la app no respondió");
+            holder.advice.setTextColor(0xFFE7838B);
+        }
     }
 
     @Override
@@ -61,6 +92,16 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
         if (bytes < 1024L * 1024L) return String.format(java.util.Locale.getDefault(), "%.0f KB", bytes / 1024.0);
         if (bytes < 1024L * 1024L * 1024L) return String.format(java.util.Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0));
         return String.format(java.util.Locale.getDefault(), "%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+    }
+
+    private static final class LiveResult {
+        final String status;
+        final long afterBytes;
+
+        LiveResult(String status, long afterBytes) {
+            this.status = status;
+            this.afterBytes = afterBytes;
+        }
     }
 
     static final class Holder extends RecyclerView.ViewHolder {
