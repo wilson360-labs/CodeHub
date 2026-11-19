@@ -225,6 +225,14 @@ save() {
       prev_sha=$(jq -r --arg p "$p" '.parts[$p].sha256 // empty' "$prev_mf" 2>/dev/null)
       if [ "$prev_sha" = "$sha" ]; then
         log "$p: sin cambios (sha idéntico), no se resube."
+        # Conservar su entrada en el manifest nuevo: si se omitiera, el
+        # próximo run la volvería a subir al no encontrar sha previo.
+        local prev_entry
+        prev_entry=$(jq -c --arg p "$p" '.parts[$p] // empty' "$prev_mf" 2>/dev/null)
+        if [ -n "$prev_entry" ]; then
+          parts_json=$(jq -c --arg p "$p" --argjson e "$prev_entry" \
+            '. + {($p): $e}' <<<"$parts_json") || parts_json='{}'
+        fi
         rm -f "$tmpfile"
         continue
       fi
