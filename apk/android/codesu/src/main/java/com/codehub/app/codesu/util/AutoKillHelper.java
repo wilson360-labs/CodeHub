@@ -37,7 +37,8 @@ public class AutoKillHelper {
 
         Intent intent = new Intent(App.context, AutoKillService.class);
         boolean shouldRunService = App.settings.getBoolean(App.SCREEN_OFF_AUTO_KILL, false)
-                || App.settings.getBoolean(App.SCHEDULED_AUTO_KILL, false);
+                || App.settings.getBoolean(App.SCHEDULED_AUTO_KILL, false)
+                || PowerGuard.isAnyModeEnabled();
 
         if (shouldRunService && hasNotificationPermission) {
             if (serviceAction != null)

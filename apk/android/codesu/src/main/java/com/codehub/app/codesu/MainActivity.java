@@ -23,6 +23,7 @@ import androidx.navigation.NavDestination;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.codehub.app.codesu.databinding.CodesuActivityMainBinding;
+import com.codehub.app.codesu.util.PowerGuard;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -137,12 +138,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         logoAnimator.start();
+        PowerGuard.start(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         logoAnimator.cancel();
+        PowerGuard.stop(this);
     }
 
     public CardView getSearchLayout() {

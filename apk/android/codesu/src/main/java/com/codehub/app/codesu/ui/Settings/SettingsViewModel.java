@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel;
 
 import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.util.AutoKillHelper;
+import com.codehub.app.codesu.util.PowerGuard;
 
 public class SettingsViewModel extends ViewModel {
 
@@ -19,7 +20,7 @@ public class SettingsViewModel extends ViewModel {
     private final MutableLiveData<Boolean> hideKillMyApps, hideDefaultLauncher, hideDefaultAlarm,
             hideDefaultKeyboard, hideDefaultDialer, hideDefaultSMS, hideCriticalSystemApps,
             showAppsPkgName, clickToAppInfo, longClickToMenu, showScrollAnimation,
-            screenOffAutoKill, scheduledAutoKill;
+            screenOffAutoKill, scheduledAutoKill, powerBatterySaver, powerGameMode;
 
     public SettingsViewModel() {
         themeMode = new MutableLiveData<>();
@@ -42,6 +43,8 @@ public class SettingsViewModel extends ViewModel {
         screenOffAutoKillDelay = new MutableLiveData<>();
         scheduledAutoKill = new MutableLiveData<>();
         scheduledAutoKillTime = new MutableLiveData<>();
+        powerBatterySaver = new MutableLiveData<>();
+        powerGameMode = new MutableLiveData<>();
         loadSettings();
     }
 
@@ -65,6 +68,8 @@ public class SettingsViewModel extends ViewModel {
         screenOffAutoKill.setValue(App.settings.getBoolean(App.SCREEN_OFF_AUTO_KILL, false));
         screenOffAutoKillDelay.setValue(App.settings.getInt(App.SCREEN_OFF_AUTO_KILL_DELAY, 0));
         scheduledAutoKill.setValue(App.settings.getBoolean(App.SCHEDULED_AUTO_KILL, false));
+        powerBatterySaver.setValue(App.settings.getBoolean(PowerGuard.PREF_BATTERY_SAVER, true));
+        powerGameMode.setValue(App.settings.getBoolean(PowerGuard.PREF_GAME_MODE, true));
 
         int hour = App.settings.getInt(App.SCHEDULED_AUTO_KILL_HOUR, 3);
         int minute = App.settings.getInt(App.SCHEDULED_AUTO_KILL_MINUTE, 30);
@@ -183,6 +188,19 @@ public class SettingsViewModel extends ViewModel {
         scheduledAutoKill.setValue(isScheduled);
     }
 
+    public void setPowerBatterySaver(boolean enabled) {
+        App.settings.edit().putBoolean(PowerGuard.PREF_BATTERY_SAVER, enabled).apply();
+        powerBatterySaver.setValue(enabled);
+        AutoKillHelper.syncServiceState();
+        if (enabled) PowerGuard.evaluateNow(App.context);
+    }
+
+    public void setPowerGameMode(boolean enabled) {
+        App.settings.edit().putBoolean(PowerGuard.PREF_GAME_MODE, enabled).apply();
+        powerGameMode.setValue(enabled);
+        AutoKillHelper.syncServiceState();
+    }
+
     public void setScheduledAutoKillTime(int time) {
         int hour = time / 2;
         int minute = (time % 2 == 0) ? 0 : 30;
@@ -273,5 +291,13 @@ public class SettingsViewModel extends ViewModel {
 
     public MutableLiveData<Integer> getScheduledAutoKillTime() {
         return scheduledAutoKillTime;
+    }
+
+    public MutableLiveData<Boolean> getPowerBatterySaver() {
+        return powerBatterySaver;
+    }
+
+    public MutableLiveData<Boolean> getPowerGameMode() {
+        return powerGameMode;
     }
 }

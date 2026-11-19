@@ -93,6 +93,20 @@
         </service>
 
         <receiver
+            android:name=".receiver.PowerGuardReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BATTERY_LOW" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="com.codehub.app.codesu.action.POWER_CHECK_NOW" />
+                <action android:name="com.codehub.app.codesu.action.POWER_RUN_KILL" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".receiver.AutoKillReceiver"
             android:enabled="true"
             android:exported="false">

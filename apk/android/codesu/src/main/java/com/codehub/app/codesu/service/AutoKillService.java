@@ -23,6 +23,7 @@ import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.MainActivity;
 import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.util.AutoKillHelper;
+import com.codehub.app.codesu.util.PowerGuard;
 
 public class AutoKillService extends Service {
 
@@ -57,6 +58,7 @@ public class AutoKillService extends Service {
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
         ContextCompat.registerReceiver(this, screenReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
+        PowerGuard.start(this);
     }
 
     @Override
@@ -69,7 +71,8 @@ public class AutoKillService extends Service {
 
         boolean screenOffEnabled = App.settings.getBoolean(App.SCREEN_OFF_AUTO_KILL, false);
         boolean scheduledEnabled = App.settings.getBoolean(App.SCHEDULED_AUTO_KILL, false);
-        if (!screenOffEnabled && !scheduledEnabled) {
+        boolean powerGuardEnabled = PowerGuard.isAnyModeEnabled();
+        if (!screenOffEnabled && !scheduledEnabled && !powerGuardEnabled) {
             cancelScreenOffCountdown();
             stopSelf();
             return START_NOT_STICKY;
@@ -228,6 +231,7 @@ public class AutoKillService extends Service {
             unregisterReceiver(screenReceiver);
         } catch (IllegalArgumentException ignored) {
         }
+        PowerGuard.stop(this);
     }
 
     @Override

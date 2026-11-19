@@ -31,6 +31,7 @@ import com.codehub.app.codesu.databinding.FragmentSettingsBinding;
 import com.codehub.app.codesu.util.AutoKillHelper;
 import com.codehub.app.codesu.util.BackupManager;
 import com.codehub.app.codesu.util.CapsuleToast;
+import com.codehub.app.codesu.util.PowerGuard;
 import rikka.shizuku.Shizuku;
 
 public class SettingsFragment extends Fragment {
@@ -78,6 +79,7 @@ public class SettingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         updateShizukuStatus();
+        refreshPowerModeStatus();
     }
 
     @Override
@@ -255,6 +257,28 @@ public class SettingsFragment extends Fragment {
                     AutoKillHelper.enableScheduledKill();
             }
         });
+        settingsViewModel.getPowerBatterySaver().observe(getViewLifecycleOwner(), aBoolean -> {
+            binding.powerBatterySaver.setChecked(aBoolean);
+            refreshPowerModeStatus();
+        });
+        settingsViewModel.getPowerGameMode().observe(getViewLifecycleOwner(), aBoolean -> {
+            binding.powerGameMode.setChecked(aBoolean);
+            refreshPowerModeStatus();
+        });
+    }
+
+    /** Muestra el modo real calculado por PowerGuard (normal / ahorro / juego). */
+    private void refreshPowerModeStatus() {
+        if (binding == null || !isAdded()) return;
+        String mode = PowerGuard.currentMode(requireContext());
+        String label;
+        if (PowerGuard.MODE_SAVER.equals(mode))
+            label = "Ahorro de batería · conecta el cargador";
+        else if (PowerGuard.MODE_GAME.equals(mode))
+            label = "Rendimiento · modo juego";
+        else
+            label = "Normal";
+        binding.powerModeStatus.setText("Modo actual: " + label);
     }
 
     private void setListeners() {
@@ -448,6 +472,11 @@ public class SettingsFragment extends Fragment {
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
+
+        binding.powerBatterySaver.setOnClickListener(v ->
+                settingsViewModel.setPowerBatterySaver(binding.powerBatterySaver.isChecked()));
+        binding.powerGameMode.setOnClickListener(v ->
+                settingsViewModel.setPowerGameMode(binding.powerGameMode.isChecked()));
 
         binding.backupButton.setOnClickListener(new View.OnClickListener() {
             @Override

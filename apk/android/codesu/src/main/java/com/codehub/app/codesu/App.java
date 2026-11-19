@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 
 import com.codehub.app.codesu.data.Database;
 import com.codehub.app.codesu.util.AutoKillHelper;
+import com.codehub.app.codesu.util.PowerGuard;
 
 /**
  * CodeSu vive dentro de CodeHub (com.codehub.app): ya no es una Application
@@ -69,6 +70,7 @@ public class App {
         if (isFirstRun)
             settings.edit().putBoolean("isFirstRun", false).apply();
         initAutoKillServices();
+        PowerGuard.initialize(context);
     }
 
     public static void setAppThemeMode() {
