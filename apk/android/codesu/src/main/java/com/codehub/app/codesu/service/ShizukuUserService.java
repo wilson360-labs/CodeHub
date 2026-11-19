@@ -216,8 +216,121 @@ public class ShizukuUserService extends IKillAppService.Stub {
 
     @Override
     public void cancelCurrentCacheClear() {
-        Process running = activeCacheClearProcess;
-        if (running != null) running.destroy();
+        Process process = activeCacheClearProcess;
+        if (process != null) process.destroy();
+    }
+
+    @Override
+    public String clearAppCacheBinder(String pkgName) {
+        if (isProtectedCacheTarget(pkgName)) return "Paquete protegido por seguridad.";
+        return tryBinderDeleteCache(pkgName);
+    }
+
+    @Override
+    public String clearAppCacheShell(String pkgName, String user, long estimatedCacheBytes) {
+        if (isProtectedCacheTarget(pkgName)) return "Paquete protegido por seguridad.";
+        String u = (user == null || user.trim().isEmpty()) ? "0" : user.trim();
+        return runCacheClearCommand(pkgName, u, estimatedCacheBytes);
+    }
+
+    @Override
+    public String freeStorageAndNotify() {
+        try {
+            Class<?> sm = Class.forName("android.os.ServiceManager");
+            Method getService = sm.getMethod("getService", String.class);
+            IBinder binder = (IBinder) getService.invoke(null, "package");
+            if (binder == null) return "ServiceManager no devolvió PackageManager.";
+            Class<?> stub = Class.forName("android.content.pm.IPackageManager$Stub");
+            Method asInterface = stub.getMethod("asInterface", IBinder.class);
+            Object pm = asInterface.invoke(null, binder);
+            if (pm == null) return "No se pudo obtener IPackageManager.";
+            for (Method m : pm.getClass().getMethods()) {
+                if (!"freeStorageAndNotify".equals(m.getName())) continue;
+                Class<?>[] p = m.getParameterTypes();
+                if (p.length != 4) continue;
+                try {
+                    m.setAccessible(true);
+                    m.invoke(pm, null, Long.valueOf(0xe8d4a50fffL), Integer.valueOf(0), null);
+                    Thread.sleep(500L);
+                    return "";
+                } catch (InvocationTargetException ite) {
+                    Throwable c = ite.getCause() == null ? ite : ite.getCause();
+                    return "freeStorageAndNotify: " + (c.getMessage() == null ? c.getClass().getSimpleName() : c.getMessage());
+                }
+            }
+            return "freeStorageAndNotify no disponible";
+        } catch (Exception e) {
+            return "freeStorageAndNotify: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    @Override
+    public String trimCaches(long bytes) {
+        Process process = null;
+        try {
+            String arg = bytes > 0 ? String.valueOf(bytes) : "9223372036854775807";
+            process = new ProcessBuilder("/system/bin/cmd", "package", "trim-caches", arg)
+                    .redirectErrorStream(true)
+                    .start();
+            activeCacheClearProcess = process;
+            Process running = process;
+            ByteArrayOutputStream captured = new ByteArrayOutputStream();
+            Thread outputReader = new Thread(() -> {
+                try (InputStream stream = running.getInputStream()) {
+                    byte[] buffer = new byte[512];
+                    int count;
+                    while ((count = stream.read(buffer)) >= 0) {
+                        if (count > 0) synchronized (captured) { captured.write(buffer, 0, count); }
+                    }
+                } catch (IOException ignored) { }
+            }, "codesu-trim-output");
+            outputReader.setDaemon(true);
+            outputReader.start();
+            boolean finished = waitForProcess(running, 120_000L);
+            try { outputReader.join(1500L); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+            if (!finished) {
+                destroyProcessTree(running);
+                return "trim-caches superó 120 s" + outputSuffix(captured);
+            }
+            int exit = -1;
+            try { exit = running.exitValue(); } catch (Exception ignored) { }
+            String output = outputSuffix(captured);
+            if (exit != 0) return "trim-caches terminó con código " + exit + output;
+            return "";
+        } catch (Exception e) {
+            return "trim-caches: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        } finally {
+            if (process != null) destroyProcessTree(process);
+            if (activeCacheClearProcess == process) activeCacheClearProcess = null;
+        }
+    }
+
+    private boolean waitForProcess(Process running, long timeoutMs) {
+        long deadline = SystemClock.elapsedRealtime() + timeoutMs;
+        while (true) {
+            try {
+                running.exitValue();
+                return true;
+            } catch (IllegalThreadStateException stillRunning) {
+                if (SystemClock.elapsedRealtime() >= deadline) return false;
+                try { Thread.sleep(100L); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return false; }
+            }
+        }
+    }
+
+    private void destroyProcessTree(Process running) {
+        try { running.destroy(); } catch (Exception ignored) { }
+        long destroyDeadline = SystemClock.elapsedRealtime() + 500L;
+        while (SystemClock.elapsedRealtime() < destroyDeadline) {
+            try { running.exitValue(); break; }
+            catch (IllegalThreadStateException still) { try { Thread.sleep(50L); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; } }
+        }
+        try { running.exitValue(); }
+        catch (IllegalThreadStateException still) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                try { running.destroyForcibly(); } catch (Exception ignored) { }
+            }
+        }
     }
 
     private static String outputSuffix(ByteArrayOutputStream captured) {

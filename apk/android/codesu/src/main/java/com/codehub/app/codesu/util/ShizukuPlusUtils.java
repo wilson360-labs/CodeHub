@@ -41,7 +41,7 @@ public class ShizukuPlusUtils {
                 .daemon(false)
                 .processNameSuffix("codesu")
                 .debuggable(false)
-                .version(6);
+                .version(7);
     }
 
     public static boolean checkShizuku() {
@@ -140,5 +140,49 @@ public class ShizukuPlusUtils {
         if (!ensureServiceBound()) return;
         try { killAppService.cancelCurrentCacheClear(); }
         catch (Exception ignored) { }
+    }
+
+    public static String clearAppCacheBinder(String packageName) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.clearAppCacheBinder(packageName);
+            return result == null ? "Shizuku no devolvió resultado." : result;
+        } catch (Exception e) {
+            return "Shizuku no pudo ejecutar binder: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    public static String clearAppCacheShell(String packageName, String user, long estimatedCacheBytes) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.clearAppCacheShell(packageName, user, estimatedCacheBytes);
+            return result == null ? "Shizuku no devolvió resultado." : result;
+        } catch (Exception e) {
+            return "Shizuku no pudo ejecutar shell: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    public static String freeStorageAndNotify() {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.freeStorageAndNotify();
+            return result == null ? "Shizuku no devolvió resultado." : result;
+        } catch (Exception e) {
+            return "freeStorageAndNotify: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    public static String trimCaches(long bytes) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.trimCaches(bytes);
+            return result == null ? "Shizuku no devolvió resultado." : result;
+        } catch (Exception e) {
+            return "trim-caches: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
     }
 }

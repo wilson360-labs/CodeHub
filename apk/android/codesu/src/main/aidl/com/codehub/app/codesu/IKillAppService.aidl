@@ -15,4 +15,12 @@ interface IKillAppService {
     void cancelCurrentCacheClear();
 
     String manageSystemApp(String packageName, int action);
+
+    String clearAppCacheBinder(String pkgName);
+
+    String clearAppCacheShell(String pkgName, String user, long estimatedCacheBytes);
+
+    String freeStorageAndNotify();
+
+    String trimCaches(long bytes);
 }

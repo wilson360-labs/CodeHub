@@ -283,7 +283,7 @@ public final class CacheCleaner {
         }
     }
 
-    /** Clears cache only for eligible packages; app data and credentials are untouched. */
+    /** Limpieza estilo Cache Cleaner (zip): global (freeStorage/binder + trim-caches) y/o per-app con verificación. */
     public static ClearResult clearEligibleCaches(Context context, List<CacheAppInfo> apps, ProgressListener listener)
             throws Exception {
         return clearEligibleCaches(context, apps, listener, null);
@@ -308,136 +308,182 @@ public final class CacheCleaner {
         long targetBytes = 0L;
         for (CacheAppInfo target : targets) targetBytes += target.cacheBytes;
 
-        // Limpieza per-app secuencial con pausas largas. Evita saturar PackageManager
-        // (freeze/reinicio en Android 14-17) y no borra caché de WebView/host como haría
-        // trim-caches global (que puede cerrar CodeHub).
         int success = 0;
         int failure = 0;
-        long verifiedFreed = 0L;
         int unmeasured = 0;
         List<String> failures = new ArrayList<>();
+
+        long beforeTotal = sumCacheBytesSafe(context, targets);
+        // Ruta global primero en lotes grandes (como zip): binder freeStorageAndNotify + fallback trim-caches.
+        // No borra datos/sesiones; solo recorte de caché. Se omite si no hay candidatos o lote pequeño.
+        if (targets.size() >= 10 && targetBytes > 50L * 1024L * 1024L) {
+            if (listener != null) listener.onProgress(0, targets.size(), "Limpieza global", false, false, 0L, 0L);
+            runGlobalTrim(context, targets, beforeTotal, listener, cancellation);
+            if (cancellation != null && cancellation.isCancelled())
+                throw new InterruptedException("Limpieza cancelada por el usuario.");
+        }
+
+        // Per-app estilo zip: binder deleteAsUser -> pm clear --cache-only --user 0 -> --user current -> combinado
+        long[] freedRef = new long[]{0L};
+        int[] unmeasuredRef = new int[]{0};
         int consecutiveFailures = 0;
         for (int index = 0; index < targets.size(); index++) {
             if (cancellation != null && cancellation.isCancelled())
                 throw new InterruptedException("Limpieza cancelada por el usuario.");
             CacheAppInfo target = targets.get(index);
-            if (listener != null) listener.onProgress(index, targets.size(), target.packageName,
-                    false, false, verifiedFreed, unmeasured);
-            String detail = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName, target.cacheBytes);
-            boolean cleared = detail.isEmpty();
-            long freed = 0L;
+            boolean cleared;
+            try {
+                cleared = clearOneAppZipStyle(context, target, listener, index, targets.size(), freedRef, unmeasuredRef, cancellation);
+            } catch (InterruptedException ie) {
+                throw ie;
+            } catch (Exception e) {
+                cleared = false;
+            }
             if (cleared) {
-                consecutiveFailures = 0;
-                try {
-                    freed = Math.max(0L, target.cacheBytes - queryCacheBytes(context, target.packageName));
-                } catch (Exception ignored) {
-                    unmeasured++;
-                }
                 success++;
-                verifiedFreed += freed;
-                if (listener != null) listener.onProgress(index + 1, targets.size(), target.packageName,
-                        true, true, verifiedFreed, unmeasured);
+                consecutiveFailures = 0;
             } else {
-                consecutiveFailures++;
                 failure++;
-                if (failures.size() < 5)
-                    failures.add(target.label + " (" + target.packageName + "): " + detail);
+                consecutiveFailures++;
+                if (failures.size() < 5) failures.add(target.label + " (" + target.packageName + "): sin efecto confirmado");
                 if (listener != null) listener.onProgress(index + 1, targets.size(), target.packageName,
-                        true, false, verifiedFreed, unmeasured);
+                        true, false, freedRef[0], unmeasuredRef[0]);
             }
             if (index + 1 < targets.size()) {
                 if (cancellation != null && cancellation.isCancelled())
                     throw new InterruptedException("Limpieza cancelada por el usuario.");
-                // Pausa generosa entre apps para no saturar PackageManager (causa de freeze).
-                long pause = cleared ? 1200L : 3000L;
-                // Si hay fallos seguidos, dar más respiro al sistema.
-                if (consecutiveFailures >= 2) pause = Math.max(pause, 5000L);
-                Thread.sleep(pause);
+                long pause = cleared ? 700L : 2000L;
+                if (consecutiveFailures >= 2) pause = Math.max(pause, 3500L);
+                try { Thread.sleep(pause); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw ie; }
             }
+        }
+        long verifiedFreed = freedRef[0];
+        unmeasured = unmeasuredRef[0];
+        if (verifiedFreed <= 0L) {
+            long afterTotal = sumCacheBytesSafe(context, targets);
+            verifiedFreed = Math.max(0L, beforeTotal - afterTotal);
         }
         String failureSummary = android.text.TextUtils.join("\n", failures);
         return new ClearResult(success, failure, verifiedFreed, unmeasured, targetBytes, failureSummary);
     }
 
-    /**
-     * Ejecuta una sola orden global de recorte de caché vía Shizuku shell.
-     * Mucho más seguro que limpiar app por app (evita saturar PackageManager y
-     * congelar/reiniciar el dispositivo en Android 14-17). Devuelve null/"" si OK.
-     */
-    public static String runTrimCachesCommand(CancellationCheck cancellation) {
-        java.lang.Process process = null;
-        try {
-            java.lang.reflect.Method newProcess = Shizuku.class.getDeclaredMethod(
-                    "newProcess", String[].class, String[].class, String.class);
-            newProcess.setAccessible(true);
-            // Long.MAX_VALUE para pedir al sistema que libere toda la caché posible.
-            process = (java.lang.Process) newProcess.invoke(null,
-                    new String[]{"sh", "-c", "cmd package trim-caches 9223372036854775807"}, null, null);
-            final java.lang.Process running = process;
-            Thread killer = null;
-            if (cancellation != null) {
-                killer = new Thread(() -> {
-                    while (!cancellation.isCancelled()) {
-                        try {
-                            running.exitValue();
-                            return;
-                        } catch (IllegalThreadStateException stillRunning) {
-                            try { Thread.sleep(200L); } catch (InterruptedException e) { return; }
-                        }
-                    }
-                    try { running.destroy(); } catch (Exception ignored) {}
-                }, "codesu-trim-cancel");
-                killer.setDaemon(true);
-                killer.start();
-            }
-            java.io.ByteArrayOutputStream captured = new java.io.ByteArrayOutputStream();
-            Thread outputReader = new Thread(() -> {
-                try (java.io.InputStream stream = running.getInputStream()) {
-                    byte[] buffer = new byte[512];
-                    int count;
-                    while ((count = stream.read(buffer)) >= 0) {
-                        if (count > 0) synchronized (captured) { captured.write(buffer, 0, count); }
-                    }
-                } catch (Exception ignored) { }
-                try (java.io.InputStream err = running.getErrorStream()) {
-                    byte[] buffer = new byte[512];
-                    int count;
-                    while ((count = err.read(buffer)) >= 0) {
-                        if (count > 0) synchronized (captured) { captured.write(buffer, 0, count); }
-                    }
-                } catch (Exception ignored) { }
-            }, "codesu-trim-output");
-            outputReader.setDaemon(true);
-            outputReader.start();
-
-            boolean finished = running.waitFor(120, java.util.concurrent.TimeUnit.SECONDS);
-            if (!finished) {
-                try { running.destroy(); } catch (Exception ignored) {}
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    try { running.destroyForcibly(); } catch (Exception ignored) {}
+    /** Recorte global estilo zip: binder freeStorageAndNotify (espera/poll) y fallback trim-caches. */
+    public static long runGlobalTrim(Context context, List<CacheAppInfo> targets, long beforeBytes,
+                                     ProgressListener listener, CancellationCheck cancellation) {
+        if (cancellation != null && cancellation.isCancelled()) return -1L;
+        String freeRes = ShizukuPlusUtils.freeStorageAndNotify();
+        if (looksEffective(freeRes)) {
+            for (int i = 0; i < 12; i++) {
+                if (cancellation != null && cancellation.isCancelled()) return -1L;
+                try { Thread.sleep(3000L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return -1L; }
+                long now = sumCacheBytesSafe(context, targets);
+                long freed = Math.max(0L, beforeBytes - now);
+                if (freed >= Math.max(2L * 1024L * 1024L, beforeBytes / 10L) || (beforeBytes > 0 && now * 5L <= beforeBytes)) {
+                    return freed;
                 }
-                return "La limpieza global superó 120 s y fue detenida para proteger el sistema.";
-            }
-            try { outputReader.join(1500L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-            if (cancellation != null && cancellation.isCancelled()) return "Limpieza cancelada por el usuario.";
-            int exit = running.exitValue();
-            String output;
-            synchronized (captured) {
-                output = new String(captured.toByteArray(), java.nio.charset.StandardCharsets.UTF_8).trim();
-            }
-            if (exit != 0) {
-                if (output.length() > 200) output = output.substring(0, 200) + "…";
-                return "trim-caches terminó con código " + exit + (output.isEmpty() ? "" : ": " + output);
-            }
-            return "";
-        } catch (Exception e) {
-            return "No se pudo ejecutar trim-caches: "
-                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
-        } finally {
-            if (process != null) {
-                try { process.destroy(); } catch (Exception ignored) {}
+                if (listener != null) listener.onProgress(0, targets.size(), "Limpieza global", false, false, freed, 0);
             }
         }
+        if (cancellation != null && cancellation.isCancelled()) return -1L;
+        String trimRes = ShizukuPlusUtils.trimCaches(0L);
+        if (looksEffective(trimRes) || trimRes == null || trimRes.trim().isEmpty()) {
+            try { Thread.sleep(1500L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return -1L; }
+            long now = sumCacheBytesSafe(context, targets);
+            return Math.max(0L, beforeBytes - now);
+        }
+        try { Thread.sleep(1500L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return -1L; }
+        long now = sumCacheBytesSafe(context, targets);
+        long freed = Math.max(0L, beforeBytes - now);
+        return freed > 0 ? freed : -1L;
+    }
+
+    public static long sumCacheBytesSafe(Context context, List<CacheAppInfo> apps) {
+        long total = 0L;
+        for (CacheAppInfo app : apps) {
+            try { total += queryCacheBytes(context, app.packageName); }
+            catch (Exception ignored) { total += Math.max(0L, app.cacheBytes); }
+        }
+        return total;
+    }
+
+    private static boolean clearOneAppZipStyle(Context context, CacheAppInfo target, ProgressListener listener,
+                                               int index, int total, long[] verifiedFreedRef, int[] unmeasuredRef,
+                                               CancellationCheck cancellation) throws InterruptedException {
+        if (cancellation != null && cancellation.isCancelled())
+            throw new InterruptedException("Limpieza cancelada por el usuario.");
+        long start = target.cacheBytes;
+        try { start = Math.max(start, queryCacheBytes(context, target.packageName)); } catch (Exception ignored) { }
+        if (listener != null) listener.onProgress(index, total, target.packageName, false, false, verifiedFreedRef[0], unmeasuredRef[0]);
+
+        // 1) binder directo (deleteApplicationCacheFilesAsUser)
+        ShizukuPlusUtils.clearAppCacheBinder(target.packageName);
+        if (cancellation != null && cancellation.isCancelled()) throw new InterruptedException("Limpieza cancelada por el usuario.");
+        if (awaitAndVerifyDrop(context, target.packageName, start, cancellation)) {
+            recordCleared(context, target, start, verifiedFreedRef, unmeasuredRef);
+            if (listener != null) listener.onProgress(index + 1, total, target.packageName, true, true, verifiedFreedRef[0], unmeasuredRef[0]);
+            return true;
+        }
+        // 2) pm clear --cache-only --user 0
+        ShizukuPlusUtils.clearAppCacheShell(target.packageName, "0", target.cacheBytes);
+        if (cancellation != null && cancellation.isCancelled()) throw new InterruptedException("Limpieza cancelada por el usuario.");
+        if (awaitAndVerifyDrop(context, target.packageName, start, cancellation)) {
+            recordCleared(context, target, start, verifiedFreedRef, unmeasuredRef);
+            if (listener != null) listener.onProgress(index + 1, total, target.packageName, true, true, verifiedFreedRef[0], unmeasuredRef[0]);
+            return true;
+        }
+        // 3) pm clear --cache-only --user current
+        String d = ShizukuPlusUtils.clearAppCacheShell(target.packageName, "current", target.cacheBytes);
+        if (cancellation != null && cancellation.isCancelled()) throw new InterruptedException("Limpieza cancelada por el usuario.");
+        if (awaitAndVerifyDrop(context, target.packageName, start, cancellation) || looksEffective(d)) {
+            recordCleared(context, target, start, verifiedFreedRef, unmeasuredRef);
+            if (listener != null) listener.onProgress(index + 1, total, target.packageName, true, true, verifiedFreedRef[0], unmeasuredRef[0]);
+            return true;
+        }
+        // 4) combinado/compat
+        d = ShizukuPlusUtils.clearAppCacheDetailed(target.packageName, target.cacheBytes);
+        if (cancellation != null && cancellation.isCancelled()) throw new InterruptedException("Limpieza cancelada por el usuario.");
+        if (awaitAndVerifyDrop(context, target.packageName, start, cancellation) || looksEffective(d)) {
+            recordCleared(context, target, start, verifiedFreedRef, unmeasuredRef);
+            if (listener != null) listener.onProgress(index + 1, total, target.packageName, true, true, verifiedFreedRef[0], unmeasuredRef[0]);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean awaitAndVerifyDrop(Context context, String pkg, long start,
+                                              CancellationCheck cancellation) throws InterruptedException {
+        for (int i = 0; i < 20; i++) {
+            if (cancellation != null && cancellation.isCancelled())
+                throw new InterruptedException("Limpieza cancelada por el usuario.");
+            try { Thread.sleep(1000L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw e; }
+            try {
+                long now = queryCacheBytes(context, pkg);
+                if (start <= 0L) return true;
+                if (now + 64L * 1024L < start) return true;
+                if (now <= 64L * 1024L && start > 64L * 1024L) return true;
+            } catch (Exception ignored) { }
+        }
+        return false;
+    }
+
+    private static void recordCleared(Context context, CacheAppInfo target, long start,
+                                      long[] verifiedFreedRef, int[] unmeasuredRef) {
+        try {
+            long now = queryCacheBytes(context, target.packageName);
+            long freed = Math.max(0L, start - now);
+            if (freed == 0L && start > 0L) freed = Math.min(start, target.cacheBytes);
+            verifiedFreedRef[0] += freed;
+        } catch (Exception ignored) {
+            unmeasuredRef[0]++;
+            if (start > 0L) verifiedFreedRef[0] += Math.min(start, target.cacheBytes);
+        }
+    }
+
+    /** Compat: trim-caches directo. Flujo principal usa runGlobalTrim/clearEligibleCaches. */
+    public static String runTrimCachesCommand(CancellationCheck cancellation) {
+        String res = ShizukuPlusUtils.trimCaches(0L);
+        if (cancellation != null && cancellation.isCancelled()) return "Limpieza cancelada por el usuario.";
+        return res == null ? "" : res;
     }
 
     public static boolean isDeepCleanCandidate(CacheAppInfo app) {
@@ -470,6 +516,12 @@ public final class CacheCleaner {
 
     public interface MeasurementProgressListener {
         void onProgress(int completed, int total, String packageName);
+    }
+
+    public static boolean looksEffective(String detail) {
+        if (detail == null) return false;
+        String d = detail.trim();
+        return d.isEmpty() || "ok".equalsIgnoreCase(d) || "success".equalsIgnoreCase(d);
     }
 
     public static final class ClearResult {
