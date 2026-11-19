@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.Signature;
+import android.content.pm.SigningInfo;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -53,8 +55,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
 
 public class CodeHubBridge {
+
+    private static final String CODEHUB_PACKAGE = "com.codehub.app";
+    // Debe coincidir con apk/android/keystore-pin.sha256 (verificado en CI).
+    private static final String CODEHUB_SIGNER_SHA256 =
+            "183439a920148b60b6e8ceee357bacd3d46cfe64798e60fda19aba2c8f026666";
 
     private final Activity activity;
     private final WebView webView;
@@ -835,6 +843,11 @@ public class CodeHubBridge {
                 if (expectedPackage != null && !expectedPackage.trim().isEmpty()
                         && !expectedPackage.trim().equals(archive.packageName))
                     throw new Exception("El paquete APK no coincide con la app seleccionada");
+                // Autoactualización de CodeHub: el nombre de paquete no basta.
+                // Exigir el mismo certificado de firma que el APK publicado.
+                if (CODEHUB_PACKAGE.equals(archive.packageName)
+                        && !hasExpectedSigner(dest, CODEHUB_SIGNER_SHA256))
+                    throw new Exception("Firma del APK no válida para CodeHub");
 
                 boolean installedSilently = false;
                 if (preferSilent && ShizukuInstaller.isReady()) {
@@ -855,6 +868,41 @@ public class CodeHubBridge {
                 notifyInstallResult(callbackName, "error", e.getMessage() != null ? e.getMessage() : "error desconocido");
             }
         }).start();
+    }
+
+    private boolean hasExpectedSigner(File apk, String expectedSha256) {
+        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                ? PackageManager.GET_SIGNING_CERTIFICATES
+                : PackageManager.GET_SIGNATURES;
+        PackageInfo info = activity.getPackageManager()
+                .getPackageArchiveInfo(apk.getAbsolutePath(), flags);
+        if (info == null) return false;
+        Signature[] sigs;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            SigningInfo signing = info.signingInfo;
+            if (signing == null) return false;
+            sigs = signing.hasMultipleSigners()
+                    ? signing.getApkContentsSigners()
+                    : signing.getSigningCertificateHistory();
+        } else {
+            sigs = info.signatures;
+        }
+        if (sigs == null) return false;
+        for (Signature sig : sigs) {
+            if (sig != null && signerMatches(sig, expectedSha256)) return true;
+        }
+        return false;
+    }
+
+    private boolean signerMatches(Signature sig, String expectedSha256) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(sig.toByteArray());
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte b : digest) hex.append(String.format(Locale.ROOT, "%02x", b & 0xff));
+            return expectedSha256.equalsIgnoreCase(hex.toString());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean isTrustedStoreHost(String host) {
