@@ -434,12 +434,15 @@ public final class DebloaterFragment extends Fragment {
             }
             appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                     .putStringSet(KEY_REMOVED, removed).apply();
+            final int okCount = ok;
+            final int failedCount = failed;
+            final List<String> errorCopy = new ArrayList<>(errors);
             if (!isAdded()) return;
             requireActivity().runOnUiThread(() -> {
                 if (binding == null) return;
                 binding.codesuDebloaterBatchProgress.setVisibility(View.GONE);
-                String summary = "Correctas: " + ok + " · fallidas: " + failed;
-                if (!errors.isEmpty()) summary += "\n" + android.text.TextUtils.join("\n", errors);
+                String summary = "Correctas: " + okCount + " · fallidas: " + failedCount;
+                if (!errorCopy.isEmpty()) summary += "\n" + android.text.TextUtils.join("\n", errorCopy);
                 Toast.makeText(requireContext(), summary, Toast.LENGTH_LONG).show();
                 clearSelection();
                 loadApps();
