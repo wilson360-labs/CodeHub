@@ -73,7 +73,10 @@ CONFIG_FILES=(
 compute_key() {
   {
     for f in "${CONFIG_FILES[@]}"; do
-      [ -f "$f" ] && cat "$f"
+      # El workflow inyecta versionName/versionCode en app/build.gradle con
+      # sed -i ANTES de este paso. Leer desde HEAD evita que el key cambie
+      # en cada build y deje la caché inutilizable.
+      if git show "HEAD:$f" 2>/dev/null; then :; elif [ -f "$f" ]; then cat "$f"; fi
     done
     echo "gradle=$GRADLE_VERSION"
   } | sha256sum | cut -c1-16
