@@ -20,6 +20,8 @@
 # configuración de build (nunca fuentes). Si el key cambia, se
 # descarta la caché y se recompila desde cero: cero riesgo de
 # reutilizar salidas incompatibles.
+# En runs consecutivos con el mismo key se reutilizan las particiones:
+# no se vuelven a subir si el sha256 no cambia.
 #
 # Uso:
 #   bash scripts/build-cache.sh restore
