@@ -32,8 +32,7 @@
                 android:layout_marginLeft="4dp"
                 android:text="CodeSu"
                 android:textColor="@color/codesu_accent"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:textSize="12sp" />
         </LinearLayout>
 
         <TextView
@@ -41,10 +40,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Ready to Kill"
+            android:text="Listo para cerrar"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold|italic" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <FrameLayout

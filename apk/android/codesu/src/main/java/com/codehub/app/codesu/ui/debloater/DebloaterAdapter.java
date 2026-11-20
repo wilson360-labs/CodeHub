@@ -139,12 +139,12 @@ final class DebloaterAdapter extends RecyclerView.Adapter<DebloaterAdapter.Holde
         private void addBadge(LinearLayout parent, String label, int textColorRes, int backgroundColorRes) {
             TextView badge = new TextView(parent.getContext());
             badge.setText(label);
-            badge.setTextSize(9f);
+            badge.setTextSize(12f);
             badge.setTextColor(ContextCompat.getColor(parent.getContext(), textColorRes));
-            badge.setPadding(dp(5), dp(2), dp(5), dp(2));
+            badge.setPadding(dp(4), dp(2), dp(4), dp(2));
             GradientDrawable background = new GradientDrawable();
             background.setColor(ContextCompat.getColor(parent.getContext(), backgroundColorRes));
-            background.setStroke(dp(1), ContextCompat.getColor(parent.getContext(), textColorRes));
+            background.setStroke(dp(1), ContextCompat.getColor(parent.getContext(), R.color.codesu_border));
             background.setCornerRadius(dp(8));
             badge.setBackground(background);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(

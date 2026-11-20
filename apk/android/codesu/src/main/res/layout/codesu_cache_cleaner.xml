@@ -10,10 +10,10 @@
         android:id="@+id/codesu_cache_header"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="14dp"
-        android:layout_marginTop="14dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
         app:cardBackgroundColor="@color/codesu_surface"
-        app:cardCornerRadius="20dp"
+        app:cardCornerRadius="8dp"
         app:cardElevation="2dp"
         app:cardUseCompatPadding="true"
         app:layout_constraintEnd_toEndOf="parent"
@@ -24,20 +24,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="20dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="CODESU · ALMACENAMIENTO"
+                android:text="Almacenamiento"
                 android:textColor="@color/codesu_accent_text"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
+                android:layout_marginTop="4dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -47,8 +46,7 @@
                     android:layout_weight="1"
                     android:text="Limpieza de caché"
                     android:textColor="@color/codesu_text_primary"
-                    android:textSize="19sp"
-                    android:textStyle="bold" />
+                    android:textSize="20sp" />
 
                 <LinearLayout
                     android:id="@+id/codesu_cache_refresh"
@@ -61,7 +59,7 @@
                     android:gravity="center"
                     android:minWidth="100dp"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="11dp">
+                    android:paddingHorizontal="12dp">
 
                     <ImageView
                         android:id="@+id/codesu_cache_refresh_icon"
@@ -69,16 +67,15 @@
                         android:layout_height="18dp"
                         android:contentDescription=""
                         android:src="@drawable/codesu_ic_refresh"
-                        app:tint="@color/codesu_accent_text" />
+                        app:tint="@color/codesu_text_secondary" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
+                        android:layout_marginStart="8dp"
                         android:text="Actualizar"
                         android:textColor="@color/codesu_accent_text"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
+                        android:textSize="12sp" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -87,10 +84,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Calculando caché…"
+                android:text="Calculando caché"
                 android:textColor="@color/codesu_text_primary"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:textSize="16sp" />
 
             <TextView
                 android:id="@+id/codesu_cache_success_rate"
@@ -105,20 +101,19 @@
                 android:id="@+id/codesu_cache_result"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="9dp"
+                android:layout_marginTop="8dp"
                 android:background="@drawable/codesu_cache_result_background"
                 android:paddingHorizontal="12dp"
-                android:paddingVertical="9dp"
+                android:paddingVertical="8dp"
                 android:textColor="@color/codesu_accent_text"
                 android:textSize="12sp"
-                android:textStyle="bold"
                 android:visibility="gone" />
 
             <TextView
                 android:id="@+id/codesu_cache_safety_note"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
+                android:layout_marginTop="8dp"
                 android:text="Recomendable: caché >1 MB en apps no protegidas. No recomendable: servicios sensibles. Solo caché; nunca datos ni sesiones."
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="12sp" />
@@ -127,40 +122,39 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="ELIGE CÓMO LIMPIAR"
+                android:text="Elegir método de limpieza"
                 android:textColor="@color/codesu_accent_text"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="8dp"
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/codesu_cache_engine_shizuku"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="5dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_weight="1"
                     android:clickable="true"
                     android:contentDescription="Seleccionar motor Shizuku"
                     android:focusable="true"
                     app:cardBackgroundColor="@color/codesu_surface"
-                    app:cardCornerRadius="14dp"
+                    app:cardCornerRadius="8dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="@color/codesu_accent_text"
-                    app:strokeWidth="2dp">
+                    app:strokeColor="@color/codesu_border"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:minHeight="66dp"
+                        android:minHeight="64dp"
                         android:gravity="center_vertical"
                         android:orientation="vertical"
                         android:paddingHorizontal="12dp"
-                        android:paddingVertical="9dp">
+                        android:paddingVertical="8dp">
 
                         <TextView
                             android:layout_width="match_parent"
@@ -168,16 +162,17 @@
                             android:text="Shizuku"
                             android:textColor="@color/codesu_text_primary"
                             android:textSize="14sp"
-                            android:textStyle="bold" />
+                            android:drawablePadding="8dp"
+                            app:drawableStartCompat="@drawable/codesu_status_dot" />
 
                         <TextView
                             android:id="@+id/codesu_cache_engine_shizuku_status"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
-                            android:text="Comprobando servicio…"
+                            android:layout_marginTop="4dp"
+                            android:text="Comprobando servicio"
                             android:textColor="@color/codesu_text_secondary"
-                            android:textSize="10sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -185,25 +180,25 @@
                     android:id="@+id/codesu_cache_engine_accessibility"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
+                    android:layout_marginStart="4dp"
                     android:layout_weight="1"
                     android:clickable="true"
                     android:contentDescription="Seleccionar motor Accesibilidad"
                     android:focusable="true"
                     app:cardBackgroundColor="@color/codesu_surface"
-                    app:cardCornerRadius="14dp"
+                    app:cardCornerRadius="8dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="@color/codesu_accent_soft"
+                    app:strokeColor="@color/codesu_border"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:minHeight="66dp"
+                        android:minHeight="64dp"
                         android:gravity="center_vertical"
                         android:orientation="vertical"
                         android:paddingHorizontal="12dp"
-                        android:paddingVertical="9dp">
+                        android:paddingVertical="8dp">
 
                         <TextView
                             android:layout_width="match_parent"
@@ -211,16 +206,17 @@
                             android:text="Accesibilidad"
                             android:textColor="@color/codesu_text_primary"
                             android:textSize="14sp"
-                            android:textStyle="bold" />
+                            android:drawablePadding="8dp"
+                            app:drawableStartCompat="@drawable/codesu_status_dot" />
 
                         <TextView
                             android:id="@+id/codesu_cache_engine_accessibility_status"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
-                            android:text="Comprobando permiso…"
+                            android:layout_marginTop="4dp"
+                            android:text="Comprobando permiso"
                             android:textColor="@color/codesu_text_secondary"
-                            android:textSize="10sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
@@ -229,10 +225,10 @@
                 android:id="@+id/codesu_cache_engine_summary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
+                android:layout_marginTop="8dp"
                 android:text="Shizuku limpia en segundo plano. Accesibilidad automatiza Ajustes y necesita la pantalla desbloqueada."
                 android:textColor="@color/codesu_text_secondary"
-                android:textSize="11sp" />
+                android:textSize="12sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/codesu_cache_engine_action"
@@ -267,7 +263,7 @@
                 android:layout_marginTop="8dp"
                 android:text="Mantener pantalla encendida para Turbo Accesibilidad"
                 android:textColor="@color/codesu_text_primary"
-                android:textSize="13sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/codesu_cache_screen_hint"
@@ -275,7 +271,7 @@
                 android:layout_height="wrap_content"
                 android:text="Shizuku trabaja en segundo plano sin mantener la pantalla encendida. Turbo Accesibilidad necesita Ajustes visible y el teléfono desbloqueado."
                 android:textColor="@color/codesu_text_secondary"
-                android:textSize="11sp" />
+                android:textSize="12sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/codesu_usage_access_button"
@@ -304,7 +300,7 @@
                 android:id="@+id/codesu_cache_progress_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
+                android:layout_marginTop="4dp"
                 android:textColor="@color/codesu_text_secondary"
                 android:textSize="12sp"
                 android:visibility="gone" />
@@ -316,8 +312,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipToPadding="false"
-        android:paddingHorizontal="10dp"
-        android:paddingBottom="76dp"
+        android:paddingHorizontal="8dp"
+        android:paddingBottom="80dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -328,9 +324,9 @@
         android:layout_width="wrap_content"
         android:layout_height="56dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="18dp"
+        android:layout_marginBottom="20dp"
         android:contentDescription="Iniciar o detener limpieza de caché"
-        android:elevation="8dp"
+        android:elevation="2dp"
         android:text="Iniciar limpieza"
         android:textColor="@color/white"
         android:visibility="gone"

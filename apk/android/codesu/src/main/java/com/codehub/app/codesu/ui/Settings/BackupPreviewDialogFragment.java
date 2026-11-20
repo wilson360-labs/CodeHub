@@ -42,10 +42,10 @@ public class BackupPreviewDialogFragment extends DialogFragment {
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         binding = DialogBackupPreviewBinding.inflate(getLayoutInflater());
         return new AlertDialog.Builder(requireContext())
-                .setTitle("Restore backup")
+                .setTitle("Restaurar copia")
                 .setView(binding.getRoot())
-                .setNegativeButton("Cancel", (dialog, which) -> dismiss())
-                .setPositiveButton("Restore", null)
+                .setNegativeButton("Cancelar", (dialog, which) -> dismiss())
+                .setPositiveButton("Restaurar", null)
                 .create();
     }
 
@@ -164,7 +164,7 @@ public class BackupPreviewDialogFragment extends DialogFragment {
             return;
 
         restoring = true;
-        setCancelable(false);
+        setCancelarable(false);
         AlertDialog dialog = (AlertDialog) getDialog();
         if (dialog != null) {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
@@ -190,7 +190,7 @@ public class BackupPreviewDialogFragment extends DialogFragment {
                     return;
                 if (finalError != null) {
                     restoring = false;
-                    setCancelable(true);
+                    setCancelarable(true);
                     showError(finalError);
                     AlertDialog currentDialog = (AlertDialog) getDialog();
                     if (currentDialog != null) {
@@ -203,7 +203,7 @@ public class BackupPreviewDialogFragment extends DialogFragment {
                 }
                 Bundle result = new Bundle();
                 getParentFragmentManager().setFragmentResult(RESULT_KEY, result);
-                Toast.makeText(appContext, "Backup restored successfully", Toast.LENGTH_LONG).show();
+                Toast.makeText(appContext, "Copia restaurada", Toast.LENGTH_LONG).show();
                 dismiss();
             });
         });

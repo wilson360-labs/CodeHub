@@ -1,10 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="codesu_accent_soft">#FF80DEEA</color>
-    <color name="codesu_accent_text">#80DEEA</color>
-    <color name="codesu_background">#FF0E1518</color>
-    <color name="codesu_surface">#FF192327</color>
-    <color name="codesu_text_primary">#FFF1F6F7</color>
-    <color name="codesu_text_secondary">#FFAFBEC2</color>
-    <color name="codesu_result_surface">#FF20393B</color>
+    <!-- Misma rampa, niveles invertidos. Sin cian. -->
+    <color name="codesu_accent_soft">#FF3A4A53</color>
+    <color name="codesu_accent">#FF8AA3AF</color>
+    <color name="codesu_accent_dark">#FF25323A</color>
+    <color name="codesu_accent_text">#FFA9BCC5</color>
+    <color name="codesu_background">#FF121619</color>
+    <color name="codesu_surface">#FF1B2226</color>
+    <color name="codesu_text_primary">#FFF0F3F4</color>
+    <color name="codesu_text_secondary">#FFADB9BE</color>
+    <color name="codesu_text_muted">#FF7D8B91</color>
+    <color name="codesu_result_surface">#FF232C31</color>
+    <color name="codesu_selected_surface">#FF2C383E</color>
+    <color name="codesu_border">#33FFFFFF</color>
+    <color name="codesu_error">#FFC2746C</color>
+    <color name="codesu_badge_system">#FFC2746C</color>
+    <color name="codesu_badge_recommended">#FF7FB294</color>
+    <color name="codesu_badge_advanced">#FFC79A55</color>
+    <color name="codesu_badge_expert">#FFC2746C</color>
+    <color name="codesu_badge_disabled">#FF9AA6AC</color>
+    <color name="codesu_badge_removed">#FFC08B84</color>
+    <color name="codesu_badge_system_bg">#FF232C31</color>
+    <color name="codesu_badge_recommended_bg">#FF232C31</color>
+    <color name="codesu_badge_advanced_bg">#FF232C31</color>
+    <color name="codesu_badge_expert_bg">#FF232C31</color>
+    <color name="codesu_badge_disabled_bg">#FF232C31</color>
+    <color name="codesu_badge_removed_bg">#FF232C31</color>
 </resources>

@@ -88,16 +88,9 @@ public class CapsuleToast {
     private void animateIn() {
         textView.setVisibility(View.GONE);
         capsuleView.setAlpha(0f);
-        capsuleView.setScaleX(0f);
-        capsuleView.setScaleY(0f);
         capsuleView.setVisibility(View.VISIBLE);
-        capsuleView.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(400L)
-                .start();
-        handler.postDelayed(this::animateSecond, 600L);
+        capsuleView.animate().alpha(1f).setDuration(120L).start();
+        handler.postDelayed(this::animateSecond, 120L);
     }
 
     private void animateSecond() {
@@ -107,10 +100,8 @@ public class CapsuleToast {
     public void dismiss() {
         textView.setVisibility(View.GONE);
         capsuleView.animate()
-                .scaleX(0f)
-                .scaleY(0f)
                 .alpha(0f)
-                .setDuration(400)
+                .setDuration(120L)
                 .setStartDelay(500L)
                 .withEndAction(() -> {
                     ViewGroup parent = (ViewGroup) capsuleView.getParent();

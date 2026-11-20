@@ -22,9 +22,8 @@
         android:layout_height="wrap_content"
         android:layout_marginVertical="8dp"
         android:gravity="center"
-        android:text="Reading backup..."
-        android:textSize="15sp"
-        android:textStyle="bold" />
+        android:text="Leyendo copia"
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/backup_preview_error"
@@ -33,8 +32,7 @@
         android:layout_marginTop="8dp"
         android:padding="8dp"
         android:textColor="?attr/colorError"
-        android:textSize="15sp"
-        android:textStyle="bold"
+        android:textSize="14sp"
         android:visibility="gone" />
 
     <LinearLayout
@@ -49,7 +47,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             app:cardBackgroundColor="?attr/colorSurface"
-            app:cardCornerRadius="12dp"
+            app:cardCornerRadius="8dp"
             app:cardElevation="0dp"
             app:strokeColor="?attr/colorControlNormal"
             app:strokeWidth="1dp">
@@ -63,8 +61,8 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Backup file"
-                    android:textSize="13sp" />
+                    android:text="Archivo de copia"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/backup_preview_file_name"
@@ -74,8 +72,7 @@
                     android:ellipsize="end"
                     android:maxLines="2"
                     android:textColor="@color/codesu_accent_text"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:textSize="14sp" />
 
                 <View
                     android:layout_width="match_parent"
@@ -97,8 +94,8 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Created"
-                            android:textSize="13sp" />
+                            android:text="Creada"
+                            android:textSize="14sp" />
 
                         <TextView
                             android:id="@+id/backup_preview_date"
@@ -106,8 +103,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:textColor="?android:attr/textColorPrimary"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:textSize="14sp" />
                     </LinearLayout>
 
                     <View
@@ -125,8 +121,8 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="App version"
-                            android:textSize="13sp" />
+                            android:text="Versión de la app"
+                            android:textSize="14sp" />
 
                         <TextView
                             android:id="@+id/backup_preview_app_version"
@@ -134,8 +130,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:textColor="?android:attr/textColorPrimary"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:textSize="14sp" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -156,16 +151,15 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Settings"
-                        android:textSize="13sp" />
+                        android:text="Ajustes"
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/backup_preview_settings_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:textSize="14sp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -179,16 +173,15 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Selected apps"
-                        android:textSize="13sp" />
+                        android:text="Apps seleccionadas"
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/backup_preview_package_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:textSize="14sp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -202,16 +195,15 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Selection mode"
-                        android:textSize="13sp" />
+                        android:text="Modo de selección"
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/backup_preview_selection_mode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:textSize="14sp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -220,7 +212,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Restoring will replace your current Selection and Settings."
-            android:textSize="13sp" />
+            android:text="Restaurar sustituirá tu selección y tus ajustes actuales."
+            android:textSize="14sp" />
     </LinearLayout>
 </LinearLayout>

@@ -9,7 +9,6 @@ import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -76,16 +75,8 @@ public class HomeRecyclerViewAdapter extends RecyclerView.Adapter<HomeRecyclerVi
         else
             holder.pkgName.setVisibility(View.GONE);
         if (isScrollAnimationEnable) {
-            holder.itemView.setScaleX(0.5f);
-            holder.itemView.setScaleY(0.5f);
             holder.itemView.setAlpha(0f);
-            holder.itemView.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .alpha(1f)
-                    .setDuration(400)
-                    .setInterpolator(new DecelerateInterpolator())
-                    .start();
+            holder.itemView.animate().alpha(1f).setDuration(120L).start();
         }
     }
 
@@ -96,9 +87,6 @@ public class HomeRecyclerViewAdapter extends RecyclerView.Adapter<HomeRecyclerVi
 
     @Override
     public void onClick(View v) {
-        v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(200L).withEndAction(() ->
-                v.animate().scaleX(1f).scaleY(1f).setDuration(200L).start()
-        ).start();
         String pkgName = (String) v.getTag();
         if (v == v.findViewById(R.id.kill_icon)) {
             listener.onKillButtonClicked(pkgName, appListMap.get(pkgName).getName());
@@ -112,9 +100,6 @@ public class HomeRecyclerViewAdapter extends RecyclerView.Adapter<HomeRecyclerVi
 
     @Override
     public boolean onLongClick(View v) {
-        v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(200L).withEndAction(() ->
-                v.animate().scaleX(1f).scaleY(1f).setDuration(200L).start()
-        ).start();
         String pkgName = (String) v.getTag();
         listener.onAppInfoLongClicked(v.findViewById(R.id.package_name), pkgName);
         return true;

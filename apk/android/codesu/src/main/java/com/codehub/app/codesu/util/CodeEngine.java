@@ -89,7 +89,7 @@ public final class CodeEngine {
         if (PROFILE_ULTRA.equals(profile)) return "Ultra ahorro";
         if (PROFILE_SAVER.equals(profile)) return "Ahorro de batería";
         if (PROFILE_ADAPTIVE.equals(profile)) return "Batería adaptable";
-        if (PROFILE_PERFORMANCE.equals(profile)) return "Rendimiento · modo juego";
+        if (PROFILE_PERFORMANCE.equals(profile)) return "Rendimiento";
         return "Equilibrado";
     }
 

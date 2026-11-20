@@ -1,8 +1,5 @@
 package com.codehub.app.codesu.ui.home;
 
-import android.animation.ObjectAnimator;
-import android.animation.PropertyValuesHolder;
-import android.animation.ValueAnimator;
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.drawable.ColorDrawable;
@@ -10,7 +7,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Button;
 
 import androidx.annotation.NonNull;
@@ -18,8 +14,6 @@ import androidx.annotation.NonNull;
 import com.codehub.app.codesu.R;
 
 public class InfoDialog extends Dialog {
-
-    private ObjectAnimator objectAnimator;
 
     public InfoDialog(@NonNull Context context) {
         super(context);
@@ -40,25 +34,5 @@ public class InfoDialog extends Dialog {
                 dismiss();
             }
         });
-        objectAnimator = ObjectAnimator.ofPropertyValuesHolder(findViewById(R.id.dialog_icon),
-                PropertyValuesHolder.ofFloat(View.SCALE_X, 0.8f, 1.0f),
-                PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.8f, 1.0f)
-        );
-        objectAnimator.setDuration(2000L);
-        objectAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        objectAnimator.setRepeatMode(ValueAnimator.REVERSE);
-        objectAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        objectAnimator.start();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        objectAnimator.cancel();
     }
 }

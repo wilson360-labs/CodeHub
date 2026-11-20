@@ -9,7 +9,7 @@
     android:layoutDirection="ltr"
     android:visibility="gone"
     app:cardBackgroundColor="@color/white"
-    app:cardCornerRadius="10dp"
+    app:cardCornerRadius="8dp"
     app:cardElevation="4dp">
 
     <LinearLayout
@@ -40,7 +40,6 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="8dp"
             android:textColor="@color/black"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:textSize="14sp" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>

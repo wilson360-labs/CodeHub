@@ -211,7 +211,7 @@ public final class DebloaterFragment extends Fragment {
         int generation = ++loadGeneration;
         loading = true;
         binding.codesuDebloaterLoading.setVisibility(View.VISIBLE);
-        binding.codesuDebloaterStatus.setText("Cargando apps del sistema…");
+        binding.codesuDebloaterStatus.setText("Cargando apps del sistema");
         Context appContext = requireContext().getApplicationContext();
         Set<String> selectedPackages = new HashSet<>();
         for (DebloaterAppInfo app : allApps) if (app.selected) selectedPackages.add(app.packageName);

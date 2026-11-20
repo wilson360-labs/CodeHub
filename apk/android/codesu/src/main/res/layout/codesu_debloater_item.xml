@@ -4,9 +4,9 @@
     android:id="@+id/codesu_debloater_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="7dp"
+    android:layout_marginBottom="8dp"
     app:cardBackgroundColor="@color/codesu_surface"
-    app:cardCornerRadius="14dp"
+    app:cardCornerRadius="8dp"
     app:cardElevation="1dp"
     app:cardUseCompatPadding="true">
 
@@ -15,10 +15,10 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="10dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="10dp"
-        android:paddingBottom="10dp">
+        android:paddingStart="8dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp">
 
         <ImageView
             android:id="@+id/codesu_debloater_item_icon"
@@ -36,7 +36,7 @@
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:minWidth="0dp"
             android:orientation="vertical">
@@ -49,8 +49,7 @@
                 android:maxLines="1"
                 android:minWidth="0dp"
                 android:textColor="@color/codesu_text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/codesu_debloater_item_package"
@@ -60,7 +59,7 @@
                 android:maxLines="1"
                 android:minWidth="0dp"
                 android:textColor="@color/codesu_text_secondary"
-                android:textSize="10sp" />
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:id="@+id/codesu_debloater_item_badges"
@@ -74,19 +73,19 @@
                 android:id="@+id/codesu_debloater_item_description"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:maxLines="2"
                 android:minWidth="0dp"
                 android:textColor="@color/codesu_text_secondary"
-                android:textSize="11sp"
+                android:textSize="12sp"
                 android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="8dp"
             android:orientation="vertical">
 
             <com.google.android.material.button.MaterialButton
@@ -99,7 +98,7 @@
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:text="Deshabilitar"
-                android:textSize="10sp"
+                android:textSize="12sp"
                 app:cornerRadius="9dp" />
 
             <com.google.android.material.button.MaterialButton
@@ -112,7 +111,7 @@
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:text="Retirar"
-                android:textSize="10sp" />
+                android:textSize="12sp" />
         </LinearLayout>
 
         <ImageButton

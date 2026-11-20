@@ -135,13 +135,13 @@ public class ExcludedFragment extends Fragment implements ExcludedRecyclerViewAd
     @Override
     public void onAddIconClick(AppInfo appInfo) {
         excludedViewModel.addExcluded(appInfo);
-        CapsuleToast.showInfo(getActivity(), "\"" + appInfo.getName() + "\" added to selection list");
+        CapsuleToast.showInfo(getActivity(), "\"" + appInfo.getName() + "\" agregado a la selección");
     }
 
     @Override
     public void onRemoveIconClick(AppInfo appInfo) {
         excludedViewModel.removeExcluded(appInfo);
-        CapsuleToast.showInfo(getActivity(), "\"" + appInfo.getName() + "\" removed from selection list");
+        CapsuleToast.showInfo(getActivity(), "\"" + appInfo.getName() + "\" quitado de la selección");
     }
 
     @Override
@@ -149,6 +149,6 @@ public class ExcludedFragment extends Fragment implements ExcludedRecyclerViewAd
         ClipboardManager clipboardManager = (ClipboardManager) App.context.getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clipData = ClipData.newPlainText("pkgName", pkgName);
         clipboardManager.setPrimaryClip(clipData);
-        CapsuleToast.showInfo(getActivity(), "package name copied to clipboard");
+        CapsuleToast.showInfo(getActivity(), "Paquete copiado al portapapeles");
     }
 }

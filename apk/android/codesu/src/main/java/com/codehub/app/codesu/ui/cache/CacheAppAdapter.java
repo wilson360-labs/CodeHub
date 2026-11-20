@@ -7,6 +7,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
@@ -60,27 +61,31 @@ final class CacheAppAdapter extends RecyclerView.Adapter<CacheAppAdapter.Holder>
         holder.packageName.setText((app.protectedApp ? "Protegida · " : app.systemApp ? "Sistema · " : "App · ")
                 + app.packageName);
         boolean recommended = CacheCleaner.isDeepCleanCandidate(app);
-        holder.advice.setText(recommended ? "RECOMENDABLE · limpieza segura" : app.protectedApp
-                || CacheCleaner.isProtected(app.packageName) ? "NO RECOMENDABLE · app protegida"
+        holder.advice.setText(recommended ? "Recomendable · limpieza segura" : app.protectedApp
+                || CacheCleaner.isProtected(app.packageName) ? "No recomendable · app protegida"
                 : app.systemApp && android.os.Build.VERSION.SDK_INT >= 36
-                ? "PROTEGIDA · sistema Android 16"
-                : "NO RECOMENDABLE · menos de 1 MB");
-        holder.advice.setTextColor(recommended ? 0xFF41C99A : 0xFFE7838B);
+                ? "Protegida · sistema Android 16"
+                : "No recomendable · menos de 1 MB");
+        holder.advice.setTextColor(ContextCompat.getColor(holder.itemView.getContext(),
+                recommended ? R.color.codesu_badge_recommended : R.color.codesu_badge_removed));
         holder.itemView.setAlpha(app.protectedApp ? 0.72f : 1f);
         holder.size.setText(formatBytes(app.cacheBytes));
         LiveResult live = liveResults.get(app.packageName);
         if (live == null) return;
         if ("cleared".equals(live.status)) {
-            holder.advice.setText("LIMPIADA · caché borrada");
-            holder.advice.setTextColor(0xFF41C99A);
+            holder.advice.setText("Limpia · caché borrada");
+            holder.advice.setTextColor(ContextCompat.getColor(holder.itemView.getContext(),
+                    R.color.codesu_badge_recommended));
             holder.size.setText(live.afterBytes >= 0L ? formatBytes(live.afterBytes)
                     : formatBytes(app.cacheBytes));
         } else if ("skipped".equals(live.status)) {
-            holder.advice.setText("OMITIDA · sin caché suficiente");
-            holder.advice.setTextColor(0xFFB9BDD1);
+            holder.advice.setText("Omitida · sin caché suficiente");
+            holder.advice.setTextColor(ContextCompat.getColor(holder.itemView.getContext(),
+                    R.color.codesu_text_muted));
         } else if ("failed".equals(live.status)) {
-            holder.advice.setText("FALLIDA · la app no respondió");
-            holder.advice.setTextColor(0xFFE7838B);
+            holder.advice.setText("Fallida · la app no respondió");
+            holder.advice.setTextColor(ContextCompat.getColor(holder.itemView.getContext(),
+                    R.color.codesu_badge_removed));
         }
     }
 

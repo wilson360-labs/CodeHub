@@ -26,7 +26,7 @@ public class KillWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
-            updateWidgetUI(context, appWidgetManager, appWidgetId, "Ready to Kill", State.IDLE);
+            updateWidgetUI(context, appWidgetManager, appWidgetId, "Listo para cerrar", State.IDLE);
         }
     }
 
@@ -38,7 +38,7 @@ public class KillWidgetProvider extends AppWidgetProvider {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
             ComponentName thisWidget = new ComponentName(context, KillWidgetProvider.class);
 
-            updateWidgetUI(context, appWidgetManager, thisWidget, "Killing...", State.PROCESSING);
+            updateWidgetUI(context, appWidgetManager, thisWidget, "Cerrando apps", State.PROCESSING);
 
             App.executorService.execute(() -> {
                 List<AppInfo> targets = AppListHelper.getFilteredAppsList(App.context, true);
@@ -56,7 +56,7 @@ public class KillWidgetProvider extends AppWidgetProvider {
 
                 App.handler.post(() -> updateWidgetUI(context, appWidgetManager, thisWidget, resultText, state));
 
-                App.handler.postDelayed(() -> updateWidgetUI(context, appWidgetManager, thisWidget, "Ready to Kill", State.IDLE), 3000);
+                App.handler.postDelayed(() -> updateWidgetUI(context, appWidgetManager, thisWidget, "Listo para cerrar", State.IDLE), 3000);
             });
         }
     }

@@ -1,27 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="codesu_accent_soft">#FFA7B4BA</color>
+    <!-- Rampa neutra fría. El acento solo aparece en acciones y estado. -->
+    <color name="codesu_accent_soft">#FFD6DBDE</color>
     <color name="codesu_accent">#FF4A5D68</color>
     <color name="codesu_accent_dark">#FF33424B</color>
     <color name="codesu_accent_text">#FF33424B</color>
-    <color name="codesu_background">#FFF1EFEB</color>
+    <color name="codesu_background">#FFF3F4F4</color>
     <color name="codesu_surface">#FFFFFFFF</color>
     <color name="codesu_text_primary">#FF1C2428</color>
-    <color name="codesu_text_secondary">#FF5C686D</color>
-    <color name="codesu_result_surface">#FFF2EEE6</color>
-    <color name="codesu_error">#FFB3261E</color>
-    <color name="codesu_badge_system">#FFB3261E</color>
-    <color name="codesu_badge_recommended">#FF2E7D32</color>
+    <color name="codesu_text_secondary">#FF5A656B</color>
+    <color name="codesu_text_muted">#FF879196</color>
+    <color name="codesu_result_surface">#FFEDF0F1</color>
+    <color name="codesu_selected_surface">#FFE4E9EB</color>
+    <color name="codesu_border">#1A1C2428</color>
+    <color name="codesu_error">#FF9A3B34</color>
+    <color name="codesu_badge_system">#FF9A3B34</color>
+    <color name="codesu_badge_recommended">#FF3E6B4F</color>
     <color name="codesu_badge_advanced">#FF8A5A00</color>
-    <color name="codesu_badge_expert">#FFB3261E</color>
-    <color name="codesu_badge_disabled">#FF6A1B9A</color>
-    <color name="codesu_badge_removed">#FF8E1B1B</color>
-    <color name="codesu_badge_system_bg">#FFFFEBEE</color>
-    <color name="codesu_badge_recommended_bg">#FFE8F5E9</color>
-    <color name="codesu_badge_advanced_bg">#FFFFF3E0</color>
-    <color name="codesu_badge_expert_bg">#FFFFEBEE</color>
-    <color name="codesu_badge_disabled_bg">#FFF3E5F5</color>
-    <color name="codesu_badge_removed_bg">#FFFFEBEE</color>
+    <color name="codesu_badge_expert">#FF8A4038</color>
+    <color name="codesu_badge_disabled">#FF5F6A70</color>
+    <color name="codesu_badge_removed">#FF8E4B45</color>
+    <color name="codesu_badge_system_bg">#FFF0F1F2</color>
+    <color name="codesu_badge_recommended_bg">#FFF0F1F2</color>
+    <color name="codesu_badge_advanced_bg">#FFF0F1F2</color>
+    <color name="codesu_badge_expert_bg">#FFF0F1F2</color>
+    <color name="codesu_badge_disabled_bg">#FFF0F1F2</color>
+    <color name="codesu_badge_removed_bg">#FFF0F1F2</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

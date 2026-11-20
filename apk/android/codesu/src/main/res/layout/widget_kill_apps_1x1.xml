@@ -33,7 +33,6 @@
         android:gravity="center"
         android:textColor="#FFFFFF"
         android:textSize="14sp"
-        android:textStyle="bold"
         android:visibility="gone" />
 
 </FrameLayout>

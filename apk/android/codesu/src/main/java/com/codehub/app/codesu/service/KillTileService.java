@@ -21,7 +21,7 @@ public class KillTileService extends TileService {
         final Tile tile = getQsTile();
         if (tile != null) {
             tile.setState(Tile.STATE_ACTIVE);
-            tile.setLabel("Killing...");
+            tile.setLabel("Cerrando apps");
             tile.updateTile();
         }
 

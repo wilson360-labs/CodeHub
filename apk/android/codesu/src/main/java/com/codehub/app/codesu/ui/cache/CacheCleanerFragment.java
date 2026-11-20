@@ -197,12 +197,10 @@ public class CacheCleanerFragment extends Fragment {
     }
 
     private void setEngineCardSelected(MaterialCardView card, boolean selected) {
-        int color = ContextCompat.getColor(requireContext(), selected
-                ? R.color.codesu_accent_text : R.color.codesu_accent_soft);
-        card.setStrokeColor(color);
-        card.setStrokeWidth((int) ((selected ? 2 : 1) * getResources().getDisplayMetrics().density + 0.5f));
+        card.setStrokeColor(ContextCompat.getColor(requireContext(), R.color.codesu_border));
+        card.setStrokeWidth((int) (getResources().getDisplayMetrics().density + 0.5f));
         card.setCardBackgroundColor(ContextCompat.getColor(requireContext(), selected
-                ? R.color.codesu_result_surface : R.color.codesu_surface));
+                ? R.color.codesu_selected_surface : R.color.codesu_surface));
         card.setSelected(selected);
     }
 
@@ -352,7 +350,8 @@ public class CacheCleanerFragment extends Fragment {
                         int spaceRate = stats.getInt("last_space_rate", 0);
                         binding.codesuCacheSuccessRate.setText("Última limpieza · " + rate + "% órdenes aceptadas · " + spaceRate + "% del objetivo liberado · "
                                 + CacheAppAdapter.formatBytes(stats.getLong("last_freed_bytes", 0L)) + " verificados");
-                        binding.codesuCacheSuccessRate.setTextColor(rate >= 80 ? 0xFF41C99A : 0xFFE7838B);
+                        binding.codesuCacheSuccessRate.setTextColor(ContextCompat.getColor(requireContext(),
+                                rate >= 80 ? R.color.codesu_badge_recommended : R.color.codesu_badge_removed));
                     } else {
                         binding.codesuCacheSuccessRate.setText("Tasa de éxito: disponible después de la primera limpieza");
                     }
@@ -649,7 +648,7 @@ public class CacheCleanerFragment extends Fragment {
         binding.codesuCacheProgressText.setVisibility(View.GONE);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
-        binding.codesuCacheTotal.setText("Actualizando tamaños reales automáticamente…");
+        binding.codesuCacheTotal.setText("Actualizando tamaños reales automáticamente");
         binding.codesuCacheResult.setText(result + (error == null || error.trim().isEmpty() ? "" : "\n" + error));
         binding.codesuCacheResult.setVisibility(View.VISIBLE);
         int attempted = done + failed;
@@ -693,7 +692,7 @@ public class CacheCleanerFragment extends Fragment {
     private void cancelCleanup() {
         if (binding == null || !cleaning) return;
         binding.codesuCacheCleanButton.setEnabled(false);
-        binding.codesuCacheCleanButton.setText("Deteniendo…");
+        binding.codesuCacheCleanButton.setText("Deteniendo");
         android.content.SharedPreferences accessibility = requireContext().getSharedPreferences(
                 CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE);
         if (accessibility.getBoolean(CacheCleanerAccessibilityService.KEY_RUNNING, false)) {
@@ -793,7 +792,7 @@ public class CacheCleanerFragment extends Fragment {
         updateKeepScreenOnFlag(false);
         binding.codesuCacheRefresh.setEnabled(true);
         binding.codesuCacheRefresh.setAlpha(1f);
-        binding.codesuCacheTotal.setText("Actualizando tamaños reales automáticamente…");
+        binding.codesuCacheTotal.setText("Actualizando tamaños reales automáticamente");
         if (!state.isFinished()) return;
         measurementStale = true;
         String workId = info.getId().toString();

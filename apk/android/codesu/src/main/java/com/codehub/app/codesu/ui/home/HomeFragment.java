@@ -90,16 +90,13 @@ public class HomeFragment extends Fragment {
             public void onChanged(List<AppInfo> appInfos) {
                 setAdapter();
                 if (appInfos.isEmpty()) {
-                    binding.allDead.setAlpha(0f);
-                    binding.allDead.animate().alpha(1f).setDuration(3000L).setStartDelay(1000L).start();
+                    binding.allDead.setAlpha(1f);
                     binding.killAllBtn.setVisibility(View.GONE);
                     searchLayout.setVisibility(View.GONE);
                     binding.allDead.setVisibility(View.VISIBLE);
                 } else {
-                    binding.killAllBtn.setAlpha(0f);
-                    searchLayout.setAlpha(0f);
-                    binding.killAllBtn.animate().alpha(1f).setDuration(400L).start();
-                    searchLayout.animate().alpha(1f).setDuration(400L).start();
+                    binding.killAllBtn.setAlpha(1f);
+                    searchLayout.setAlpha(1f);
                     binding.allDead.setVisibility(View.GONE);
                     binding.killAllBtn.setVisibility(View.VISIBLE);
                     searchLayout.setVisibility(View.VISIBLE);
@@ -119,10 +116,7 @@ public class HomeFragment extends Fragment {
         binding.killAllBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(200L).withEndAction(() ->
-                        v.animate().scaleX(1f).scaleY(1f).setDuration(200L).start()
-                ).start();
-                CapsuleToast capsuleToast = CapsuleToast.showLoading(getActivity(), "Killing...");
+                CapsuleToast capsuleToast = CapsuleToast.showLoading(getActivity(), "Cerrando apps");
                 homeViewModel.onKillAllAppsClicked(new HomeViewModel.OnResultListener() {
                     @Override
                     public void onKillSuccessfully(int count) {
@@ -164,7 +158,7 @@ public class HomeFragment extends Fragment {
         adapter = new HomeRecyclerViewAdapter(homeViewModel.getAppsList().getValue(), new HomeRecyclerViewAdapter.onItemClickListener() {
             @Override
             public void onKillButtonClicked(String pkgName, String name) {
-                CapsuleToast capsuleToast = CapsuleToast.showLoading(getActivity(), "Killing...");
+                CapsuleToast capsuleToast = CapsuleToast.showLoading(getActivity(), "Cerrando apps");
                 homeViewModel.onKillSingleAppClicked(pkgName, new HomeViewModel.OnResultListener() {
                     @Override
                     public void onKillSuccessfully(int count) {
@@ -187,7 +181,7 @@ public class HomeFragment extends Fragment {
                 ClipboardManager clipboardManager = (ClipboardManager) App.context.getSystemService(Context.CLIPBOARD_SERVICE);
                 ClipData clipData = ClipData.newPlainText("pkgName", pkgName);
                 clipboardManager.setPrimaryClip(clipData);
-                CapsuleToast.showInfo(getActivity(), "package name copied to clipboard");
+                CapsuleToast.showInfo(getActivity(), "Paquete copiado al portapapeles");
             }
         });
         binding.homeRecyclerView.swapAdapter(adapter, true);

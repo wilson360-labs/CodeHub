@@ -20,7 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardBackgroundColor="@color/codesu_surface"
-            app:cardCornerRadius="18dp"
+            app:cardCornerRadius="8dp"
             app:cardElevation="2dp"
             app:cardUseCompatPadding="true">
 
@@ -28,7 +28,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="14dp">
+                android:padding="16dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -46,18 +46,16 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="CODESU · SISTEMA"
+                            android:text="Sistema"
                             android:textColor="@color/codesu_accent_text"
-                            android:textSize="11sp"
-                            android:textStyle="bold" />
+                            android:textSize="12sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Debloater"
+                            android:text="Apps del sistema"
                             android:textColor="@color/codesu_text_primary"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
+                            android:textSize="20sp" />
 
                         <TextView
                             android:id="@+id/codesu_debloater_status"
@@ -81,14 +79,13 @@
                         android:paddingBottom="4dp"
                         android:text="Shizuku"
                         android:textColor="@color/codesu_accent_text"
-                        android:textSize="10sp"
-                        android:textStyle="bold" />
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="8dp"
                     android:orientation="horizontal">
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -98,7 +95,8 @@
                         android:minWidth="0dp"
                         android:hint="Buscar app o paquete"
                         app:endIconMode="clear_text"
-                        app:startIconDrawable="@android:drawable/ic_menu_search">
+                        app:startIconDrawable="@drawable/ic_search"
+                        app:startIconTint="@color/codesu_text_secondary">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/codesu_debloater_search"
@@ -108,7 +106,7 @@
                             android:inputType="text"
                             android:maxLines="1"
                             android:minWidth="0dp"
-                            android:textSize="13sp" />
+                            android:textSize="14sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.button.MaterialButton
@@ -116,7 +114,7 @@
                         style="@style/Widget.MaterialComponents.Button.Icon"
                         android:layout_width="44dp"
                         android:layout_height="match_parent"
-                        android:layout_marginStart="6dp"
+                        android:layout_marginStart="8dp"
                         android:contentDescription="Actualizar lista"
                         app:icon="@drawable/codesu_ic_refresh"
                         app:iconPadding="0dp" />
@@ -126,7 +124,7 @@
                         style="@style/Widget.MaterialComponents.Button.Icon"
                         android:layout_width="44dp"
                         android:layout_height="match_parent"
-                        android:layout_marginStart="6dp"
+                        android:layout_marginStart="8dp"
                         android:contentDescription="Explicar niveles"
                         app:icon="@drawable/codesu_ic_info"
                         app:iconPadding="0dp" />
@@ -154,7 +152,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Todas"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/codesu_filter_recommended"
@@ -162,7 +160,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Recomendadas"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/codesu_filter_advanced"
@@ -170,7 +168,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Avanzadas"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/codesu_filter_expert"
@@ -178,7 +176,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Expertas"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/codesu_filter_unclassified"
@@ -186,7 +184,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Sin clasificar"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/codesu_filter_disabled"
@@ -194,7 +192,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Desactivadas"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/codesu_filter_removed"
@@ -202,7 +200,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Retiradas"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
                     </com.google.android.material.chip.ChipGroup>
                 </HorizontalScrollView>
 
@@ -220,7 +218,7 @@
                         android:layout_height="wrap_content"
                         android:minHeight="36dp"
                         android:text="Conectar Shizuku"
-                        android:textSize="11sp"
+                        android:textSize="12sp"
                         app:cornerRadius="10dp" />
 
                     <View
@@ -235,7 +233,7 @@
                         android:layout_height="wrap_content"
                         android:minHeight="36dp"
                         android:text="Seleccionar visibles"
-                        android:textSize="11sp" />
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <ProgressBar
@@ -243,7 +241,7 @@
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     android:indeterminate="true"
                     android:visibility="gone" />
 
@@ -252,7 +250,7 @@
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     android:indeterminate="false"
                     android:max="100"
                     android:visibility="gone" />
@@ -266,7 +264,7 @@
             android:layout_marginTop="8dp"
             android:visibility="gone"
             app:cardBackgroundColor="@color/codesu_result_surface"
-            app:cardCornerRadius="14dp"
+            app:cardCornerRadius="8dp"
             app:cardElevation="1dp"
             app:cardUseCompatPadding="true">
 
@@ -274,7 +272,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="10dp">
+                android:padding="8dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -290,8 +288,7 @@
                         android:minWidth="0dp"
                         android:text="0 seleccionadas"
                         android:textColor="@color/codesu_text_primary"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
+                        android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/codesu_debloater_clear_selection"
@@ -300,7 +297,7 @@
                         android:layout_height="wrap_content"
                         android:minHeight="32dp"
                         android:text="Limpiar"
-                        android:textSize="11sp" />
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <HorizontalScrollView
@@ -322,7 +319,7 @@
                             android:layout_height="wrap_content"
                             android:minHeight="36dp"
                             android:text="Deshabilitar lote"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             app:cornerRadius="10dp" />
 
                         <com.google.android.material.button.MaterialButton
@@ -333,7 +330,7 @@
                             android:layout_marginStart="4dp"
                             android:minHeight="36dp"
                             android:text="Reactivar lote"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             app:cornerRadius="10dp" />
 
                         <com.google.android.material.button.MaterialButton
@@ -344,7 +341,7 @@
                             android:layout_marginStart="4dp"
                             android:minHeight="36dp"
                             android:text="Retirar lote"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             app:cornerRadius="10dp"
                             app:strokeColor="@color/codesu_error" />
 
@@ -356,7 +353,7 @@
                             android:layout_marginStart="4dp"
                             android:minHeight="36dp"
                             android:text="Restaurar lote"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             app:cornerRadius="10dp" />
                     </LinearLayout>
                 </HorizontalScrollView>
@@ -366,7 +363,7 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="8dp"
             android:layout_weight="1"
             android:minHeight="0dp">
 
@@ -375,7 +372,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingBottom="6dp"
+                android:paddingBottom="8dp"
                 tools:listitem="@layout/codesu_debloater_item" />
 
             <TextView
@@ -388,7 +385,7 @@
                 android:padding="24dp"
                 android:text="No hay apps para este filtro."
                 android:textColor="@color/codesu_text_secondary"
-                android:textSize="13sp"
+                android:textSize="14sp"
                 android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>

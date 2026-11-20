@@ -99,17 +99,17 @@ public class SettingsFragment extends Fragment {
             // Shizuku can become unavailable between pingBinder and permission check.
         }
         if (!available) {
-            binding.shizukuStatus.setText("Service stopped. Start Shizuku, then return here.");
+            binding.shizukuStatus.setText("Servicio detenido. Inicia Shizuku y vuelve aquí.");
             binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_text_primary));
-            binding.shizukuPermissionButton.setText("Open Shizuku");
+            binding.shizukuPermissionButton.setText("Abrir Shizuku");
         } else if (granted) {
-            binding.shizukuStatus.setText("Service running · CodeSu permission granted");
+            binding.shizukuStatus.setText("Servicio activo · permiso concedido");
             binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.codesu_accent_text));
-            binding.shizukuPermissionButton.setText("Authorized");
+            binding.shizukuPermissionButton.setText("Autorizado");
         } else {
-            binding.shizukuStatus.setText("Service running · CodeSu permission required");
+            binding.shizukuStatus.setText("Servicio activo · permiso pendiente");
             binding.shizukuStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_dark));
-            binding.shizukuPermissionButton.setText("Grant access");
+            binding.shizukuPermissionButton.setText("Conceder acceso");
         }
     }
 
@@ -118,7 +118,7 @@ public class SettingsFragment extends Fragment {
             Intent launch = requireContext().getPackageManager()
                     .getLaunchIntentForPackage("moe.shizuku.privileged.api");
             if (launch != null) startActivity(launch);
-            else CapsuleToast.showInfo(requireActivity(), "Install and start Shizuku first");
+            else CapsuleToast.showInfo(requireActivity(), "Instala e inicia Shizuku primero");
             updateShizukuStatus();
             return;
         }
@@ -129,7 +129,7 @@ public class SettingsFragment extends Fragment {
             }
             Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST);
         } catch (RuntimeException e) {
-            binding.shizukuStatus.setText("Could not request permission. Restart Shizuku and retry.");
+            binding.shizukuStatus.setText("No se pudo pedir el permiso. Reinicia Shizuku y reintenta.");
         }
     }
 
@@ -222,11 +222,11 @@ public class SettingsFragment extends Fragment {
                 if (binding.screenOffAutoKillDelaySeekbar.getProgress() != integer)
                     binding.screenOffAutoKillDelaySeekbar.setProgress(integer);
                 if (integer == 0)
-                    binding.screenOffAutoKillDelayText.setText("Delay: Off");
+                    binding.screenOffAutoKillDelayText.setText("Espera: desactivada");
                 else if (integer == 1)
-                    binding.screenOffAutoKillDelayText.setText("Delay: 1 Minute");
+                    binding.screenOffAutoKillDelayText.setText("Espera: 1 minuto");
                 else
-                    binding.screenOffAutoKillDelayText.setText("Delay: " + integer + " Minutes");
+                    binding.screenOffAutoKillDelayText.setText("Espera: " + integer + " minutos");
 
                 if (settingsViewModel.getScreenOffAutoKill().getValue())
                     AutoKillHelper.enableScreenOffKill();
@@ -495,7 +495,7 @@ public class SettingsFragment extends Fragment {
                 if (isGranted)
                     settingsViewModel.setScreenOffAutoKill(true);
                 else
-                    CapsuleToast.showInfo(getActivity(), "Notification permission is required to keep the auto-kill service running");
+                    CapsuleToast.showInfo(getActivity(), "Se necesita permiso de notificaciones para mantener el cierre automático");
             });
 
     private final ActivityResultLauncher<String> createBackupLauncher =

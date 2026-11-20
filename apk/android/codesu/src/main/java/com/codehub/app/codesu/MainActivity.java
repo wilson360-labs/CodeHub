@@ -1,13 +1,10 @@
 package com.codehub.app.codesu;
 
-import android.animation.ObjectAnimator;
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
-import android.view.animation.LinearInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -28,7 +25,6 @@ import com.codehub.app.codesu.util.PowerGuard;
 public class MainActivity extends AppCompatActivity {
 
     private CodesuActivityMainBinding binding;
-    private ObjectAnimator logoAnimator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,11 +61,6 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), insets.bottom);
             return windowInsets;
         });
-
-        logoAnimator = ObjectAnimator.ofFloat(binding.logo, "rotation", 0f, 360f);
-        logoAnimator.setDuration(6000);
-        logoAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        logoAnimator.setInterpolator(new LinearInterpolator());
 
         binding.searchEditText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
@@ -131,23 +122,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void setTabSelected(View tab, boolean selected) {
         tab.setSelected(selected);
-        tab.setAlpha(selected ? 1f : 0.72f);
-        if (tab instanceof android.widget.TextView)
-            ((android.widget.TextView) tab).setTypeface(null,
-                    selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        tab.setAlpha(selected ? 1f : 0.62f);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        logoAnimator.start();
         PowerGuard.start(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        logoAnimator.cancel();
         PowerGuard.stop(this);
     }
 
