@@ -14,8 +14,8 @@
   // 'anim' es la única que vive como '1'/'0' (no 'on'/'off'): reutiliza la
   // llave cfg_anim preexistente, que también sincroniza remote-config.
   var KEYS = ['accent', 'radius', 'density', 'contrast', 'bg', 'wf', 'wh', 'ws', 'wk', 'anim'];
-  var DEFAULTS = { accent: 'azul', radius: 'medio', density: 'normal', contrast: 'normal', bg: 'auto', wf: 'on', wh: 'on', ws: 'on', wk: 'on', anim: '1' };
-  var SWATCH_HEX = { azul: '#2f80ed', cian: '#0ea5e9', verde: '#16a34a', violeta: '#7c4dff', rosa: '#ec4899', rojo: '#ef4444', ambar: '#f59e0b' };
+  var DEFAULTS = { accent: 'acero', radius: 'industrial', density: 'normal', contrast: 'normal', bg: 'plano', wf: 'on', wh: 'on', ws: 'on', wk: 'on', anim: '1' };
+  var SWATCH_HEX = { acero: '#4a5d68', azul: '#2f80ed', cian: '#0ea5e9', verde: '#16a34a', violeta: '#7c4dff', rosa: '#ec4899', rojo: '#ef4444', ambar: '#f59e0b' };
 
   function read(key) {
     try {

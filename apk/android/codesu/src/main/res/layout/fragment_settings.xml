@@ -18,8 +18,8 @@
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -74,8 +74,8 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -123,8 +123,8 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -189,8 +189,8 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -255,8 +255,8 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -312,8 +312,8 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -361,8 +361,8 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -444,8 +444,8 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -504,8 +504,8 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             android:layoutDirection="rtl"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -613,8 +613,8 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp">
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -669,8 +669,8 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp">
+            app:cardCornerRadius="6dp"
+            app:cardElevation="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"

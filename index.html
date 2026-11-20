@@ -267,9 +267,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="stylesheet" href="css/native-feel.css?v=20261019a">
 <link rel="stylesheet" href="css/viewport-guard.css?v=20261020c">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
-<link rel="stylesheet" href="css/prefs.css?v=20261019a">
+<link rel="stylesheet" href="css/prefs.css?v=20261120a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
-    <script src="/dist/assets/js/prefs.853367107e.min.js"></script>
+    <script src="/dist/assets/js/prefs.c8968c08cf.min.js"></script>
 
 
 
@@ -658,7 +658,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div class="cfg-group">
                     <div class="cfg-label">Acento de color</div>
                     <div class="cfg-options">
-                        <button class="cfg-opt" data-pref="accent" data-prefval="azul" style="background:#2f80ed55;border-color:#2f80ed" title="Azul (predeterminado)" onclick="window.Prefs?.set('accent','azul')" aria-label="Acento azul"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="acero" style="background:#4a5d6855;border-color:#4a5d68" title="Acero (predeterminado)" onclick="window.Prefs?.set('accent','acero')" aria-label="Acento acero"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="azul" style="background:#2f80ed55;border-color:#2f80ed" title="Azul" onclick="window.Prefs?.set('accent','azul')" aria-label="Acento azul"></button>
                         <button class="cfg-opt" data-pref="accent" data-prefval="cian" style="background:#0ea5e955;border-color:#0ea5e9" title="Cian" onclick="window.Prefs?.set('accent','cian')" aria-label="Acento cian"></button>
                         <button class="cfg-opt" data-pref="accent" data-prefval="verde" style="background:#16a34a55;border-color:#16a34a" title="Verde" onclick="window.Prefs?.set('accent','verde')" aria-label="Acento verde"></button>
                         <button class="cfg-opt" data-pref="accent" data-prefval="violeta" style="background:#7c4dff55;border-color:#7c4dff" title="Violeta" onclick="window.Prefs?.set('accent','violeta')" aria-label="Acento violeta"></button>
@@ -673,6 +674,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div class="cfg-group">
                     <div class="cfg-label">Esquinas de tarjetas</div>
                     <div class="cfg-options">
+                        <button class="cfg-opt" data-pref="radius" data-prefval="industrial" onclick="window.Prefs?.set('radius','industrial')">Industrial</button>
                         <button class="cfg-opt" data-pref="radius" data-prefval="angular" onclick="window.Prefs?.set('radius','angular')">Angular</button>
                         <button class="cfg-opt" data-pref="radius" data-prefval="medio" onclick="window.Prefs?.set('radius','medio')">Medio</button>
                         <button class="cfg-opt" data-pref="radius" data-prefval="redondo" onclick="window.Prefs?.set('radius','redondo')">Redondo</button>
@@ -702,6 +704,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div class="cfg-group">
                     <div class="cfg-label">Fondo estático</div>
                     <div class="cfg-options">
+                        <button class="cfg-opt" data-pref="bg" data-prefval="plano" onclick="window.Prefs?.set('bg','plano')">Plano</button>
                         <button class="cfg-opt" data-pref="bg" data-prefval="auto" onclick="window.Prefs?.set('bg','auto')">Automático</button>
                         <button class="cfg-opt" data-pref="bg" data-prefval="osc-azul" onclick="window.Prefs?.set('bg','osc-azul')">Azul</button>
                         <button class="cfg-opt" data-pref="bg" data-prefval="osc-violeta" onclick="window.Prefs?.set('bg','osc-violeta')">Violeta</button>

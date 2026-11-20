@@ -14,6 +14,24 @@
 :root[data-accent="rosa"]    { --primary: #ec4899; --primary-deep: #be185d; --accent: #f9a8d4; }
 :root[data-accent="rojo"]    { --primary: #ef4444; --primary-deep: #b91c1c; --accent: #f87171; }
 :root[data-accent="ambar"]   { --primary: #f59e0b; --primary-deep: #b45309; --accent: #fcd34d; }
+/* Acero: paleta industrial apagada. Sin cian flúor, sin violeta, sin glow. */
+:root[data-accent="acero"] {
+  --primary: #4a5d68; --primary-deep: #33424b; --accent: #b26a00;
+  --gold: #b26a00; --mint: #6b7f6a; --a: #b26a00; --secondary: #6b7f6a;
+  --shadow-focus: 0 0 0 2px rgba(74,93,104,.45);
+}
+/* Bordes finos en vez de sombras: acabado más herramienta que plantilla. */
+html[data-accent="acero"] .service-card,
+html[data-accent="acero"] .stat-card,
+html[data-accent="acero"] .skills-grid > * {
+  box-shadow: none !important;
+  border: 1px solid rgba(255,255,255,.14);
+}
+html[data-theme="light"][data-accent="acero"] .service-card,
+html[data-theme="light"][data-accent="acero"] .stat-card,
+html[data-theme="light"][data-accent="acero"] .skills-grid > * {
+  border: 1px solid rgba(0,0,0,.20);
+}
 /* Acento personalizado (hex): prefs.js aplica
    --accent/--primary/--primary-deep en línea. */
 #pref-accent-color {
@@ -30,6 +48,11 @@
   --radius-2xs: 2px;  --radius-xs: 3px;  --radius-sm: 5px;
   --radius-md: 7px;   --radius-lg: 9px;  --radius-xl: 11px;
   --radius-2xl: 13px; --radius-3xl: 16px;
+}
+:root[data-radius="industrial"] {
+  --radius-2xs: 1px; --radius-xs: 2px; --radius-sm: 3px;
+  --radius-md: 4px;  --radius-lg: 6px;  --radius-xl: 8px;
+  --radius-2xl: 10px; --radius-3xl: 12px;
 }
 :root[data-radius="redondo"] {
   --radius-2xs: 7px;  --radius-xs: 10px; --radius-sm: 14px;
@@ -132,6 +155,14 @@ html[data-ws="off"] .parallax-scanline { display: none !important; }
 html[data-wk="off"] .pueblo-panel.active { animation: none !important; }
 
 /* ── Fondo estático (sin ken-burns ni movimiento) ──────────── */
+/* Plano: color liso, sin radial-gradient de catálogo. */
+html[data-bg="plano"] body {
+  background: #111315 !important;
+}
+html[data-theme="light"][data-bg="plano"] body {
+  background: #eceae5 !important;
+}
+html[data-bg="plano"] #neural-network { opacity: .04 !important; }
 html[data-bg="osc-azul"] body {
   background:
     radial-gradient(1100px 650px at 18% -5%, rgba(47,128,237,.30), transparent 58%),
