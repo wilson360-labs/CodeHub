@@ -355,49 +355,49 @@
                     android:textColor="@color/codesu_accent_text"
                     android:textSize="20sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/hide_kill_my_apps"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ocultar CodeSu"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/hide_default_launcher"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ocultar lanzador"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/hide_default_alarm"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ocultar alarma"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/hide_default_keyboard"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ocultar teclado"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/hide_default_dialer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ocultar teléfono"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/hide_default_sms"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ocultar SMS"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/hide_critical_system_apps"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -429,28 +429,28 @@
                     android:textColor="@color/codesu_accent_text"
                     android:textSize="20sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/show_pkgname"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Mostrar paquete"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/show_scroll_animation"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Animar la lista"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/click_to_app_info"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Tocar una app abre su info"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/long_click_to_menu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -483,7 +483,7 @@
                     android:textColor="@color/codesu_accent_text"
                     android:textSize="20sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/screen_off_auto_kill"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -517,7 +517,7 @@
                         android:progress="0" />
                 </LinearLayout>
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/scheduled_auto_kill"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -593,14 +593,14 @@
                     android:text="Los perfiles se eligen en CodeEngine. Aquí solo se activa la detección: batería al 5% y juego en primer plano."
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/power_battery_saver"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Batería al 5% · Ultra ahorro automático"
                     android:textSize="14sp" />
 
-                <ComprobarBox
+                <CheckBox
                     android:id="@+id/power_game_mode"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
