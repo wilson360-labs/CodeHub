@@ -41,7 +41,8 @@ public class ShizukuPlusUtils {
                 .daemon(false)
                 .processNameSuffix("codesu")
                 .debuggable(false)
-                .version(7);
+                // 8: la interfaz AIDL añadió get/setSystemSetting y forceDeviceIdle.
+                .version(8);
     }
 
     public static boolean checkShizuku() {

@@ -14,6 +14,7 @@ import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.databinding.FragmentCodeEngineBinding;
 import com.codehub.app.codesu.util.CapsuleToast;
 import com.codehub.app.codesu.util.CodeEngine;
+import com.codehub.app.codesu.util.GameList;
 import com.codehub.app.codesu.util.ShizukuPlusUtils;
 
 import java.text.SimpleDateFormat;
@@ -64,6 +65,38 @@ public class CodeEngineFragment extends Fragment {
             refresh();
             CapsuleToast.showInfo(requireActivity(), "Perfil reaplicado");
         });
+        binding.engineGameAdd.setOnClickListener(v -> {
+            String input = binding.engineGameInput.getText() == null ? ""
+                    : binding.engineGameInput.getText().toString();
+            String pkg = input.trim();
+            if (GameList.isGame(requireContext(), pkg)) {
+                binding.engineGameInput.setText("");
+                CapsuleToast.showInfo(requireActivity(), "Ya está en la lista: " + pkg);
+            } else if (GameList.add(requireContext(), pkg)) {
+                binding.engineGameInput.setText("");
+                refreshGames();
+                CapsuleToast.showInfo(requireActivity(), "Juego agregado: " + pkg);
+            } else {
+                CapsuleToast.showInfo(requireActivity(), "Paquete no válido: " + pkg);
+            }
+        });
+        binding.engineGameRemove.setOnClickListener(v -> {
+            String input = binding.engineGameInput.getText() == null ? ""
+                    : binding.engineGameInput.getText().toString();
+            String pkg = input.trim();
+            binding.engineGameInput.setText("");
+            if (GameList.remove(requireContext(), pkg)) {
+                refreshGames();
+                CapsuleToast.showInfo(requireActivity(), "Juego quitado: " + pkg);
+            } else {
+                CapsuleToast.showInfo(requireActivity(), "No estaba en la lista");
+            }
+        });
+        binding.engineGameReset.setOnClickListener(v -> {
+            GameList.reset(requireContext());
+            refreshGames();
+            CapsuleToast.showInfo(requireActivity(), "Lista de Uperf restaurada");
+        });
         refresh();
     }
 
@@ -100,7 +133,21 @@ public class CodeEngineFragment extends Fragment {
         String detail = reason.isEmpty() ? "" : " · origen: " + reason;
         binding.engineResult.setText("Última aplicación: " + when + detail
                 + (result == null || result.isEmpty() ? "" : "\n" + result));
+        refreshGames();
         updating = false;
+    }
+
+    private void refreshGames() {
+        if (binding == null || !isAdded()) return;
+        java.util.List<String> games = GameList.sorted(requireContext());
+        StringBuilder text = new StringBuilder();
+        for (String game : games) {
+            if (text.length() > 0) text.append('\n');
+            text.append(game);
+        }
+        binding.engineGamesList.setText(games.isEmpty()
+                ? "Lista vacía · agrega el paquete de tu juego."
+                : text.toString() + "\n\n" + games.size() + " juegos en la lista.");
     }
 
     private void checkProfile(String profile) {

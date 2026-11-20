@@ -9,7 +9,6 @@ import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.SystemClock;
@@ -172,8 +171,13 @@ public final class CodeEngine {
         SharedPreferences prefs = prefs(context);
         prefs.edit().putBoolean(PREF_ALLOW_DOZE, enabled).apply();
         if (!enabled && prefs.getBoolean(PREF_DOZE_APPLIED, false)) {
-            String result = ShizukuPlusUtils.forceDeviceIdle(false);
-            if (result.isEmpty()) prefs.edit().putBoolean(PREF_DOZE_APPLIED, false).apply();
+            // El bind de Shizuku puede esperar hasta 10 s: nunca en el hilo de la UI.
+            Runnable task = () -> {
+                String result = ShizukuPlusUtils.forceDeviceIdle(false);
+                if (result.isEmpty()) prefs.edit().putBoolean(PREF_DOZE_APPLIED, false).apply();
+            };
+            if (App.executorService != null) App.executorService.execute(task);
+            else new Thread(task, "codeengine-doze").start();
         }
     }
 
@@ -251,8 +255,7 @@ public final class CodeEngine {
                     || PROFILE_PERFORMANCE.equals(profile) || adaptiveLow;
             if (killApps) {
                 int level = PROFILE_PERFORMANCE.equals(profile) ? 1 : 0;
-                String foreground = (keepPackage == null || keepPackage.isEmpty())
-                        ? foregroundPackage(app) : keepPackage;
+                String foreground = protectedGamePackage(app, keepPackage);
                 boolean killed = killBackgroundApps(app, foreground, level);
                 log.append(killed ? "Apps en segundo plano cerradas. "
                         : "Sin apps cerradas: revisa Shizuku/root. ");
@@ -269,8 +272,14 @@ public final class CodeEngine {
     private static void override(Context context, String profile, String reason,
                                  String keepPackage, String detail) {
         SharedPreferences prefs = prefs(context);
+        String wantedKeep = keepPackage == null ? "" : keepPackage;
         if (profile.equals(prefs.getString(PREF_OVERRIDE, ""))
-                && reason.equals(prefs.getString(PREF_OVERRIDE_REASON, ""))) return;
+                && reason.equals(prefs.getString(PREF_OVERRIDE_REASON, ""))) {
+            // Cambio de juego con el mismo perfil: actualiza la protección sin volver a cerrar apps.
+            if (!wantedKeep.equals(prefs.getString(PREF_OVERRIDE_KEEP, "")))
+                prefs.edit().putString(PREF_OVERRIDE_KEEP, wantedKeep).apply();
+            return;
+        }
         prefs.edit().putString(PREF_OVERRIDE, profile).putString(PREF_OVERRIDE_REASON, reason)
                 .putString(PREF_OVERRIDE_KEEP, keepPackage == null ? "" : keepPackage).apply();
         apply(context, profile, detail, keepPackage);
@@ -401,15 +410,23 @@ public final class CodeEngine {
         return clean.matches("[0-9.]+") ? clean : fallback;
     }
 
+    /** Solo es juego si está en la lista blanca: evita falsos positivos y protege al cerrar. */
     private static boolean isGameApp(Context context, String packageName) {
-        if (packageName == null || packageName.isEmpty()
-                || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
-        try {
-            ApplicationInfo info = context.getPackageManager().getApplicationInfo(packageName, 0);
-            return info.category == ApplicationInfo.CATEGORY_GAME;
-        } catch (Exception ignored) {
-            return false;
-        }
+        return GameList.isGame(context, packageName);
+    }
+
+    /**
+     * Paquete que nunca debe cerrarse. Se prefiere el juego explícito del
+     * override; si no hay, se consulta UsageStats y solo se acepta si está en
+     * la lista de juegos. Así Free Fire sobrevive aunque la ROM no reporte
+     * CATEGORY_GAME o UsageStats vaya con retraso.
+     */
+    private static String protectedGamePackage(Context context, String keepPackage) {
+        if (GameList.isGame(context, keepPackage)) return keepPackage;
+        String active = prefs(context).getString(PREF_OVERRIDE_KEEP, "");
+        if (GameList.isGame(context, active)) return active;
+        String foreground = foregroundPackage(context);
+        return GameList.isGame(context, foreground) ? foreground : null;
     }
 
     /** App en primer plano según UsageStats; null si no hay acceso concedido. */
