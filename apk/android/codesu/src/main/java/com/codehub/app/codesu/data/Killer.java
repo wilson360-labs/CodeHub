@@ -16,9 +16,9 @@ public class Killer {
     private static int killerMode = 1;
     private static int killLevel = 1;
 
-    private static boolean checkAccess() {
+    private static boolean checkAccess(int levelOverride) {
         killerMode = App.settings.getInt(App.KILLER_MODE, 1);
-        killLevel = App.settings.getInt(App.KILLER_LEVEL, 1);
+        killLevel = levelOverride >= 0 ? levelOverride : App.settings.getInt(App.KILLER_LEVEL, 1);
         if (killerMode == 1)
             return SuUtils.checkSU();
         if (killerMode == 2)
@@ -29,7 +29,12 @@ public class Killer {
     }
 
     public static boolean killListOfApps(List<AppInfo> appList) {
-        if (!checkAccess())
+        return killListOfApps(appList, -1);
+    }
+
+    /** CodeEngine puede pedir un nivel distinto sin cambiar la preferencia del usuario. */
+    public static boolean killListOfApps(List<AppInfo> appList, int level) {
+        if (!checkAccess(level))
             return false;
 
         if (killerMode == 1) {
@@ -70,7 +75,7 @@ public class Killer {
         if (App.context.getPackageName().equals(pkgName))
             selfDestruct();
 
-        if (!checkAccess())
+        if (!checkAccess(-1))
             return false;
 
         if (killerMode == 1)

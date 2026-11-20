@@ -626,7 +626,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    android:text="Modos inteligentes"
+                    android:text="CodeEngine · detección automática"
                     android:textColor="@color/codesu_accent_text"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -635,14 +635,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:text="Según tu uso: con la batería al 5% se activa ahorro y se sugiere cargar; al detectar un juego se libera memoria para más rendimiento."
+                    android:text="Los perfiles se eligen en CodeEngine. Aquí solo se activa la detección: batería al 5% y juego en primer plano."
                     android:textSize="13sp" />
 
                 <CheckBox
                     android:id="@+id/power_battery_saver"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Ahorro al 5% · cerrar apps y sugerir cargar"
+                    android:text="Batería al 5% · Ultra ahorro automático"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -650,7 +650,7 @@
                     android:id="@+id/power_game_mode"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Modo juego · rendimiento automático"
+                    android:text="Juego en primer plano · rendimiento automático"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -659,7 +659,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Modo actual: Normal"
+                    android:text="Perfil actual: Equilibrado"
                     android:textSize="13sp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>

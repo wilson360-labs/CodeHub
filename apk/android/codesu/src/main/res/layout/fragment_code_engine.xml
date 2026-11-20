@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.engine.CodeEngineFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="16dp">
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CodeEngine"
+                    android:textColor="@color/codesu_accent_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Cinco perfiles adaptados a gama baja/media. Animaciones y brillo se escriben con Shizuku y vuelven a su valor original al cambiar de perfil. No se tocan datos, sesiones, CPU ni GPU."
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/engine_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Perfil actual: Equilibrado"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <RadioGroup
+                    android:id="@+id/engine_profiles"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp">
+
+                    <RadioButton
+                        android:id="@+id/engine_profile_ultra"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Ahorro de batería extremo · Ultra ahorro"
+                        android:textSize="13sp" />
+
+                    <RadioButton
+                        android:id="@+id/engine_profile_saver"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Ahorro de batería · Ahorro de energía estándar"
+                        android:textSize="13sp" />
+
+                    <RadioButton
+                        android:id="@+id/engine_profile_adaptive"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Batería adaptable · Optimización inteligente"
+                        android:textSize="13sp" />
+
+                    <RadioButton
+                        android:id="@+id/engine_profile_balanced"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Equilibrado · Estándar / Optimizado"
+                        android:textSize="13sp" />
+
+                    <RadioButton
+                        android:id="@+id/engine_profile_performance"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Rendimiento · Alto rendimiento / Modo juego"
+                        android:textSize="13sp" />
+                </RadioGroup>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginVertical="8dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Detección automática"
+                    android:textColor="@color/codesu_accent_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Con la batería al 5% entra Ultra ahorro; al conectar el cargador o subir al 10% vuelve al perfil elegido. Al abrir un juego entra Rendimiento y al salir vuelve al perfil anterior."
+                    android:textSize="13sp" />
+
+                <CheckBox
+                    android:id="@+id/engine_auto"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Activar cambios automáticos por uso"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <CheckBox
+                    android:id="@+id/engine_doze"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Doze forzado solo en Ultra ahorro (según ROM)"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/engine_shizuku_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Shizuku: comprobando…"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/engine_result"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Última aplicación: ninguna"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/engine_apply_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Aplicar perfil ahora" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+    </LinearLayout>
+</ScrollView>

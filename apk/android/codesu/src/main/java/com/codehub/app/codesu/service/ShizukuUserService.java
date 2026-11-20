@@ -51,6 +51,13 @@ public class ShizukuUserService extends IKillAppService.Stub {
             "com.google.android.setupwizard", "com.google.android.vending",
     };
 
+    /** CodeEngine solo puede leer/escribir estas claves; nada de shell arbitrario. */
+    private static final String[] SETTING_NAMESPACES = {"global", "system", "secure"};
+    private static final String[] ENGINE_SETTING_KEYS = {
+            "window_animation_scale", "transition_animation_scale", "animator_duration_scale",
+            "screen_brightness", "screen_brightness_mode",
+    };
+
     private static boolean isProtectedTarget(String pkgName) {
         for (String protectedPkg : ENGINE_PROTECTED)
             if (protectedPkg.equals(pkgName))
@@ -302,6 +309,93 @@ public class ShizukuUserService extends IKillAppService.Stub {
         } finally {
             if (process != null) destroyProcessTree(process);
             if (activeCacheClearProcess == process) activeCacheClearProcess = null;
+        }
+    }
+
+    @Override
+    public String getSystemSetting(String namespace, String key) {
+        String invalid = validateSetting(namespace, key);
+        if (invalid != null) return invalid;
+        return runShortCommand(new String[]{"/system/bin/settings", "get", namespace, key}, true);
+    }
+
+    @Override
+    public String setSystemSetting(String namespace, String key, String value) {
+        String invalid = validateSetting(namespace, key);
+        if (invalid != null) return invalid;
+        if (value == null || value.length() > 24 || !value.matches("[0-9.]+"))
+            return "Valor de ajuste no permitido.";
+        return runShortCommand(new String[]{"/system/bin/settings", "put", namespace, key, value}, false);
+    }
+
+    @Override
+    public String forceDeviceIdle(boolean force) {
+        String action = force ? "force-idle" : "unforce";
+        return runShortCommand(new String[]{"/system/bin/cmd", "deviceidle", action}, false);
+    }
+
+    private static String validateSetting(String namespace, String key) {
+        boolean validNamespace = false;
+        for (String candidate : SETTING_NAMESPACES)
+            if (candidate.equals(namespace)) validNamespace = true;
+        if (!validNamespace) return "Espacio de ajuste no permitido.";
+        boolean validKey = false;
+        for (String candidate : ENGINE_SETTING_KEYS)
+            if (candidate.equals(key)) validKey = true;
+        return validKey ? null : "Clave de ajuste no permitida.";
+    }
+
+    /** Comando corto y acotado para CodeEngine; salida máxima 240 caracteres. */
+    private String runShortCommand(String[] command, boolean returnOutput) {
+        Process process = null;
+        try {
+            process = new ProcessBuilder(command).redirectErrorStream(true).start();
+            final Process running = process;
+            ByteArrayOutputStream captured = new ByteArrayOutputStream();
+            Thread reader = new Thread(() -> {
+                try (InputStream stream = running.getInputStream()) {
+                    byte[] buffer = new byte[256];
+                    int count;
+                    while ((count = stream.read(buffer)) >= 0)
+                        synchronized (captured) { captured.write(buffer, 0, count); }
+                } catch (IOException ignored) { }
+            }, "codesu-engine-command");
+            reader.setDaemon(true);
+            reader.start();
+            long deadline = SystemClock.elapsedRealtime() + 8_000L;
+            boolean finished = false;
+            while (SystemClock.elapsedRealtime() < deadline) {
+                try {
+                    process.exitValue();
+                    finished = true;
+                    break;
+                } catch (IllegalThreadStateException stillRunning) {
+                    try { Thread.sleep(50L); }
+                    catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                }
+            }
+            if (!finished) {
+                destroyProcessTree(running);
+                return "El comando superó 8 s";
+            }
+            try { reader.join(500L); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            int exit = -1;
+            try { exit = running.exitValue(); } catch (Exception ignored) { }
+            String raw;
+            synchronized (captured) {
+                raw = new String(captured.toByteArray(), java.nio.charset.StandardCharsets.UTF_8).trim();
+            }
+            if (exit != 0) {
+                String tail = raw.isEmpty() ? "" : raw.substring(0, Math.min(raw.length(), 240));
+                return "código " + exit + (tail.isEmpty() ? "" : ": " + tail);
+            }
+            if (!returnOutput) return "";
+            if ("null".equalsIgnoreCase(raw)) return "";
+            return raw.length() > 240 ? raw.substring(0, 240) : raw;
+        } catch (Exception e) {
+            return (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        } finally {
+            if (process != null) destroyProcessTree(process);
         }
     }
 

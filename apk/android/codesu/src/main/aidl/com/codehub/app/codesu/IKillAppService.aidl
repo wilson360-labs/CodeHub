@@ -23,4 +23,10 @@ interface IKillAppService {
     String freeStorageAndNotify();
 
     String trimCaches(long bytes);
+
+    String getSystemSetting(String namespace, String key);
+
+    String setSystemSetting(String namespace, String key, String value);
+
+    String forceDeviceIdle(boolean force);
 }

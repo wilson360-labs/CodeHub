@@ -101,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
             int id = v.getId();
             int destinationId = id == R.id.nav_home ? R.id.navigation_home
                     : id == R.id.nav_excluded ? R.id.navigation_excluded
+                    : id == R.id.nav_code_engine ? R.id.navigation_code_engine
                     : id == R.id.nav_settings ? R.id.navigation_settings
                     : id == R.id.nav_cache ? R.id.navigation_cache
                     : id == R.id.nav_debloater ? R.id.navigation_debloater : 0;
@@ -112,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
         };
         binding.navHome.setOnClickListener(navListener);
         binding.navExcluded.setOnClickListener(navListener);
+        binding.navCodeEngine.setOnClickListener(navListener);
         binding.navSettings.setOnClickListener(navListener);
         binding.navCache.setOnClickListener(navListener);
         binding.navDebloater.setOnClickListener(navListener);
@@ -121,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
         if (destination == null || binding == null) return;
         setTabSelected(binding.navHome, destination.getId() == R.id.navigation_home);
         setTabSelected(binding.navExcluded, destination.getId() == R.id.navigation_excluded);
+        setTabSelected(binding.navCodeEngine, destination.getId() == R.id.navigation_code_engine);
         setTabSelected(binding.navSettings, destination.getId() == R.id.navigation_settings);
         setTabSelected(binding.navCache, destination.getId() == R.id.navigation_cache);
         setTabSelected(binding.navDebloater, destination.getId() == R.id.navigation_debloater);

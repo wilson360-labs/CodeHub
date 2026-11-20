@@ -31,7 +31,7 @@ import com.codehub.app.codesu.databinding.FragmentSettingsBinding;
 import com.codehub.app.codesu.util.AutoKillHelper;
 import com.codehub.app.codesu.util.BackupManager;
 import com.codehub.app.codesu.util.CapsuleToast;
-import com.codehub.app.codesu.util.PowerGuard;
+import com.codehub.app.codesu.util.CodeEngine;
 import rikka.shizuku.Shizuku;
 
 public class SettingsFragment extends Fragment {
@@ -267,18 +267,15 @@ public class SettingsFragment extends Fragment {
         });
     }
 
-    /** Muestra el modo real calculado por PowerGuard (normal / ahorro / juego). */
+    /** Muestra el perfil real calculado por CodeEngine. */
     private void refreshPowerModeStatus() {
         if (binding == null || !isAdded()) return;
-        String mode = PowerGuard.currentMode(requireContext());
-        String label;
-        if (PowerGuard.MODE_SAVER.equals(mode))
-            label = "Ahorro de batería · conecta el cargador";
-        else if (PowerGuard.MODE_GAME.equals(mode))
-            label = "Rendimiento · modo juego";
-        else
-            label = "Normal";
-        binding.powerModeStatus.setText("Modo actual: " + label);
+        String mode = CodeEngine.currentProfile(requireContext());
+        String origin = CodeEngine.overrideReason(requireContext());
+        String detail = origin.isEmpty() ? "" : " · " + origin;
+        binding.powerModeStatus.setText("Perfil actual: "
+                + CodeEngine.label(mode) + detail
+                + " · base: " + CodeEngine.label(CodeEngine.baseProfile(requireContext())));
     }
 
     private void setListeners() {

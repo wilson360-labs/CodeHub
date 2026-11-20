@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel;
 
 import com.codehub.app.codesu.App;
 import com.codehub.app.codesu.util.AutoKillHelper;
+import com.codehub.app.codesu.util.CodeEngine;
 import com.codehub.app.codesu.util.PowerGuard;
 
 public class SettingsViewModel extends ViewModel {
@@ -189,16 +190,17 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void setPowerBatterySaver(boolean enabled) {
-        App.settings.edit().putBoolean(PowerGuard.PREF_BATTERY_SAVER, enabled).apply();
+        CodeEngine.setBatteryDetectionEnabled(App.context, enabled);
         powerBatterySaver.setValue(enabled);
         AutoKillHelper.syncServiceState();
-        if (enabled) PowerGuard.evaluateNow(App.context);
+        PowerGuard.evaluateNow(App.context);
     }
 
     public void setPowerGameMode(boolean enabled) {
-        App.settings.edit().putBoolean(PowerGuard.PREF_GAME_MODE, enabled).apply();
+        CodeEngine.setGameDetectionEnabled(App.context, enabled);
         powerGameMode.setValue(enabled);
         AutoKillHelper.syncServiceState();
+        PowerGuard.evaluateNow(App.context);
     }
 
     public void setScheduledAutoKillTime(int time) {

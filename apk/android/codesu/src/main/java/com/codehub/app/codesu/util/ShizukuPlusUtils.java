@@ -185,4 +185,40 @@ public class ShizukuPlusUtils {
                     + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         }
     }
+
+    /** CodeEngine: lectura acotada de ajustes del sistema. "" cuando no hay valor. */
+    public static String getSystemSetting(String namespace, String key) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.getSystemSetting(namespace, key);
+            return result == null ? "" : result;
+        } catch (Exception e) {
+            return "settings get: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    /** CodeEngine: escritura acotada de ajustes del sistema. "" cuando funciona. */
+    public static String setSystemSetting(String namespace, String key, String value) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.setSystemSetting(namespace, key, value);
+            return result == null ? "Shizuku no devolvió resultado." : result;
+        } catch (Exception e) {
+            return "settings put: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    /** CodeEngine: Doze forzado solo con permiso shell y siempre reversible. */
+    public static String forceDeviceIdle(boolean force) {
+        if (!ensureServiceBound()) return "El servicio Shizuku de CodeSu no está conectado.";
+        try {
+            String result = killAppService.forceDeviceIdle(force);
+            return result == null ? "Shizuku no devolvió resultado." : result;
+        } catch (Exception e) {
+            return "deviceidle: "
+                    + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
 }

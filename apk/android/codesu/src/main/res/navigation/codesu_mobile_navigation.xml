@@ -18,6 +18,12 @@
         tools:layout="@layout/fragment_excluded" />
 
     <fragment
+        android:id="@+id/navigation_code_engine"
+        android:name="com.codehub.app.codesu.ui.engine.CodeEngineFragment"
+        android:label="CodeEngine"
+        tools:layout="@layout/fragment_code_engine" />
+
+    <fragment
         android:id="@+id/navigation_cache"
         android:name="com.codehub.app.codesu.ui.cache.CacheCleanerFragment"
         android:label="Cache"
