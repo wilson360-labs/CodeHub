@@ -164,7 +164,7 @@ public class BackupPreviewDialogFragment extends DialogFragment {
             return;
 
         restoring = true;
-        setCancelarable(false);
+        setCancelable(false);
         AlertDialog dialog = (AlertDialog) getDialog();
         if (dialog != null) {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
@@ -190,7 +190,7 @@ public class BackupPreviewDialogFragment extends DialogFragment {
                     return;
                 if (finalError != null) {
                     restoring = false;
-                    setCancelarable(true);
+                    setCancelable(true);
                     showError(finalError);
                     AlertDialog currentDialog = (AlertDialog) getDialog();
                     if (currentDialog != null) {
