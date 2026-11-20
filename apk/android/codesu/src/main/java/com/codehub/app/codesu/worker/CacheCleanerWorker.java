@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
@@ -16,10 +17,16 @@ import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import androidx.work.WorkManager;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import com.codehub.app.codesu.R;
 import com.codehub.app.codesu.model.CacheAppInfo;
+import com.codehub.app.codesu.service.CacheCleanerAccessibilityService;
 import com.codehub.app.codesu.util.CacheCleaner;
 
 /** User-started cache operation that remains alive when CodeSu leaves the foreground. */
@@ -57,12 +64,17 @@ public final class CacheCleanerWorker extends Worker {
                 return failure("Shizuku está apagado o CodeSu no tiene permiso.");
             setForegroundAsync(foregroundInfo(0, "Preparando limpieza segura…")).get();
             List<CacheAppInfo> apps = CacheCleaner.loadCleanupSnapshot(context, snapshotId);
+            Map<String, CacheAppInfo> byPackage = new HashMap<>();
             int eligible = 0;
             for (CacheAppInfo app : apps) {
                 if (CacheCleaner.isDeepCleanCandidate(app)) eligible++;
+                byPackage.put(app.packageName, app);
             }
             if (eligible == 0) return failure("Ninguna app segura supera 1 MB de caché.");
 
+            SharedPreferences livePrefs = context.getSharedPreferences(
+                    CacheCleanerAccessibilityService.PREFS, Context.MODE_PRIVATE);
+            livePrefs.edit().putString(CacheCleanerAccessibilityService.KEY_RESULTS, "[]").apply();
             publish(5, "Turbo Shizuku", "Usando la medición visible", 0, eligible, 0L, 0L);
             CacheCleaner.ClearResult result = CacheCleaner.clearEligibleCaches(context, apps,
                     (completed, total, packageName, finished, accepted, freed, unmeasured) -> {
@@ -74,6 +86,10 @@ public final class CacheCleanerWorker extends Worker {
                             phase = "Caché limpiada";
                         } else {
                             phase = "Android rechazó la orden";
+                        }
+                        if (finished && packageName != null && !packageName.isEmpty()) {
+                            appendLiveResult(context, livePrefs, byPackage.get(packageName),
+                                    packageName, accepted);
                         }
                         publish(percent, phase, packageName, completed, total, freed, 0L);
                     }, this::isStopped);
@@ -126,6 +142,31 @@ public final class CacheCleanerWorker extends Worker {
         Data data = new Data.Builder().putString(KEY_ERROR, message).putInt(KEY_CLEARED, 0)
                 .putInt(KEY_FAILED, 0).putLong(KEY_FREED, 0L).build();
         return Result.failure(data);
+    }
+
+    /** Escribe el resultado por app para que la lista de Cache Cleaner muestre el badge en vivo. */
+    private void appendLiveResult(Context context, SharedPreferences prefs, CacheAppInfo app,
+                                  String packageName, boolean accepted) {
+        try {
+            JSONArray rows = new JSONArray(prefs.getString(
+                    CacheCleanerAccessibilityService.KEY_RESULTS, "[]"));
+            String label = app == null ? packageName : app.label;
+            long before = app == null ? -1L : app.cacheBytes;
+            long after = -1L;
+            try {
+                after = Math.max(0L, CacheCleaner.queryCacheBytes(context, packageName));
+            } catch (Exception ignored) {
+                // Sin estadísticas de uso el tamaño real no es medible; el badge sigue siendo útil.
+            }
+            JSONObject row = new JSONObject().put("pkg", packageName).put("label", label)
+                    .put("status", accepted ? "cleared" : "failed")
+                    .put("before", before).put("after", after)
+                    .put("freed", after >= 0L && before >= 0L ? Math.max(0L, before - after) : 0L);
+            rows.put(row);
+            prefs.edit().putString(CacheCleanerAccessibilityService.KEY_RESULTS, rows.toString()).apply();
+        } catch (Exception ignored) {
+            // Los resultados son informativos: nunca bloquean la limpieza.
+        }
     }
 
     private void publish(int percent, String phase, String current, int completed, int total,
