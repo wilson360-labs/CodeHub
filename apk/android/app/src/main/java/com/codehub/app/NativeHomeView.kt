@@ -1,19 +1,23 @@
 package com.codehub.app
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -45,18 +49,17 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenWebsite(path: String)
     }
 
-    // Dirección natural: arena cálida. Terracota = acción/estado activo, salvia = señal positiva.
-    // CSS #2E241C14 equivale en Android a #AARRGGBB = #142E241C.
-    private val bg = 0xFFF3EADD.toInt()
-    private val surface = 0xFFFBF6ED.toInt()
-    private val surfaceRaised = 0xFFF6EEDF.toInt()
-    private val textPrimary = 0xFF2E241C.toInt()
-    private val secondaryText = 0xFF6E5D4B.toInt()
-    private val muted = 0xFF9A8B78.toInt()
-    private val border = Color.parseColor("#142E241C")
+    // Nocturno AMOLED: negro puro y texto blanco hueso. Terracota y salvia se conservan.
+    private val bg = Color.BLACK
+    private val surfaceRaised = 0xE6171310.toInt()
+    private val textPrimary = 0xFFF4ECE1.toInt()
+    private val secondaryText = 0xFFC2B09B.toInt()
+    private val muted = 0xFF94836F.toInt()
+    private val border = 0x3DB85C3C.toInt()
     private val accent = 0xFFB85C3C.toInt()
     private val accentSecondary = 0xFF6F8F72.toInt()
-    private val accentSoft = 0xFFEAD7C8.toInt()
+    private val sageBright = 0xFFAFC9B2.toInt()
+    private val accentSoft = 0x266F8F72.toInt()
     private val entranceTargets = mutableListOf<View>()
     private val tourPrefs: SharedPreferences by lazy { context.getSharedPreferences("codehub_store", Context.MODE_PRIVATE) }
     private var tourWindow: PopupWindow? = null
@@ -93,9 +96,17 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         orientation = VERTICAL
         setBackgroundColor(bg)
 
-        addView(buildHeader(), LayoutParams(-1, dp(64)))
+        // Escena única detrás de la cuadrícula. El desenfoque real se aplica solo
+        // a esta capa, nunca al texto, y las tarjetas translúcidas lo atraviesan.
+        val stage = FrameLayout(context)
+        val backdrop = HomeBackdropView(context)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) applyBackdropBlur(backdrop)
+        stage.addView(backdrop, FrameLayout.LayoutParams(-1, -1))
+
+        val foreground = LinearLayout(context).apply { orientation = VERTICAL }
+        foreground.addView(buildHeader(), LayoutParams(-1, dp(64)))
         updateBanner = buildUpdateBanner()
-        addView(updateBanner, LayoutParams(-1, -2).apply {
+        foreground.addView(updateBanner, LayoutParams(-1, -2).apply {
             leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(8)
         })
 
@@ -173,7 +184,16 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }, LayoutParams(-1, -2).apply { topMargin = dp(24) })
 
         homeScroll.addView(content)
-        addView(homeScroll, LayoutParams(-1, 0, 1f))
+        foreground.addView(homeScroll, LayoutParams(-1, 0, 1f))
+
+        stage.addView(foreground, FrameLayout.LayoutParams(-1, -1))
+        addView(stage, LayoutParams(-1, -1))
+    }
+
+    @SuppressLint("NewApi")
+    private fun applyBackdropBlur(view: View) {
+        view.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
+            dp(18).toFloat(), dp(18).toFloat(), Shader.TileMode.CLAMP))
     }
 
     /** One short reveal for the whole content block after the native splash fades. */
@@ -251,7 +271,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             val bubble = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(16), dp(16), dp(16), dp(16))
-                background = roundRectLocal(surfaceRaised, border, dp(16))
+                background = glassSurface(dp(16))
                 elevation = dp(4).toFloat()
             }
             bubble.addView(TextView(context).apply {
@@ -280,8 +300,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 text = if (tourStepIndex == tourSteps.lastIndex) "Listo" else "Siguiente"
                 textSize = 12f
                 isAllCaps = false
-                setTextColor(surface)
-                background = roundRectLocal(accent, 0, dp(10))
+                setTextColor(textPrimary)
+                background = rounded(accent, dp(10))
                 setOnClickListener { tourStepIndex++; showTourStep() }
             }
             row.addView(skip, LinearLayout.LayoutParams(-2, dp(40)))
@@ -355,7 +375,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     }
 
     private inner class SpotlightScrim(context: Context, private val hole: RectF) : View(context) {
-        private val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x992E241C.toInt() }
+        private val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x99000000.toInt() }
         private val clear = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
         init { setLayerType(View.LAYER_TYPE_HARDWARE, null) }
         override fun onDraw(canvas: Canvas) {
@@ -367,8 +387,149 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
     }
 
-    private fun roundRectLocal(fill: Int, stroke: Int, radius: Int): GradientDrawable =
-        GradientDrawable().apply { setColor(fill); cornerRadius = radius.toFloat(); if (stroke > 0) setStroke(dp(1), stroke) }
+    /** Smoked glass: translucent fill, terracotta rim, bronze inner rim and a fine top sheen. */
+    private fun glassSurface(radius: Int): RippleDrawable = RippleDrawable(
+        ColorStateList.valueOf(0x2AB85C3C.toInt()),
+        GlassDrawable(radius),
+        null,
+    )
+
+    private inner class GlassDrawable(private val radius: Int) : GradientDrawable() {
+        private val bronze = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = 0x338C6A3F.toInt()
+            strokeWidth = dp(1).toFloat()
+        }
+        private val sheen = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, dp(12).toFloat(),
+                intArrayOf(0x24F4ECE1.toInt(), 0x00F4ECE1.toInt()),
+                null, Shader.TileMode.CLAMP,
+            )
+        }
+
+        init {
+            shape = RECTANGLE
+            orientation = Orientation.TOP_BOTTOM
+            colors = intArrayOf(surfaceRaised, 0xC50B0908.toInt())
+            cornerRadius = radius.toFloat()
+            setStroke(dp(1), border)
+        }
+
+        override fun draw(canvas: Canvas) {
+            super.draw(canvas)
+            val r = bounds
+            val inset = dp(1).toFloat()
+            canvas.drawRoundRect(
+                r.left + inset, r.top + inset, r.right - inset, r.bottom - inset,
+                (radius - dp(1)).toFloat(), (radius - dp(1)).toFloat(), bronze,
+            )
+            canvas.save()
+            canvas.clipPath(Path().apply {
+                addRoundRect(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat(),
+                    radius.toFloat(), radius.toFloat(), Path.Direction.CW)
+            })
+            canvas.drawRect(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.top + dp(12).toFloat(), sheen)
+            canvas.restore()
+        }
+    }
+
+    /** One restrained night-greenhouse scene on pure black, kept near the edges. */
+    private inner class HomeBackdropView(context: Context) : View(context) {
+        private val topoPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = 0x354F6B3C.toInt()
+            strokeWidth = dp(1).toFloat()
+        }
+        private val veinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = 0x46D9A65C.toInt()
+            strokeWidth = dp(2).toFloat()
+            strokeCap = Paint.Cap.ROUND
+        }
+        private val veinFinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = 0x32B85C3C.toInt()
+            strokeWidth = dp(1).toFloat()
+            strokeCap = Paint.Cap.ROUND
+        }
+        private val dewPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = 0x8CE8C46A.toInt()
+        }
+        private val dewCorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = 0xAAFFF0C8.toInt()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            canvas.drawColor(bg)
+            drawContours(canvas)
+            drawLeaf(canvas)
+            drawDew(canvas)
+        }
+
+        private fun drawContours(canvas: Canvas) {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            if (w <= 0 || h <= 0) return
+            for (i in 0 until 8) {
+                val baseY = h * (0.62f + i * 0.055f)
+                val path = Path().apply {
+                    moveTo(-w * 0.05f, baseY)
+                    quadTo(w * 0.18f, baseY - h * (0.05f + i * 0.004f), w * 0.38f, baseY + h * 0.012f)
+                    quadTo(w * 0.62f, baseY + h * 0.05f, w * 0.82f, baseY - h * 0.018f)
+                    quadTo(w * 1.02f, baseY - h * 0.06f, w * 1.08f, baseY - h * 0.02f)
+                }
+                canvas.drawPath(path, topoPaint)
+            }
+        }
+
+        private fun drawLeaf(canvas: Canvas) {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            if (w <= 0 || h <= 0) return
+            canvas.drawPath(Path().apply {
+                moveTo(w * 1.08f, h * 1.02f)
+                quadTo(w * 0.92f, h * 0.86f, w * 0.74f, h * 0.70f)
+            }, veinPaint)
+            for (i in 0..6) {
+                val t = i / 6f
+                val x = w * (1.08f - 0.34f * t)
+                val y = h * (1.02f - 0.32f * t + 0.02f * kotlin.math.sin(t * 3f))
+                val len = w * (0.12f + 0.06f * kotlin.math.sin(t * kotlin.math.PI.toFloat()))
+                canvas.drawPath(Path().apply {
+                    moveTo(x, y)
+                    quadTo(x - len * 0.45f, y - len * 0.05f, x - len, y - len * 0.42f)
+                }, veinFinePaint)
+                canvas.drawPath(Path().apply {
+                    moveTo(x, y)
+                    quadTo(x - len * 0.2f, y + len * 0.25f, x - len * 0.55f, y + len * 0.5f)
+                }, veinFinePaint)
+            }
+        }
+
+        private fun drawDew(canvas: Canvas) {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            if (w <= 0 || h <= 0) return
+            val density = resources.displayMetrics.density
+            val drops = arrayOf(
+                floatArrayOf(0.08f, 0.12f, 2.2f), floatArrayOf(0.91f, 0.18f, 1.6f),
+                floatArrayOf(0.06f, 0.44f, 1.4f), floatArrayOf(0.95f, 0.52f, 2.4f),
+                floatArrayOf(0.14f, 0.78f, 1.8f), floatArrayOf(0.86f, 0.92f, 1.5f),
+                floatArrayOf(0.55f, 0.05f, 1.3f), floatArrayOf(0.42f, 0.96f, 1.7f),
+            )
+            drops.forEach { drop ->
+                val x = w * drop[0]
+                val y = h * drop[1]
+                val r = drop[2] * density
+                canvas.drawCircle(x, y, r, dewPaint)
+                canvas.drawCircle(x - r * 0.25f, y - r * 0.25f, r * 0.35f, dewCorePaint)
+            }
+        }
+    }
 
     /** Updates the home panel from on-device package and download history data. */
     fun refreshActivitySummary() {
@@ -406,7 +567,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private fun buildPrivacyCard(): View = LinearLayout(context).apply {
         orientation = VERTICAL
         setPadding(dp(16), dp(16), dp(16), dp(16))
-        background = rippleSurface(surface, dp(14), border)
+        background = glassSurface(dp(14))
         val heading = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         heading.addView(ImageView(context).apply {
             setImageResource(R.drawable.ic_home_privacy)
@@ -434,7 +595,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private fun buildActivityCard(): View = LinearLayout(context).apply {
         orientation = VERTICAL
         setPadding(dp(16), dp(16), dp(16), dp(16))
-        background = rippleSurface(surface, dp(14), border)
+        background = glassSurface(dp(14))
         isClickable = true
         isFocusable = true
         contentDescription = "Tu actividad en CodeHub. Abrir Mis aplicaciones."
@@ -508,7 +669,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             gravity = Gravity.CENTER
             setTextColor(accent)
             contentDescription = "Ver guía de CodeHub"
-            background = rippleSurface(surface, dp(10), border)
+            background = glassSurface(dp(10))
             isClickable = true
             isFocusable = true
             setOnClickListener { startTour() }
@@ -519,7 +680,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             gravity = Gravity.CENTER
             setPadding(dp(12), 0, dp(12), 0)
             contentDescription = "Abrir mi perfil"
-            background = rippleSurface(surface, dp(10), border)
+            background = glassSurface(dp(10))
             isClickable = true
             isFocusable = true
             setOnClickListener { listener.onOpenProfile() }
@@ -537,14 +698,14 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         orientation = VERTICAL
         visibility = View.GONE
         setPadding(dp(12), dp(12), dp(12), dp(12))
-        background = roundRectLocal(surfaceRaised, border, dp(14))
+        background = glassSurface(dp(14))
         val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         row.addView(TextView(context).apply {
             text = "↑"
             textSize = 16f
             typeface = Typeface.DEFAULT
             gravity = Gravity.CENTER
-            setTextColor(accent)
+            setTextColor(sageBright)
             background = rounded(accentSoft, dp(10))
             contentDescription = "Actualización disponible"
         }, LayoutParams(dp(36), dp(36)))
@@ -559,7 +720,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setTextColor(surface)
+            setTextColor(textPrimary)
             setPadding(dp(12), 0, dp(12), 0)
             background = rounded(accent, dp(10))
             isClickable = true
@@ -656,12 +817,12 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private fun buildHero(): View = LinearLayout(context).apply {
         orientation = VERTICAL
         setPadding(dp(18), dp(16), dp(18), dp(16))
-        background = roundRectLocal(surfaceRaised, border, dp(18))
+        background = glassSurface(dp(18))
 
         addView(TextView(context).apply {
             text = "CODEHUB · GUATEMALA"
             textSize = 9f
-            setTextColor(accent)
+            setTextColor(sageBright)
             setPadding(dp(8), dp(8), dp(8), dp(8))
             background = rounded(accentSoft, dp(10))
         }, LayoutParams(-2, -2))
@@ -675,7 +836,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         ).apply { maxLines = 2; setLineSpacing(dp(4).toFloat(), 1f) }, LayoutParams(-1, -2).apply {
             topMargin = dp(8)
         })
-        addView(button("Ver perfil y proyectos ↗", accent, surface) {
+        addView(button("Ver perfil y proyectos ↗", accent, textPrimary) {
             listener.onOpenWebsite("/cv")
         }, LayoutParams(-1, dp(44)).apply { topMargin = dp(16) })
     }
@@ -690,7 +851,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = rippleSurface(surface, dp(14), border)
+            background = glassSurface(dp(14))
             isClickable = true
             isFocusable = true
             contentDescription = "$title. $description"
@@ -716,7 +877,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = rippleSurface(surface, dp(14), border)
+            background = glassSurface(dp(14))
             isClickable = true
             isFocusable = true
             contentDescription = "$title. $description"
@@ -729,7 +890,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 }, LayoutParams(dp(32), dp(32)))
             } else {
                 val iconFrame = FrameLayout(context).apply {
-                    background = roundRectLocal(accentSoft, border, dp(10))
+                    background = rounded(accentSoft, dp(10))
                     addView(ImageView(context).apply {
                         setImageResource(icon)
                         scaleType = ImageView.ScaleType.FIT_CENTER
@@ -751,7 +912,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), dp(16), dp(16), dp(16))
-        background = rippleSurface(surface, dp(14), border)
+        background = glassSurface(dp(14))
         val copy = LinearLayout(context).apply {
             orientation = VERTICAL
             addView(label("Explora todo CodeHub", 14f, textPrimary, true))
@@ -759,7 +920,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
         addView(copy, LayoutParams(0, -2, 1f))
-        addView(button("Abrir", accent, surface) {
+        addView(button("Abrir", accent, textPrimary) {
             listener.onOpenWebsite("/")
         }, LayoutParams(dp(72), dp(40)))
     }
@@ -771,7 +932,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(foregroundColor)
-            background = rippleSurface(backgroundColor, dp(10), border)
+            background = rippleSurface(backgroundColor, dp(10), 0)
             isClickable = true
             isFocusable = true
             setOnClickListener { onClick() }
