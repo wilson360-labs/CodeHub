@@ -45,9 +45,18 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenWebsite(path: String)
     }
 
-    private val muted = 0xFFA7A9BC.toInt()
-    private val indigo = 0xFF818CF8.toInt()
-    private val cyan = 0xFF22D3EE.toInt()
+    // Dirección natural: arena cálida. Terracota = acción/estado activo, salvia = señal positiva.
+    // CSS #2E241C14 equivale en Android a #AARRGGBB = #142E241C.
+    private val bg = 0xFFF3EADD.toInt()
+    private val surface = 0xFFFBF6ED.toInt()
+    private val surfaceRaised = 0xFFF6EEDF.toInt()
+    private val textPrimary = 0xFF2E241C.toInt()
+    private val secondaryText = 0xFF6E5D4B.toInt()
+    private val muted = 0xFF9A8B78.toInt()
+    private val border = Color.parseColor("#142E241C")
+    private val accent = 0xFFB85C3C.toInt()
+    private val accentSecondary = 0xFF6F8F72.toInt()
+    private val accentSoft = 0xFFEAD7C8.toInt()
     private val entranceTargets = mutableListOf<View>()
     private val tourPrefs: SharedPreferences by lazy { context.getSharedPreferences("codehub_store", Context.MODE_PRIVATE) }
     private var tourWindow: PopupWindow? = null
@@ -82,30 +91,31 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var activeDownloadsLabel: TextView
     init {
         orientation = VERTICAL
-        setBackgroundColor(0xFF080B11.toInt())
+        setBackgroundColor(bg)
 
         addView(buildHeader(), LayoutParams(-1, dp(64)))
         updateBanner = buildUpdateBanner()
         addView(updateBanner, LayoutParams(-1, -2).apply {
-            leftMargin = dp(14); rightMargin = dp(14); bottomMargin = dp(7)
+            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(8)
         })
 
         homeScroll = ScrollView(context).apply {
             clipToPadding = false
             isFillViewport = false
             overScrollMode = View.OVER_SCROLL_NEVER
+            isVerticalScrollBarEnabled = false
         }
         val content = LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(24))
         }
-        addEntranceTarget(content, sectionTitle("Acceso rápido", "Tus apps principales, listas en Android"),
+        addEntranceTarget(content, sectionTitle("Acceso rápido", "Tus aplicaciones principales, listas en Android"),
             LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
-        storeCard = actionCard(R.drawable.ic_home_store, "CodeHub Store", "Apps open source para Android", indigo) {
+        storeCard = actionCard(R.drawable.ic_home_store, "CodeHub Store", "Aplicaciones de código abierto para Android", accent) {
             listener.onOpenStore()
         }
-        appsCard = actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
+        appsCard = actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", accent) {
             listener.onOpenMyApps()
         }
         addEntranceTarget(content, actionPair(storeCard, appsCard), LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -114,76 +124,71 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         heroCard = buildHero()
         addEntranceTarget(content, heroCard, LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
-        codeBeatCard = actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
+        codeBeatCard = actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", accent) {
             listener.onOpenCodeBeat()
         }
-        codeStreamCard = actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", cyan, tintIcon = false) {
+        codeStreamCard = actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", accent, tintIcon = false) {
             listener.onOpenCodeStream()
         }
-        addEntranceTarget(content, actionPair(codeBeatCard, codeStreamCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, actionPair(codeBeatCard, codeStreamCard), LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        copilotCard = featureCard(R.drawable.ic_jarvis_core, "JARVIS", "Asistente personal de voz y texto", cyan, tintIcon = false) {
+        copilotCard = featureCard(R.drawable.ic_jarvis_core, "JARVIS", "Asistente personal de voz y texto", accent, tintIcon = false) {
             listener.onOpenCopilot()
         }
-        addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        cvCard = featureCard(R.drawable.ic_home_cv, "Crear mi CV", "Generador guiado con IA", 0xFFA78BFA.toInt()) {
+        cvCard = featureCard(R.drawable.ic_home_cv, "Crear mi CV", "Generador guiado con IA", accent) {
             listener.onOpenWebsite("/cv-generador")
         }
-        addEntranceTarget(content, cvCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, cvCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        weatherCard = actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
+        weatherCard = actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", accent) {
             listener.onOpenWeather()
         }
-        toolsCard = actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
+        toolsCard = actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", accent) {
             listener.onOpenWebsite("/#services")
         }
-        addEntranceTarget(content, actionPair(weatherCard, toolsCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, actionPair(weatherCard, toolsCard), LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        optimizerCard = featureCard(R.drawable.ic_home_boost, "CodeSu", "Optimización Android con Shizuku", indigo) {
+        optimizerCard = featureCard(R.drawable.ic_home_boost, "CodeSu", "Optimización Android con Shizuku", accent) {
             listener.onOpenCodeSu()
         }
-        addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         privacyCard = buildPrivacyCard()
-        addEntranceTarget(content, privacyCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, privacyCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        forceStopCard = featureCard(R.drawable.ic_home_power, "Forzar cierre de app", "Abrir los ajustes Android para dormir CodeHub y sus servicios", 0xFFFF8A8A.toInt()) {
+        forceStopCard = featureCard(R.drawable.ic_home_power, "Forzar cierre de aplicación", "Abrir los ajustes Android para dormir CodeHub y sus servicios", accent) {
             listener.onForceStopApp()
         }
-        addEntranceTarget(content, forceStopCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, forceStopCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         websiteCard = buildWebsiteCard()
         addEntranceTarget(content, websiteCard, LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(TextView(context).apply {
             text = "CodeHub · Guatemala"
             textSize = 11f
-            setTextColor(0xFF67697D.toInt())
+            setTextColor(muted)
             gravity = Gravity.CENTER
-        }, LayoutParams(-1, -2).apply { topMargin = dp(22) })
+        }, LayoutParams(-1, -2).apply { topMargin = dp(24) })
 
         homeScroll.addView(content)
         addView(homeScroll, LayoutParams(-1, 0, 1f))
     }
 
-    /** Starts a short staggered reveal after the native splash has faded away. */
+    /** One short reveal for the whole content block after the native splash fades. */
     fun playEntrance() {
         if (entrancePlayed) return
         entrancePlayed = true
         refreshActivitySummary()
-        entranceTargets.forEachIndexed { index, view ->
-            val visibleBounds = Rect()
-            if (!view.getGlobalVisibleRect(visibleBounds)) return@forEachIndexed
-            view.alpha = 0f
-            view.translationY = dp(14).toFloat()
-            view.animate()
-                .alpha(1f)
-                .translationY(0f)
-                .setStartDelay(index * 55L)
-                .setDuration(360L)
-                .setInterpolator(DecelerateInterpolator(1.6f))
-                .start()
-        }
+        homeScroll.alpha = 0f
+        homeScroll.translationY = dp(6).toFloat()
+        homeScroll.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(220L)
+            .setInterpolator(DecelerateInterpolator(1.4f))
+            .start()
         postDelayed({ maybeStartTour() }, 1100)
     }
 
@@ -231,11 +236,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 target.postDelayed({ showTourStep() }, 260)
                 return@post
             }
-            // Efecto "bombeo" breve sobre la sección marcada.
+            // Realce sutil del paso actual: solo un descenso breve de alpha.
             target.animate().cancel()
-            target.animate().scaleX(1.08f).scaleY(1.08f).setDuration(180).withEndAction {
-                target.animate().scaleX(1f).scaleY(1f).setDuration(200).start()
-            }.start()
+            target.alpha = .88f
+            target.animate().alpha(1f).setDuration(180).start()
 
             val loc = IntArray(2); target.getLocationInWindow(loc)
             val host = IntArray(2); this@NativeHomeView.getLocationInWindow(host)
@@ -246,25 +250,21 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
             val bubble = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(14), dp(16), dp(14))
-                background = GradientDrawable().apply {
-                    setColor(0xFF111827.toInt())
-                    cornerRadius = dp(16).toFloat()
-                    setStroke(dp(1), 0xFF4B5D8A.toInt())
-                }
-                elevation = dp(8).toFloat()
+                setPadding(dp(16), dp(16), dp(16), dp(16))
+                background = roundRectLocal(surfaceRaised, border, dp(16))
+                elevation = dp(4).toFloat()
             }
             bubble.addView(TextView(context).apply {
                 text = title
-                textSize = 15f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 14f
+                setTypeface(null, Typeface.NORMAL)
+                setTextColor(textPrimary)
             })
             bubble.addView(TextView(context).apply {
                 text = desc
                 textSize = 12f
-                setTextColor(0xFFCBD5E1.toInt())
-                setPadding(0, dp(6), 0, 0)
+                setTextColor(secondaryText)
+                setPadding(0, dp(8), 0, 0)
                 setLineSpacing(dp(2).toFloat(), 1f)
             })
             val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END }
@@ -272,7 +272,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 text = "Saltar"
                 textSize = 12f
                 isAllCaps = false
-                setTextColor(0xFF9AAFC7.toInt())
+                setTextColor(muted)
                 background = null
                 setOnClickListener { tourPrefs.edit().putBoolean("tour_done", true).apply(); dismissTour() }
             }
@@ -280,8 +280,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 text = if (tourStepIndex == tourSteps.lastIndex) "Listo" else "Siguiente"
                 textSize = 12f
                 isAllCaps = false
-                setTextColor(0xFFFFFFFF.toInt())
-                background = roundRectLocal(0xFF5968E8.toInt(), 0, dp(12))
+                setTextColor(surface)
+                background = roundRectLocal(accent, 0, dp(10))
                 setOnClickListener { tourStepIndex++; showTourStep() }
             }
             row.addView(skip, LinearLayout.LayoutParams(-2, dp(40)))
@@ -316,8 +316,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             )), FrameLayout.LayoutParams(-1, -1))
             root.addView(object : View(context) {
                 private val connectorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = 0xFF9AA8FF.toInt()
-                    strokeWidth = dp(2).toFloat()
+                    color = accent
+                    strokeWidth = dp(1).toFloat()
                     strokeCap = Paint.Cap.ROUND
                     strokeJoin = Paint.Join.ROUND
                     style = Paint.Style.STROKE
@@ -355,14 +355,14 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     }
 
     private inner class SpotlightScrim(context: Context, private val hole: RectF) : View(context) {
-        private val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xCC050813.toInt() }
+        private val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x992E241C.toInt() }
         private val clear = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
         init { setLayerType(View.LAYER_TYPE_HARDWARE, null) }
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dim)
-            canvas.drawRoundRect(hole, dp(18).toFloat(), dp(18).toFloat(), clear)
+            canvas.drawRoundRect(hole, dp(14).toFloat(), dp(14).toFloat(), clear)
             canvas.restoreToCount(layer)
         }
     }
@@ -400,55 +400,55 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         val active = context.getSharedPreferences(CodeHubDnsVpnService.PREFS, Context.MODE_PRIVATE)
             .getBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false)
         privacyStatus.text = if (active) "● VPN conectada · anuncios y rastreadores filtrados" else "○ VPN desconectada · protección DNS apagada"
-        privacyStatus.setTextColor(if (active) 0xFF4ADE80.toInt() else muted)
+        privacyStatus.setTextColor(if (active) accentSecondary else muted)
     }
 
     private fun buildPrivacyCard(): View = LinearLayout(context).apply {
         orientation = VERTICAL
-        setPadding(dp(16), dp(14), dp(16), dp(14))
-        background = rippleSurface(0xFF101C20.toInt(), dp(20), 0xFF276A68.toInt())
+        setPadding(dp(16), dp(16), dp(16), dp(16))
+        background = rippleSurface(surface, dp(14), border)
         val heading = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         heading.addView(ImageView(context).apply {
             setImageResource(R.drawable.ic_home_privacy)
-            imageTintList = ColorStateList.valueOf(0xFF5EEAD4.toInt())
+            imageTintList = ColorStateList.valueOf(accentSecondary)
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }, LayoutParams(dp(34), dp(34)))
+        }, LayoutParams(dp(32), dp(32)))
         val copy = LinearLayout(context).apply {
             orientation = VERTICAL
-            addView(label("CodeHub Shield", 15f, Color.WHITE, true))
-            addView(label("VPN DNS · privacidad móvil", 11f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(2) })
+            addView(label("CodeHub Shield", 15f, textPrimary, true))
+            addView(label("VPN DNS · privacidad móvil", 11f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
-        heading.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
+        heading.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
         addView(heading)
         privacyStatus = label("Comprobando protección…", 10f, muted, false)
-        addView(privacyStatus, LayoutParams(-1, -2).apply { topMargin = dp(9) })
+        addView(privacyStatus, LayoutParams(-1, -2).apply { topMargin = dp(8) })
         val actions = LinearLayout(context).apply { orientation = HORIZONTAL }
-        actions.addView(button("Activar", 0xFF174D49.toInt(), 0xFF99F6E4.toInt()) { listener.onManagePrivacyVpn(true) },
-            LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(5); topMargin = dp(9) })
-        actions.addView(button("Detener", 0xFF36242A.toInt(), 0xFFFCA5A5.toInt()) { listener.onManagePrivacyVpn(false) },
-            LayoutParams(0, dp(40), 1f).apply { marginStart = dp(5); topMargin = dp(9) })
+        actions.addView(button("Activar", accentSecondary, textPrimary) { listener.onManagePrivacyVpn(true) },
+            LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(8); topMargin = dp(8) })
+        actions.addView(button("Detener", accentSoft, textPrimary) { listener.onManagePrivacyVpn(false) },
+            LayoutParams(0, dp(40), 1f).apply { marginStart = dp(8); topMargin = dp(8) })
         addView(actions)
         refreshPrivacyStatus()
     }
 
     private fun buildActivityCard(): View = LinearLayout(context).apply {
         orientation = VERTICAL
-        setPadding(dp(16), dp(13), dp(16), dp(13))
-        background = rippleSurface(0xFF101622.toInt(), dp(18), 0xFF2A3447.toInt())
+        setPadding(dp(16), dp(16), dp(16), dp(16))
+        background = rippleSurface(surface, dp(14), border)
         isClickable = true
         isFocusable = true
         contentDescription = "Tu actividad en CodeHub. Abrir Mis aplicaciones."
         setOnClickListener { listener.onOpenMyApps() }
-        addView(label("TU ACTIVIDAD", 10f, cyan, true))
+        addView(label("TU ACTIVIDAD", 10f, textPrimary, true))
         val metrics = LinearLayout(context).apply {
             orientation = if (resources.configuration.screenWidthDp < 350 || resources.configuration.fontScale >= 1.2f) VERTICAL else HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        installedMetric = activityMetric(metrics, "Apps instaladas")
+        installedMetric = activityMetric(metrics, "Aplicaciones instaladas")
         downloadsMetric = activityMetric(metrics, "Historial CodeHub")
         addView(metrics, LayoutParams(-1, -2).apply { topMargin = dp(8) })
         activeDownloadsLabel = label("Comprobando descargas…", 11f, muted, false)
-        addView(activeDownloadsLabel, LayoutParams(-1, -2).apply { topMargin = dp(7) })
+        addView(activeDownloadsLabel, LayoutParams(-1, -2).apply { topMargin = dp(8) })
     }
 
     private fun activityMetric(parent: LinearLayout, caption: String): TextView {
@@ -456,11 +456,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val value = label("—", 20f, Color.WHITE, true)
+        val value = label("—", 18f, textPrimary, false)
         block.addView(value, LayoutParams(-2, -2))
         block.addView(label(caption, 11f, muted, false), LayoutParams(-2, -2).apply { marginStart = dp(8) })
         val params = if (parent.orientation == HORIZONTAL) LayoutParams(0, -2, 1f)
-        else LayoutParams(-1, -2).apply { topMargin = dp(5) }
+        else LayoutParams(-1, -2).apply { topMargin = dp(4) }
         parent.addView(block, params)
         return value
     }
@@ -474,7 +474,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 addView(second, LayoutParams(-1, -2).apply { topMargin = dp(8) })
             } else {
                 addView(first, weightedCard())
-                addView(second, weightedCard().apply { marginStart = dp(10) })
+                addView(second, weightedCard().apply { marginStart = dp(12) })
             }
         }
     }
@@ -496,19 +496,19 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(logo, LayoutParams(dp(38), dp(38)))
         val wordmark = LinearLayout(context).apply {
             orientation = VERTICAL
-            setPadding(dp(10), 0, 0, 0)
-            addView(label("CodeHub", 17f, Color.WHITE, true))
+            setPadding(dp(8), 0, 0, 0)
+            addView(label("CodeHub", 17f, textPrimary, false))
             addView(label("ANDROID · OPEN SOURCE", 9f, muted, false))
         }
         addView(wordmark, LayoutParams(0, -2, 1f))
         guideButton = TextView(context).apply {
             text = "?"
             textSize = 18f
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.DEFAULT
             gravity = Gravity.CENTER
-            setTextColor(cyan)
+            setTextColor(accent)
             contentDescription = "Ver guía de CodeHub"
-            background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
+            background = rippleSurface(surface, dp(10), border)
             isClickable = true
             isFocusable = true
             setOnClickListener { startTour() }
@@ -517,9 +517,9 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         profilePill = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(10), 0, dp(12), 0)
+            setPadding(dp(12), 0, dp(12), 0)
             contentDescription = "Abrir mi perfil"
-            background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
+            background = rippleSurface(surface, dp(10), border)
             isClickable = true
             isFocusable = true
             setOnClickListener { listener.onOpenProfile() }
@@ -528,7 +528,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LayoutParams(dp(20), dp(20)))
-            addView(label("Mi perfil", 10f, indigo, true), LayoutParams(-2, -2).apply { marginStart = dp(5) })
+            addView(label("Mi perfil", 10f, accent, true), LayoutParams(-2, -2).apply { marginStart = dp(4) })
         }
         addView(profilePill, LayoutParams(-2, dp(40)).apply { marginStart = dp(8) })
     }
@@ -536,35 +536,32 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private fun buildUpdateBanner() = LinearLayout(context).apply {
         orientation = VERTICAL
         visibility = View.GONE
-        setPadding(dp(12), dp(10), dp(12), dp(9))
-        background = GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            intArrayOf(0xFF15223A.toInt(), 0xFF10252F.toInt()),
-        ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), 0xFF385B79.toInt()) }
+        setPadding(dp(12), dp(12), dp(12), dp(12))
+        background = roundRectLocal(surfaceRaised, border, dp(14))
         val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         row.addView(TextView(context).apply {
             text = "↑"
-            textSize = 19f
-            typeface = Typeface.DEFAULT_BOLD
+            textSize = 16f
+            typeface = Typeface.DEFAULT
             gravity = Gravity.CENTER
-            setTextColor(0xFF67E8F9.toInt())
-            background = rounded(0xFF19364A.toInt(), dp(12))
+            setTextColor(accent)
+            background = rounded(accentSoft, dp(10))
             contentDescription = "Actualización disponible"
-        }, LayoutParams(dp(37), dp(37)))
+        }, LayoutParams(dp(36), dp(36)))
         val copy = LinearLayout(context).apply { orientation = VERTICAL }
-        updateTitle = label("Hay una actualización disponible", 13f, Color.WHITE, true)
-        updateSubtitle = label("CodeHub · preparando información…", 10f, 0xFFB6C6D9.toInt(), false)
+        updateTitle = label("Hay una actualización disponible", 13f, textPrimary, true)
+        updateSubtitle = label("CodeHub · preparando información…", 10f, secondaryText, false)
         copy.addView(updateTitle)
-        copy.addView(updateSubtitle, LayoutParams(-1, -2).apply { topMargin = dp(2) })
-        row.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
+        copy.addView(updateSubtitle, LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        row.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
         updateAction = TextView(context).apply {
             text = "Actualizar"
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setTextColor(0xFF07111D.toInt())
-            setPadding(dp(11), 0, dp(11), 0)
-            background = rounded(0xFF67E8F9.toInt(), dp(13))
+            setTextColor(surface)
+            setPadding(dp(12), 0, dp(12), 0)
+            background = rounded(accent, dp(10))
             isClickable = true
             isFocusable = true
             setOnClickListener { listener.onStartAppUpdate() }
@@ -573,11 +570,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(row, LayoutParams(-1, -2))
         updateProgress = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
-            progressTintList = ColorStateList.valueOf(0xFF67E8F9.toInt())
-            progressBackgroundTintList = ColorStateList.valueOf(0xFF29394C.toInt())
+            progressTintList = ColorStateList.valueOf(accent)
+            progressBackgroundTintList = ColorStateList.valueOf(accentSoft)
             visibility = View.GONE
         }
-        addView(updateProgress, LayoutParams(-1, dp(3)).apply { topMargin = dp(8) })
+        addView(updateProgress, LayoutParams(-1, dp(4)).apply { topMargin = dp(8) })
     }
 
     @JvmOverloads
@@ -658,50 +655,44 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
     private fun buildHero(): View = LinearLayout(context).apply {
         orientation = VERTICAL
-        setPadding(dp(18), dp(15), dp(18), dp(14))
-        elevation = dp(4).toFloat()
-        background = GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            intArrayOf(0xFF1A1B36.toInt(), 0xFF111A2B.toInt(), 0xFF0C2029.toInt()),
-        ).apply { cornerRadius = dp(26).toFloat(); setStroke(dp(1), 0xFF343652.toInt()) }
+        setPadding(dp(18), dp(16), dp(18), dp(16))
+        background = roundRectLocal(surfaceRaised, border, dp(18))
 
         addView(TextView(context).apply {
-            text = "CODEHUB  ·  GUATEMALA"
+            text = "CODEHUB · GUATEMALA"
             textSize = 9f
-            letterSpacing = .1f
-            setTextColor(cyan)
-            setPadding(dp(10), dp(7), dp(10), dp(7))
-            background = rounded(0xFF102631.toInt(), dp(20))
+            setTextColor(accent)
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            background = rounded(accentSoft, dp(10))
         }, LayoutParams(-2, -2))
 
-        addView(label("CodeHub desarrollado por Wilson.E", 22f, Color.WHITE, true), LayoutParams(-1, -2).apply {
-            topMargin = dp(10)
+        addView(label("CodeHub desarrollado por Wilson.E", 20f, textPrimary, false), LayoutParams(-1, -2).apply {
+            topMargin = dp(16)
         })
         addView(label(
             "Tu tienda y herramientas favoritas, reunidas en CodeHub para Android.",
-            13f, 0xFFC0C2D1.toInt(), false,
-        ).apply { maxLines = 2; setLineSpacing(dp(3).toFloat(), 1f) }, LayoutParams(-1, -2).apply {
-            topMargin = dp(5)
+            13f, secondaryText, false,
+        ).apply { maxLines = 2; setLineSpacing(dp(4).toFloat(), 1f) }, LayoutParams(-1, -2).apply {
+            topMargin = dp(8)
         })
-        addView(button("Ver perfil y proyectos  ↗", 0xFF25284A.toInt(), 0xFFE4E7FF.toInt()) {
+        addView(button("Ver perfil y proyectos ↗", accent, surface) {
             listener.onOpenWebsite("/cv")
-        }, LayoutParams(-1, dp(42)).apply { topMargin = dp(10) })
+        }, LayoutParams(-1, dp(44)).apply { topMargin = dp(16) })
     }
 
     private fun sectionTitle(title: String, subtitle: String): View = LinearLayout(context).apply {
         orientation = VERTICAL
-        addView(label(title, 20f, Color.WHITE, true))
+        addView(label(title, 18f, textPrimary, false))
         addView(label(subtitle, 12f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(4) })
     }
 
     private fun actionCard(icon: Int, title: String, description: String, accent: Int, tintIcon: Boolean = true, onClick: () -> Unit): View =
         LinearLayout(context).apply {
             orientation = VERTICAL
-            setPadding(dp(14), dp(14), dp(12), dp(14))
-            background = rippleSurface(0xFF111521.toInt(), dp(18), 0xFF292D43.toInt())
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            background = rippleSurface(surface, dp(14), border)
             isClickable = true
             isFocusable = true
-            elevation = dp(2).toFloat()
             contentDescription = "$title. $description"
             setOnClickListener { onClick() }
             addView(ImageView(context).apply {
@@ -709,12 +700,12 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 if (tintIcon) imageTintList = ColorStateList.valueOf(accent)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LayoutParams(dp(28), dp(28)))
-            addView(label(title, 14f, Color.WHITE, true).apply {
+            addView(label(title, 14f, textPrimary, true).apply {
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            }, LayoutParams(-1, -2).apply { topMargin = dp(9) })
+            }, LayoutParams(-1, -2).apply { topMargin = dp(8) })
             addView(label(description, 11f, muted, false).apply {
                 maxLines = 2
-                setLineSpacing(dp(2).toFloat(), 1f)
+                setLineSpacing(dp(4).toFloat(), 1f)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
@@ -724,8 +715,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = rippleSurface(0xFF131A29.toInt(), dp(18), 0xFF343B5A.toInt())
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            background = rippleSurface(surface, dp(14), border)
             isClickable = true
             isFocusable = true
             contentDescription = "$title. $description"
@@ -738,24 +729,19 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 }, LayoutParams(dp(32), dp(32)))
             } else {
                 val iconFrame = FrameLayout(context).apply {
-                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                        intArrayOf(0xFF173648.toInt(), 0xFF12243A.toInt())).apply {
-                        shape = GradientDrawable.OVAL
-                        setStroke(dp(1), 0xFF53E7D2.toInt())
-                    }
-                    elevation = dp(5).toFloat()
+                    background = roundRectLocal(accentSoft, border, dp(10))
                     addView(ImageView(context).apply {
                         setImageResource(icon)
                         scaleType = ImageView.ScaleType.FIT_CENTER
                         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                    }, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
+                    }, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
                 }
                 addView(iconFrame, LayoutParams(dp(48), dp(48)))
             }
             val copy = LinearLayout(context).apply {
                 orientation = VERTICAL
-                addView(label(title, 14f, Color.WHITE, true))
-                addView(label(description, 11f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(3) })
+                addView(label(title, 14f, textPrimary, true))
+                addView(label(description, 11f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(4) })
             }
             addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
             addView(label("›", 24f, accent, true))
@@ -764,18 +750,18 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private fun buildWebsiteCard(): View = LinearLayout(context).apply {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(16), dp(14), dp(14), dp(14))
-        background = rippleSurface(0xFF121724.toInt(), dp(18), 0xFF2E354B.toInt())
+        setPadding(dp(16), dp(16), dp(16), dp(16))
+        background = rippleSurface(surface, dp(14), border)
         val copy = LinearLayout(context).apply {
             orientation = VERTICAL
-            addView(label("Explora todo CodeHub", 14f, Color.WHITE, true))
+            addView(label("Explora todo CodeHub", 14f, textPrimary, true))
             addView(label("Comunidad, proyectos, clima y más", 11f, muted, false),
                 LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
         addView(copy, LayoutParams(0, -2, 1f))
-        addView(button("Abrir", 0xFF20243A.toInt(), cyan) {
+        addView(button("Abrir", accent, surface) {
             listener.onOpenWebsite("/")
-        }, LayoutParams(dp(74), dp(40)))
+        }, LayoutParams(dp(72), dp(40)))
     }
 
     private fun button(text: String, backgroundColor: Int, foregroundColor: Int, onClick: () -> Unit): View =
@@ -785,7 +771,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(foregroundColor)
-            background = rippleSurface(backgroundColor, dp(13), 0xFF3A3D56.toInt())
+            background = rippleSurface(backgroundColor, dp(10), border)
             isClickable = true
             isFocusable = true
             setOnClickListener { onClick() }
@@ -795,7 +781,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         this.text = text
         textSize = size
         setTextColor(color)
-        if (bold) typeface = Typeface.DEFAULT_BOLD
+        // Peso 500 solo en etiquetas pequeñas; los títulos grandes quedan en 400.
+        if (bold && size <= 12f) typeface = Typeface.DEFAULT_BOLD
     }
 
     private fun weightedCard() = LayoutParams(0, -2, 1f)
@@ -806,7 +793,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     }
 
     private fun rippleSurface(color: Int, radius: Int, stroke: Int) = RippleDrawable(
-        ColorStateList.valueOf(0x24FFFFFF),
+        ColorStateList.valueOf(border),
         GradientDrawable().apply {
             setColor(color)
             cornerRadius = radius.toFloat()

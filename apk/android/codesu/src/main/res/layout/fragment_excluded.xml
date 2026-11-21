@@ -20,15 +20,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Selección de apps"
-            android:textColor="@color/codesu_accent_text"
-            android:textSize="20sp" />
+            android:textColor="@color/codesu_text_primary"
+            android:textSize="18sp" />
 
         <TextView
             android:id="@+id/selection_mode_hint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textSize="14sp" />
+            android:textColor="@color/codesu_text_muted"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -44,8 +45,8 @@
             android:layout_height="match_parent"
             android:importantForAccessibility="no"
             android:orientation="vertical"
-            android:scrollbarStyle="outsideOverlay"
-            android:scrollbars="vertical" />
+            android:overScrollMode="never"
+            android:scrollbars="none" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

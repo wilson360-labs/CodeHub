@@ -4,6 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:overScrollMode="never"
+    android:scrollbars="none"
     tools:context=".ui.Settings.SettingsFragment">
 
     <LinearLayout
@@ -17,7 +19,7 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -69,7 +71,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp">
 
             <LinearLayout
@@ -118,7 +120,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -179,7 +181,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -240,7 +242,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -292,7 +294,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -337,7 +339,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -411,7 +413,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -465,7 +467,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -569,7 +571,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp">
 
             <LinearLayout
@@ -622,7 +624,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp">
 
             <LinearLayout

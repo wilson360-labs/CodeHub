@@ -2,15 +2,16 @@
     <!-- Base application theme. -->
     <style name="Theme.CodeSu" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/codesu_accent_soft</item>
+        <item name="colorPrimary">@color/codesu_accent</item>
         <item name="colorPrimaryVariant">@color/codesu_accent_dark</item>
-        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnPrimary">@color/codesu_background</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/codesu_accent_soft</item>
-        <item name="colorSecondaryVariant">@color/codesu_accent</item>
-        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondary">@color/codesu_sage</item>
+        <item name="colorSecondaryVariant">@color/codesu_sage</item>
+        <item name="colorOnSecondary">@color/codesu_background</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/codesu_accent_dark</item>
+        <item name="android:statusBarColor">@color/codesu_background</item>
+        <item name="android:navigationBarColor">@color/codesu_background</item>
         <item name="android:windowBackground">@color/codesu_background</item>
         <item name="android:colorBackground">@color/codesu_background</item>
         <item name="colorSurface">@color/codesu_surface</item>

@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -22,6 +23,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
@@ -51,10 +53,17 @@ class NativeWeatherActivity : Activity() {
     private val http by lazy {
         OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(12, TimeUnit.SECONDS).build()
     }
-    private val bg = 0xFF090D16.toInt()
-    private val panel = 0xFF121A2A.toInt()
-    private val muted = 0xFFAAB5C9.toInt()
-    private val cyan = 0xFF67E8F9.toInt()
+    private val dark by lazy { (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES }
+    private val bg by lazy { if (dark) 0xFF17130F.toInt() else 0xFFF3EADD.toInt() }
+    private val panel by lazy { if (dark) 0xFF201A14.toInt() else 0xFFFBF6ED.toInt() }
+    private val elevated by lazy { if (dark) 0xFF2A221A.toInt() else 0xFFF6EEDF.toInt() }
+    private val primary by lazy { if (dark) 0xFFF5EDE0.toInt() else 0xFF2E241C.toInt() }
+    private val secondary by lazy { if (dark) 0xFFC2B09B.toInt() else 0xFF6E5D4B.toInt() }
+    private val muted by lazy { if (dark) 0xFF94836F.toInt() else 0xFF9A8B78.toInt() }
+    private val border by lazy { if (dark) 0x14F5EDE0.toInt() else 0x142E241C.toInt() }
+    private val accent by lazy { if (dark) 0xFFD98A67.toInt() else 0xFFB85C3C.toInt() }
+    private val sage by lazy { if (dark) 0xFF9DB99E.toInt() else 0xFF6F8F72.toInt() }
+    private val accentSoft by lazy { if (dark) 0xFF3A2A20.toInt() else 0xFFEAD7C8.toInt() }
     private lateinit var content: LinearLayout
     private var request: Call? = null
     private var lat = 0.0
@@ -113,24 +122,30 @@ class NativeWeatherActivity : Activity() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(bg) }
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(6), dp(18), dp(6))
+            setPadding(dp(16), dp(8), dp(16), dp(8))
         }
-        header.addView(text("‹", 30f, Color.WHITE, true).apply {
-            gravity = Gravity.CENTER; contentDescription = "Volver"; setOnClickListener { finish() }
-        }, LinearLayout.LayoutParams(dp(46), dp(50)))
-        header.addView(text("Clima", 19f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
-        header.addView(text("⊞ Widget", 12f, cyan, true).apply {
+        header.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_ai_back)
+            imageTintList = android.content.res.ColorStateList.valueOf(primary)
+            contentDescription = "Volver"; setOnClickListener { finish() }
+        }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        header.addView(text("Clima", 19f, primary), LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(text("⊞ Widget", 12f, primary).apply {
             gravity = Gravity.CENTER
             contentDescription = "Añadir widget de clima a la pantalla de inicio"
             setOnClickListener { requestWeatherWidgetPin() }
-        }, LinearLayout.LayoutParams(dp(78), dp(44)).apply { marginEnd = dp(4) })
-        header.addView(text("⟳", 26f, cyan, true).apply {
-            gravity = Gravity.CENTER; contentDescription = "Actualizar clima"; setOnClickListener { loadWeather() }
-        }, LinearLayout.LayoutParams(dp(44), dp(48)))
-        root.addView(header, LinearLayout.LayoutParams(-1, dp(58)))
+        }, LinearLayout.LayoutParams(dp(80), dp(40)).apply { marginEnd = dp(8) })
+        header.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_store_refresh)
+            imageTintList = android.content.res.ColorStateList.valueOf(primary)
+            contentDescription = "Actualizar clima"; setOnClickListener { loadWeather() }
+        }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        root.addView(header, LinearLayout.LayoutParams(-1, dp(56)))
 
-        val scroll = ScrollView(this).apply { clipToPadding = false; overScrollMode = View.OVER_SCROLL_NEVER }
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(8), dp(18), dp(28)) }
+        val scroll = ScrollView(this).apply {
+            clipToPadding = false; overScrollMode = View.OVER_SCROLL_NEVER; isVerticalScrollBarEnabled = false
+        }
+        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(24)) }
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
@@ -139,10 +154,10 @@ class NativeWeatherActivity : Activity() {
     private fun renderNoLocation(message: String = "Elige una ciudad o comparte tu ubicación para ver el pronóstico.") {
         content.removeAllViews()
         content.addView(card {
-            addView(text("Tu clima, en CodeHub", 21f, Color.WHITE, true))
+            addView(text("Tu clima, en CodeHub", 21f, primary))
             addView(text(message, 13f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-            addView(button("Usar mi ubicación", cyan) { requestLocation() }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(16) })
-            addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+            addView(button("Usar mi ubicación", accent) { requestLocation() }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(16) })
+            addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         })
         addBackgroundControls()
     }
@@ -150,10 +165,10 @@ class NativeWeatherActivity : Activity() {
     private fun renderLoading() {
         content.removeAllViews()
         content.addView(card {
-            addView(text(city.ifBlank { "Consultando tu ubicación" }, 15f, Color.WHITE, true))
-            addView(text("Cargando el pronóstico…", 13f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+            addView(text(city.ifBlank { "Consultando tu ubicación" }, 15f, primary))
+            addView(text("Cargando el pronóstico…", 13f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         })
-        content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         addBackgroundControls()
     }
 
@@ -194,58 +209,65 @@ class NativeWeatherActivity : Activity() {
         val maxToday = daily.optJSONArray("temperature_2m_max")?.optDouble(0)?.toInt()
         val place = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(15), dp(10), dp(12), dp(10)); background = rounded(panel, dp(24))
+            setPadding(dp(16), dp(8), dp(16), dp(8)); background = rounded(panel, dp(24))
         }
-        place.addView(text("⌖", 19f, cyan, true), LinearLayout.LayoutParams(dp(28), -2))
-        place.addView(text(city.ifBlank { "Mi ubicación" }, 14f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
-        place.addView(text("Mi ubicación  ›", 11f, cyan, true).apply { setOnClickListener { requestLocation() } })
+        place.addView(text("⌖", 19f, secondary), LinearLayout.LayoutParams(dp(28), -2))
+        place.addView(text(city.ifBlank { "Mi ubicación" }, 14f, primary), LinearLayout.LayoutParams(0, -2, 1f))
+        place.addView(text("Mi ubicación  ›", 11f, accent).apply { setOnClickListener { requestLocation() } })
         content.addView(place)
-        content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
+        content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
+        val conditionColor = if (code == 0 || code in 1..2) sage else secondary
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(22), dp(22), dp(22))
-            background = weatherHeroBackground(code, current.optInt("is_day", 1) == 1)
+            setPadding(dp(24), dp(24), dp(24), dp(24))
+            background = rounded(elevated, dp(20))
         }
-        hero.addView(text("${weatherName(code)}  ·  ${current.optString("time").substringAfter('T', "Ahora")}", 14f, Color.WHITE, true))
-        hero.addView(NativeWeatherGlyph(this, code, 72, animated = true), LinearLayout.LayoutParams(dp(78), dp(78)).apply {
-            topMargin = dp(9)
+        hero.addView(text("${weatherName(code)}  ·  ${current.optString("time").substringAfter('T', "Ahora")}", 14f, conditionColor))
+        hero.addView(NativeWeatherGlyph(this, code, 72, animated = true), LinearLayout.LayoutParams(dp(80), dp(80)).apply {
+            topMargin = dp(8)
             gravity = Gravity.CENTER_HORIZONTAL
         })
-        hero.addView(text("${current.optInt("temperature_2m")}°", 76f, Color.WHITE, true))
-        hero.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 14f, 0xFFE7F1FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
-        hero.addView(text("Mín. ${minToday ?: "—"}°     Máx. ${maxToday ?: "—"}°", 14f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        hero.addView(text("${current.optInt("temperature_2m")}°", 56f, accent))
+        val measure = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        measure.addView(View(this).apply { setBackgroundColor(accent) }, LinearLayout.LayoutParams(dp(40), dp(1)))
+        measure.addView(View(this).apply {
+            background = GradientDrawable().apply { setColor(accent); cornerRadius = dp(2).toFloat() }
+        }, LinearLayout.LayoutParams(dp(4), dp(4)).apply { marginStart = dp(4) })
+        hero.addView(measure, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
+        hero.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        hero.addView(text("Mín. ${minToday ?: "—"}°     Máx. ${maxToday ?: "—"}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
         val sunrise = daily.optJSONArray("sunrise")?.optString(0)?.substringAfter('T', "")
         val sunset = daily.optJSONArray("sunset")?.optString(0)?.substringAfter('T', "")
         if (!sunrise.isNullOrBlank() || !sunset.isNullOrBlank()) {
-            hero.addView(text("☀  ${sunrise.orEmpty()}     ◒  ${sunset.orEmpty()}", 12f, 0xFFE7F1FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(13) })
+            hero.addView(text("☀  ${sunrise.orEmpty()}     ◒  ${sunset.orEmpty()}", 12f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         }
         content.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        content.addView(text("Ahora mismo", 17f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22); bottomMargin = dp(9) })
+        content.addView(text("Ahora mismo", 17f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
         val metricRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        metricRow1.addView(metricCard("Humedad", "${current.optInt("relative_humidity_2m")} %", "Gotas", cyan), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginEnd = dp(5) })
+        metricRow1.addView(metricCard("Humedad", "${current.optInt("relative_humidity_2m")} %", "Gotas", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginEnd = dp(4) })
         val gusts = current.optInt("wind_gusts_10m", current.optInt("wind_speed_10m"))
         val windDirection = current.optInt("wind_direction_10m", -1).let { if (it < 0) "" else " · ${it}°" }
-        metricRow1.addView(metricCard("Viento", "${current.optInt("wind_speed_10m")} km/h", "Ráfagas $gusts km/h$windDirection", 0xFFB9A5FF.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginStart = dp(5) })
+        metricRow1.addView(metricCard("Viento", "${current.optInt("wind_speed_10m")} km/h", "Ráfagas $gusts km/h$windDirection", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginStart = dp(4) })
         content.addView(metricRow1)
         val metricRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val rain = hours.optJSONArray("precipitation_probability")?.optInt(currentHourIndex) ?: 0
         val rainMm = hours.optJSONArray("precipitation")?.optDouble(currentHourIndex)?.let { String.format(java.util.Locale.getDefault(), "%.1f mm", it) } ?: "—"
-        metricRow2.addView(metricCard("Lluvia", "$rain %", "$rainMm · próxima hora", 0xFF88B9FF.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginEnd = dp(5) })
+        metricRow2.addView(metricCard("Lluvia", "$rain %", "$rainMm · próxima hora", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginEnd = dp(4) })
         val uv = hours.optJSONArray("uv_index")?.optDouble(currentHourIndex)?.let { String.format(java.util.Locale.getDefault(), "%.1f", it) } ?: "—"
-        metricRow2.addView(metricCard("Índice UV", uv, "Hoy", 0xFFFFCF70.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginStart = dp(5) })
+        metricRow2.addView(metricCard("Índice UV", uv, "Hoy", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginStart = dp(4) })
         content.addView(metricRow2, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
         val metricRow3 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        metricRow3.addView(metricCard("Nubosidad", "${current.optInt("cloud_cover")} %", "Cobertura del cielo", 0xFFC4D7F2.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginEnd = dp(5) })
+        metricRow3.addView(metricCard("Nubosidad", "${current.optInt("cloud_cover")} %", "Cobertura del cielo", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginEnd = dp(4) })
         val pressure = current.optDouble("pressure_msl", Double.NaN).takeIf { it.isFinite() }?.toInt()?.toString() ?: "—"
-        metricRow3.addView(metricCard("Presión", "$pressure hPa", "A nivel del mar", 0xFFA5B4FC.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginStart = dp(5) })
+        metricRow3.addView(metricCard("Presión", "$pressure hPa", "A nivel del mar", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginStart = dp(4) })
         content.addView(metricRow3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         val visibilityKm = current.optDouble("visibility", Double.NaN).takeIf { it.isFinite() }?.let { String.format(java.util.Locale.getDefault(), "%.1f km", it / 1000.0) } ?: "—"
-        content.addView(metricCard("Visibilidad", visibilityKm, "Alcance estimado", 0xFF9FE7D4.toInt()), LinearLayout.LayoutParams(-1, dp(88)).apply { topMargin = dp(8) })
+        content.addView(metricCard("Visibilidad", visibilityKm, "Alcance estimado", accent), LinearLayout.LayoutParams(-1, dp(88)).apply { topMargin = dp(8) })
 
-        content.addView(text("Pronóstico por hora", 17f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22); bottomMargin = dp(9) })
+        content.addView(text("Pronóstico por hora", 17f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
         val hourlyRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val times = forecastTimes
         val temps = hours.optJSONArray("temperature_2m")
@@ -259,21 +281,21 @@ class NativeWeatherActivity : Activity() {
                 val time = times.optString(index).substringAfter('T', "--:--")
                 val hourCard = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                    setPadding(dp(8), dp(10), dp(8), dp(10)); background = rounded(panel, dp(20))
+                    setPadding(dp(8), dp(8), dp(8), dp(8)); background = rounded(panel, dp(14))
                     addView(text(time, 11f, muted, true))
-                    addView(NativeWeatherGlyph(this@NativeWeatherActivity, codes?.optInt(index) ?: 0, 28), LinearLayout.LayoutParams(-1, dp(30)).apply {
-                        topMargin = dp(7)
+                    addView(NativeWeatherGlyph(this@NativeWeatherActivity, codes?.optInt(index) ?: 0, 28), LinearLayout.LayoutParams(-1, dp(32)).apply {
+                        topMargin = dp(8)
                     })
-                    addView(text("${temps.optDouble(index).toInt()}°", 15f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-                    addView(text("${rains?.optInt(index) ?: 0}% lluvia", 9f, 0xFF9CD9FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-                    if (uvValues != null && index < uvValues.length()) addView(text("UV ${uvValues.optDouble(index).toInt()}", 9f, 0xFFFFCF70.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+                    addView(text("${temps.optDouble(index).toInt()}°", 15f, primary, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                    addView(text("${rains?.optInt(index) ?: 0}% lluvia", 9f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                    if (uvValues != null && index < uvValues.length()) addView(text("UV ${uvValues.optDouble(index).toInt()}", 9f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                 }
-                hourlyRow.addView(hourCard, LinearLayout.LayoutParams(dp(90), dp(128)).apply { marginEnd = dp(8) })
+                hourlyRow.addView(hourCard, LinearLayout.LayoutParams(dp(88), dp(128)).apply { marginEnd = dp(8) })
             }
         }
         val horizontal = android.widget.HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(hourlyRow) }
         content.addView(horizontal)
-        content.addView(text("Próximos días", 17f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22); bottomMargin = dp(9) })
+        content.addView(text("Próximos días", 17f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
         val dates = daily.optJSONArray("time")
         val dayCodes = daily.optJSONArray("weather_code")
         val maxes = daily.optJSONArray("temperature_2m_max")
@@ -283,18 +305,18 @@ class NativeWeatherActivity : Activity() {
         repeat(dates?.length() ?: 0) { i ->
             content.addView(card {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                addView(text(if (i == 0) "Hoy" else formatDay(dates?.optString(i).orEmpty()), 14f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
+                addView(text(if (i == 0) "Hoy" else formatDay(dates?.optString(i).orEmpty()), 14f, primary), LinearLayout.LayoutParams(0, -2, 1f))
                 val rainTotal = rainTotals?.optDouble(i, 0.0) ?: 0.0
                 val rainSummary = "Lluvia ${rainChances?.optInt(i) ?: 0}% · ${String.format(java.util.Locale.getDefault(), "%.1f", rainTotal)} mm"
                 val dayDescription = LinearLayout(this@NativeWeatherActivity).apply {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER_VERTICAL
                     addView(text(weatherName(dayCodes?.optInt(i) ?: 0), 10f, muted, true), LinearLayout.LayoutParams(-1, -2))
-                    addView(text(rainSummary, 9f, 0xFF9CD9FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+                    addView(text(rainSummary, 9f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                 }
-                addView(dayDescription, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6) })
+                addView(dayDescription, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
                 addView(NativeWeatherGlyph(this@NativeWeatherActivity, dayCodes?.optInt(i) ?: 0, 30), LinearLayout.LayoutParams(dp(36), dp(36)))
-                addView(text("${mins?.optDouble(i)?.toInt() ?: 0}°  ${maxes?.optDouble(i)?.toInt() ?: 0}°", 13f, Color.WHITE, true))
+                addView(text("${mins?.optDouble(i)?.toInt() ?: 0}°  ${maxes?.optDouble(i)?.toInt() ?: 0}°", 13f, primary, true))
             }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(8) })
         }
         addBackgroundControls()
@@ -306,11 +328,11 @@ class NativeWeatherActivity : Activity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(6), dp(5), dp(6), dp(5))
-            background = rounded(panel, dp(17))
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = rounded(panel, dp(16))
         }
         val input = EditText(this).apply {
-            hint = "Ciudad, municipio o lugar"; setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(muted)
+            hint = "Ciudad, municipio o lugar"; setSingleLine(true); textSize = 14f; setTextColor(primary); setHintTextColor(muted)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
             imeOptions = EditorInfo.IME_ACTION_SEARCH
             setPadding(dp(12), 0, dp(8), 0); setBackgroundColor(Color.TRANSPARENT)
@@ -321,12 +343,12 @@ class NativeWeatherActivity : Activity() {
                 } else false
             }
         }
-        row.addView(input, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(7) })
-        val searchButton = button("Buscar", cyan) { searchCity(input.text.toString().trim()) }
-        row.addView(searchButton, LinearLayout.LayoutParams(dp(88), dp(42)))
+        row.addView(input, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(8) })
+        val searchButton = button("Buscar", accent) { searchCity(input.text.toString().trim()) }
+        row.addView(searchButton, LinearLayout.LayoutParams(dp(88), dp(44)))
         val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         section.addView(row)
-        section.addView(results, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        section.addView(results, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         locationSearchInput = input
         locationSearchResults = results
         locationSearchButton = searchButton
@@ -338,7 +360,7 @@ class NativeWeatherActivity : Activity() {
         val resultsView = locationSearchResults
         resultsView?.removeAllViews()
         resultsView?.visibility = View.VISIBLE
-        resultsView?.addView(text("Buscando lugares…", 12f, muted).apply { setPadding(dp(10), dp(9), dp(10), dp(9)) })
+        resultsView?.addView(text("Buscando lugares…", 12f, muted).apply { setPadding(dp(8), dp(8), dp(8), dp(8)) })
         locationSearchButton?.isEnabled = false
         locationSearchInput?.let { (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0) }
         geoSearchCall?.cancel()
@@ -368,18 +390,18 @@ class NativeWeatherActivity : Activity() {
                             .filter { it.isNotBlank() }.distinct().joinToString(", ")
                         list.addView(LinearLayout(this@NativeWeatherActivity).apply {
                             orientation = LinearLayout.VERTICAL
-                            setPadding(dp(12), dp(10), dp(12), dp(10))
-                            background = rounded(0xFF182438.toInt(), dp(14))
+                            setPadding(dp(12), dp(12), dp(12), dp(12))
+                            background = rounded(accentSoft, dp(14))
                             isClickable = true
                             isFocusable = true
                             contentDescription = "Usar ubicación $name${if (detail.isBlank()) "" else ", $detail"}"
-                            addView(text(name, 14f, Color.WHITE, true))
-                            if (detail.isNotBlank()) addView(text(detail, 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+                            addView(text(name, 14f, primary))
+                            if (detail.isNotBlank()) addView(text(detail, 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                             setOnClickListener {
                                 list.visibility = View.GONE
                                 saveLocation(item.optDouble("latitude"), item.optDouble("longitude"), listOf(name, detail).filter { it.isNotBlank() }.joinToString(", "))
                             }
-                        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+                        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
                     }
                 }
             }
@@ -390,7 +412,7 @@ class NativeWeatherActivity : Activity() {
         locationSearchResults?.apply {
             removeAllViews()
             visibility = View.VISIBLE
-            addView(text(message, 12f, muted).apply { setPadding(dp(10), dp(9), dp(10), dp(9)) })
+            addView(text(message, 12f, muted).apply { setPadding(dp(8), dp(8), dp(8), dp(8)) })
         }
     }
 
@@ -552,9 +574,9 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun addBackgroundControls() {
-        content.addView(text("Servicios de fondo", 16f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20); bottomMargin = dp(7) })
+        content.addView(text("Servicios de fondo", 16f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
         val widget = Switch(this).apply {
-            text = "Alertas de clima y widget"; textSize = 13f; setTextColor(Color.WHITE)
+            text = "Alertas de clima y widget"; textSize = 13f; setTextColor(primary)
             isChecked = prefs.getBoolean("weather_notification_enabled", true)
             setOnCheckedChangeListener { _, checked ->
                 if (checked && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -568,7 +590,7 @@ class NativeWeatherActivity : Activity() {
             }
         }
         val quakes = Switch(this).apply {
-            text = "Recibir alertas sísmicas"; textSize = 13f; setTextColor(Color.WHITE)
+            text = "Recibir alertas sísmicas"; textSize = 13f; setTextColor(primary)
             isChecked = prefs.getBoolean("quake_alert_enabled", true)
             setOnCheckedChangeListener { _, checked ->
                 if (checked && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -581,7 +603,7 @@ class NativeWeatherActivity : Activity() {
             }
         }
         val detector = Switch(this).apply {
-            text = "Detector local por sensor"; textSize = 13f; setTextColor(Color.WHITE)
+            text = "Detector local por sensor"; textSize = 13f; setTextColor(primary)
             isChecked = prefs.getBoolean("quake_detector_enabled", true)
             setOnCheckedChangeListener { control, checked ->
                 if (!setLocalQuakeDetector(checked)) control.isChecked = false
@@ -589,15 +611,15 @@ class NativeWeatherActivity : Activity() {
         }
         content.addView(card {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                addView(button("Permitir notificaciones", cyan) {
+                addView(button("Permitir notificaciones", accent) {
                     pendingNotificationSwitch = widget
                     ActivityCompat.requestPermissions(this@NativeWeatherActivity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
-                }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(6) })
+                }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(8) })
             }
             addView(widget)
             addView(quakes, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             addView(detector, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-            addView(text("El detector usa el acelerómetro local y requiere su notificación persistente. Las alertas cercanas se reciben por el servicio nativo de CodeHub; Android puede limitar el trabajo en segundo plano según batería y permisos.", 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+            addView(text("El detector usa el acelerómetro local y requiere su notificación persistente. Las alertas cercanas se reciben por el servicio nativo de CodeHub; Android puede limitar el trabajo en segundo plano según batería y permisos.", 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
     }
 
@@ -648,31 +670,17 @@ class NativeWeatherActivity : Activity() {
     private fun metricCard(title: String, value: String, detail: String, accent: Int): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(14), dp(11), dp(12), dp(10))
-        background = rounded(panel, dp(22))
+        setPadding(dp(16), dp(12), dp(16), dp(12))
+        background = rounded(elevated, dp(14))
         addView(text(title, 11f, muted, true))
-        addView(text(value, 19f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        addView(text(detail, 10f, accent), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
-    }
-
-    private fun weatherHeroBackground(code: Int, day: Boolean): GradientDrawable {
-        val colors = when {
-            code >= 95 -> intArrayOf(0xFF43518B.toInt(), 0xFF171D36.toInt())
-            code in 51..86 -> intArrayOf(0xFF2672A6.toInt(), 0xFF243454.toInt())
-            !day -> intArrayOf(0xFF35477C.toInt(), 0xFF161D39.toInt())
-            code in 1..3 -> intArrayOf(0xFF54A7D7.toInt(), 0xFF5570B5.toInt())
-            else -> intArrayOf(0xFF56AEDD.toInt(), 0xFF6A78C4.toInt())
-        }
-        return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply { cornerRadius = dp(30).toFloat() }
+        addView(text(value, 19f, primary, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        addView(text(detail, 10f, accent), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
     }
 
     private fun animateEntrance(parent: LinearLayout) {
-        for (index in 0 until parent.childCount) {
-            val child = parent.getChildAt(index)
-            child.alpha = 0f
-            child.translationY = dp(12).toFloat()
-            child.animate().alpha(1f).translationY(0f).setStartDelay(index * 28L).setDuration(260L).start()
-        }
+        parent.alpha = 0f
+        parent.translationY = dp(8).toFloat()
+        parent.animate().alpha(1f).translationY(0f).setDuration(180L).start()
     }
 
     private fun formatDay(value: String): String = runCatching {
@@ -687,15 +695,18 @@ class NativeWeatherActivity : Activity() {
         in 80..82 -> "Chubascos"; in 85..86 -> "Nevadas"; in 95..99 -> "Tormenta eléctrica"; else -> "Condiciones variables"
     }
     private fun card(block: LinearLayout.() -> Unit): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(15), dp(16), dp(15)); background = rounded(panel, dp(20)); block()
+        orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(16)); background = rounded(panel, dp(16)); block()
     }
     private fun text(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
         text = value; textSize = size; setTextColor(color); if (bold) typeface = Typeface.DEFAULT_BOLD
     }
     private fun button(title: String, tint: Int, onClick: () -> Unit) = Button(this).apply {
-        text = title; textSize = 12f; isAllCaps = false; setTextColor(if (tint == cyan) bg else Color.WHITE)
-        backgroundTintList = android.content.res.ColorStateList.valueOf(if (tint == cyan) tint else panel)
+        text = title; textSize = 12f; isAllCaps = false
+        setTextColor(if (tint != accent) primary else if (dark) bg else 0xFFFFFFFF.toInt())
+        backgroundTintList = android.content.res.ColorStateList.valueOf(if (tint == accent) tint else panel)
         setOnClickListener { onClick() }
     }
-    private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = radius.toFloat() }
+    private fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
+        setColor(color); cornerRadius = radius.toFloat(); setStroke(dp(1), border)
+    }
 }

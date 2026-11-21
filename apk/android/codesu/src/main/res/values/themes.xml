@@ -6,11 +6,12 @@
         <item name="colorPrimaryVariant">@color/codesu_accent_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/codesu_accent</item>
-        <item name="colorSecondaryVariant">@color/codesu_accent</item>
-        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondary">@color/codesu_sage</item>
+        <item name="colorSecondaryVariant">@color/codesu_sage</item>
+        <item name="colorOnSecondary">@color/codesu_background</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/codesu_accent_dark</item>
+        <item name="android:statusBarColor">@color/codesu_surface</item>
+        <item name="android:navigationBarColor">@color/codesu_surface</item>
         <!-- Window background required by some Material widgets (BottomNavigationView). -->
         <item name="android:windowBackground">@color/codesu_background</item>
         <item name="android:colorBackground">@color/codesu_background</item>
@@ -20,7 +21,7 @@
         <!-- Customize your theme here. -->
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="android:enforceStatusBarContrast" tools:targetApi="29">false</item>
     </style>
 </resources>
