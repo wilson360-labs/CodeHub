@@ -36,13 +36,13 @@ class NativeReleasesActivity : Activity() {
     private val accent = 0xFFB85C3C.toInt()
     private val border = 0x3DB85C3C.toInt()
 
-    private val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-    private val listHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-    private val loading = ProgressBar(this)
-    private val message = TextView(this)
-    private val retry = Button(this)
-    private val releasesTab = TextView(this)
-    private val issuesTab = TextView(this)
+    private lateinit var container: LinearLayout
+    private lateinit var listHost: LinearLayout
+    private lateinit var loading: ProgressBar
+    private lateinit var message: TextView
+    private lateinit var retry: Button
+    private lateinit var releasesTab: TextView
+    private lateinit var issuesTab: TextView
 
     private var releases = emptyList<Entry>()
     private var issues = emptyList<Entry>()
@@ -50,6 +50,15 @@ class NativeReleasesActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Las vistas se crean después de attachBaseContext: hacerlo en el
+        // inicializador del campo dejaba mBase null y reventaba al inflar.
+        container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        listHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        loading = ProgressBar(this)
+        message = TextView(this)
+        retry = Button(this)
+        releasesTab = TextView(this)
+        issuesTab = TextView(this)
         window.decorView.setBackgroundColor(bg)
         buildUi()
         load()

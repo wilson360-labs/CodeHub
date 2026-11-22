@@ -4,29 +4,7 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-
-    <!-- Background circle -->
-    <path
-        android:fillColor="#080810"
-        android:pathData="M24,0a24,24 0 1 0 0,48a24,24 0 1 0 0,-48" />
-
-    <!-- Slider tracks -->
-    <path
-        android:fillColor="#2a3a5c"
-        android:strokeWidth="0"
-        android:pathData="M11,17 h26 v2 h-26 z M11,25 h26 v2 h-26 z M11,33 h26 v2 h-26 z" />
-
-    <!-- Slider thumbs -->
-    <path
-        android:fillColor="#38bdf8"
-        android:strokeWidth="0"
-        android:pathData="M19,15.5 m-3.4,1.9 a3,3 0 1 1 6.8,0 a3,3 0 1 1 -6.8,0" />
-    <path
-        android:fillColor="#22c55e"
-        android:strokeWidth="0"
-        android:pathData="M27,23.9 m-3.1,1 l3.1,0 m-3.4,1 a3,3 0 1 1 6.8,0 a3,3 0 1 1 -6.8,0" />
-    <path
-        android:fillColor="#facc15"
-        android:strokeWidth="0"
-        android:pathData="M22,32 m-3.4,1 a3,3 0 1 1 6.8,0 a3,3 0 1 1 -6.8,0" />
+    <path android:fillColor="#080810" android:pathData="M24,0a24,24 0 1 0 0,48a24,24 0 1 0 0,-48" />
+    <path android:fillColor="#D98A67" android:pathData="M31,11a7,7 0 0 0-8,9L13,30l4,4 10-10a7,7 0 0 0 9-8l-5,5-4-1-1-4z" />
+    <path android:fillColor="#9DB99E" android:pathData="M14,35l4,4l-5,3l-3-3z" />
 </vector>

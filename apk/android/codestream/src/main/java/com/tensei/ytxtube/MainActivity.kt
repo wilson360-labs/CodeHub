@@ -448,6 +448,13 @@ fun YtxTubeApp() {
         }
     }
 
+    fun returnToCodeHub() {
+        val host = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+        host?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        if (host != null) activity.startActivity(host)
+        activity.finish()
+    }
+
     BackHandler(enabled = showFullscreen) { exitFullscreen() }
     BackHandler(enabled = !showFullscreen && player.expanded) { player.expanded = false }
     BackHandler(enabled = !player.expanded && openSettings) { openSettings = false }
@@ -479,12 +486,12 @@ fun YtxTubeApp() {
             val entered = pip.enter(player.videoAspect.takeIf { it > 0 } ?: (16f / 9f))
             if (!entered) {
                 pip.updateAutoPip(false)
-                activity.moveTaskToBack(true)
+                returnToCodeHub()
             }
         } else {
             mainActivity?.shortsPlayerHolder?.pause()
             pip.updateAutoPip(false)
-            activity.moveTaskToBack(true)
+            returnToCodeHub()
         }
     }
 

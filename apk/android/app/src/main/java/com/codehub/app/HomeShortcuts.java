@@ -51,21 +51,21 @@ public final class HomeShortcuts {
             new Option("clima", "Clima", "Ver el clima y el mapa",
                 R.drawable.ic_shortcut_weather, null, "weather"),
             new Option("apps", "Mis apps", "Instaladas y actualizaciones",
-                R.drawable.ic_home_apps, null, "myapps"),
+                R.drawable.ic_shortcut_apps, null, "myapps"),
             new Option("catalogo", "Apps", "Catálogo Open Source",
                 R.drawable.ic_shortcut_catalog, BASE_URL + "/opensource", null),
             new Option("herramientas", "Herramientas", "Herramientas web",
                 R.drawable.ic_shortcut_tools, BASE_URL + "/tools", null),
             new Option("codebeat", "CodeBeat", "Música y extensiones",
-                R.drawable.ic_home_music, null, "codebeat"),
+                R.drawable.ic_shortcut_codebeat, null, "codebeat"),
             new Option("codestream", "CodeStream", "Videos, música y Shorts",
-                R.drawable.ic_codestream, null, "codestream"),
+                R.drawable.ic_shortcut_codestream, null, "codestream"),
             new Option("codesu", "CodeSu", "Optimización Android con Shizuku",
-                R.drawable.ic_home_boost, null, "codesu"),
+                R.drawable.ic_shortcut_codesu, null, "codesu"),
             new Option("novedades", "Novedades", "Releases e issues de CodeHub",
-                R.drawable.ic_home_releases, null, "releases"),
+                R.drawable.ic_shortcut_releases, null, "releases"),
             new Option("perfil", "Perfil", "Mi cuenta CodeHub",
-                R.drawable.ic_home_profile, null, "profile")
+                R.drawable.ic_shortcut_profile, null, "profile")
         );
     }
 
