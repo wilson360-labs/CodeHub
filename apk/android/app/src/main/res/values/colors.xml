@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#080810</color>
+
+    <!-- Widget de estado del dispositivo: superficies cálidas y texto legible. -->
+    <color name="widget_device_bg">#FBF6ED</color>
+    <color name="widget_device_panel">#F6EEDF</color>
+    <color name="widget_device_text">#2E241C</color>
+    <color name="widget_device_muted">#6E5D4B</color>
+    <color name="widget_device_accent">#B85C3C</color>
+    <color name="widget_device_sage">#6F8F72</color>
+    <color name="widget_device_border">#1A142E24</color>
 </resources>

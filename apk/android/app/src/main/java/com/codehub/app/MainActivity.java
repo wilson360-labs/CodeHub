@@ -53,6 +53,10 @@ import com.google.android.gms.tasks.CancellationTokenSource;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class MainActivity extends Activity {
 
@@ -139,6 +143,8 @@ public class MainActivity extends Activity {
             @Override public void onOpenProfile() { openNativeProfile(); }
             @Override public void onOpenWeather() { openNativeWeather(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
+            @Override public void onOpenReleases() { openNativeReleases(); }
+            @Override public void onEditShortcuts() { showShortcutEditor(); }
             @Override public void onStartAppUpdate() { startAppUpdate(); }
             @Override public void onManagePrivacyVpn(boolean start) {
                 if (start) {
@@ -187,6 +193,7 @@ public class MainActivity extends Activity {
         // Chequeo nativo: las actualizaciones aparecen en la franja superior
         // de la portada y usan el descargador verificado de CodeHub Store.
         try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("updateCheck", t); }
+        try { HomeShortcuts.apply(this); } catch (Throwable t) { crashLog("homeShortcuts", t); }
 
         // Sync en 2do plano vía WorkManager (token FCM + ubicación cada 15 min).
         // Ya NO se usa Foreground Service tipo dataSync: en Android 15/16 el
@@ -1045,6 +1052,21 @@ public class MainActivity extends Activity {
             return;
         }
 
+        String nativeTarget = intent.getStringExtra("open_native");
+        if (nativeTarget != null) {
+            switch (nativeTarget) {
+                case "weather": openNativeWeather(); break;
+                case "myapps": openNativeMyApps(); break;
+                case "codebeat": openNativeCodeBeat(); break;
+                case "codestream": openNativeCodeStream(); break;
+                case "codesu": openNativeCodeSu(); break;
+                case "releases": openNativeReleases(); break;
+                case "profile": openNativeProfile(); break;
+                default: return;
+            }
+            return;
+        }
+
         String url = intent.getStringExtra("open_url");
         // Deep link: la app se abrió/levantó con un enlace del dominio
         // (ACTION_VIEW + data https/http de wilson360-labs.vercel.app).
@@ -1244,6 +1266,58 @@ public class MainActivity extends Activity {
             android.util.Log.e("CodeHub", "No se pudo abrir CodeSu", e);
             android.widget.Toast.makeText(this, "CodeSu no pudo iniciarse.", android.widget.Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void openNativeReleases() {
+        try {
+            startActivity(new Intent(this, NativeReleasesActivity.class));
+        } catch (Exception e) {
+            android.util.Log.e("CodeHub", "No se pudo abrir Novedades", e);
+            Toast.makeText(this, "Novedades no pudo iniciarse.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showShortcutEditor() {
+        final List<HomeShortcuts.Option> options = HomeShortcuts.options();
+        final Set<String> currentIds = new HashSet<>();
+        for (HomeShortcuts.Option option : HomeShortcuts.selected(this)) currentIds.add(option.id);
+
+        CharSequence[] labels = new CharSequence[options.size()];
+        final boolean[] checked = new boolean[options.size()];
+        for (int i = 0; i < options.size(); i++) {
+            labels[i] = options.get(i).shortLabel;
+            checked[i] = currentIds.contains(options.get(i).id);
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("Atajos del icono")
+            .setMessage("Elige hasta 4 destinos. Se aplican al mantener presionado el icono de CodeHub.")
+            .setMultiChoiceItems(labels, checked, (d, which, isChecked) -> {
+                if (!isChecked) return;
+                int count = 0;
+                for (boolean value : checked) if (value) count++;
+                if (count > HomeShortcuts.MAX) {
+                    checked[which] = false;
+                    ((AlertDialog) d).getListView().setItemChecked(which, false);
+                    Toast.makeText(this, "Máximo 4 atajos.", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Guardar", (d, which) -> {
+                List<HomeShortcuts.Option> chosen = new ArrayList<>();
+                for (int i = 0; i < options.size(); i++) {
+                    if (checked[i]) chosen.add(options.get(i));
+                }
+                if (chosen.isEmpty()) {
+                    Toast.makeText(this, "Elige al menos un atajo.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                HomeShortcuts.save(this, chosen);
+                HomeShortcuts.apply(this);
+                Toast.makeText(this, "Atajos actualizados.", Toast.LENGTH_SHORT).show();
+            })
+            .create();
+        dialog.show();
     }
 
     private void confirmForceStopApp() {

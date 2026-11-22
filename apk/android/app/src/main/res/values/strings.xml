@@ -3,6 +3,7 @@
     <string name="app_name">CodeHub</string>
     <string name="widget_weather_description">Clima de CodeHub — muestra tu temperatura, condición y ciudad actual, y abre la app al tocarlo.</string>
     <string name="widget_quick_description">Accesos rápidos de CodeHub — JARVIS, Clima, Catálogo Open Source y Herramientas en un toque.</string>
+    <string name="widget_device_description">Estado de CodeHub — batería, CPU, RAM, almacenamiento, red y tiempo encendido.</string>
 
     <!-- Atajos dinámicos (long-press del icono) -->
     <string name="shortcut_wile_short">JARVIS</string>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget 4x2 de estado del dispositivo. En Android el sistema no dispara
+     updatePeriodMillis más seguido de 30 min; basta para batería/RAM/CPU/red
+     sin servicio en segundo plano ni permisos nuevos. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="150dp"
+    android:minResizeHeight="100dp"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_device"
+    android:previewImage="@drawable/widget_device_background"
+    android:previewLayout="@layout/widget_device"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_device_description" />

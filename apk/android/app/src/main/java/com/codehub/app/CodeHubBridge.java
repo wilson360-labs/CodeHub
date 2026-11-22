@@ -230,16 +230,12 @@ public class CodeHubBridge {
 
     @JavascriptInterface
     public String getVersionName() {
-        try {
-            return activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionName;
-        } catch (Exception e) { return "1.0.0"; }
+        return DeviceMetrics.versionName(activity);
     }
 
     @JavascriptInterface
     public int getVersionCode() {
-        try {
-            return activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionCode;
-        } catch (Exception e) { return 1; }
+        return DeviceMetrics.versionCode(activity);
     }
 
     @JavascriptInterface
@@ -1046,85 +1042,7 @@ public class CodeHubBridge {
 
     @JavascriptInterface
     public String getDeviceStatus() {
-        JSONObject o = new JSONObject();
-        try {
-            // registerReceiver(null, ...) devuelve el sticky intent de
-            // batería sin registrar ningún receptor (solo lectura).
-            Intent batteryStatus = activity.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-            int level = -1, scale = -1, status = -1;
-            boolean plugged = false;
-            if (batteryStatus != null) {
-                level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-                plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
-            }
-            int pct = (level >= 0 && scale > 0) ? Math.round(level * 100f / scale) : -1;
-            boolean charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL;
-            o.put("batteryPercent", pct);
-            o.put("batteryCharging", charging);
-            o.put("batteryPlugged", plugged);
-
-            // Temperatura de la batería (EXTRA_TEMPERATURE llega en décimas de grado)
-            int tempRaw = batteryStatus != null ? batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) : -1;
-            o.put("batteryTempC", tempRaw > 0 ? Math.round(tempRaw / 10f) : -1);
-
-            // CPU: % de uso derivado de /proc/stat entre llamadas (el panel
-            // web refresca cada 5s) y número de núcleos activos.
-            o.put("cpuPercent", readCpuPercent());
-            o.put("cpuCores", Runtime.getRuntime().availableProcessors());
-
-            // Pantalla: resolución física + densidad del panel
-            android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
-            if (dm != null) {
-                o.put("screenWidthPx", dm.widthPixels);
-                o.put("screenHeightPx", dm.heightPixels);
-                o.put("screenDensity", (int) dm.densityDpi + "dpi");
-            }
-
-            // Uptime del sistema (segundos desde el último arranque)
-            o.put("uptimeSeconds", android.os.SystemClock.uptimeMillis() / 1000L);
-
-            // RAM
-            ActivityManager am = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
-            if (am != null) {
-                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-                am.getMemoryInfo(mi);
-                o.put("ramTotalBytes", mi.totalMem);
-                o.put("ramFreeBytes", mi.availMem);
-            }
-
-            // Almacenamiento del dispositivo
-            try {
-                StatFs sf = new StatFs(Environment.getDataDirectory().getPath());
-                o.put("storageTotalBytes", sf.getTotalBytes());
-                o.put("storageFreeBytes", sf.getAvailableBytes());
-            } catch (Exception ignored) {}
-
-            // Red
-            ConnectivityManager cm = (ConnectivityManager) activity.getSystemService(Context.CONNECTIVITY_SERVICE);
-            String network = "none";
-            if (cm != null) {
-                NetworkInfo ni = cm.getActiveNetworkInfo();
-                if (ni != null && ni.isConnected()) {
-                    int t = ni.getType();
-                    if (t == ConnectivityManager.TYPE_WIFI) network = "wifi";
-                    else if (t == ConnectivityManager.TYPE_MOBILE) network = "mobile";
-                    else network = "other";
-                }
-            }
-            o.put("network", network);
-
-            // Optimización de batería (ignorar = permitir 2do plano)
-            o.put("ignoringBatteryOptimizations", isIgnoringBatteryOptimizations());
-
-            // Datos de la app y del dispositivo
-            o.put("versionName", getVersionName());
-            o.put("versionCode", getVersionCode());
-            o.put("deviceModel", Build.MANUFACTURER + " " + Build.MODEL);
-            o.put("androidVersion", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
-        } catch (Exception ignored) {}
-        return o.toString();
+        return DeviceMetrics.snapshot(activity).toString();
     }
 
     /** Abre la pantalla nativa de descargas del dispositivo (historial y
@@ -1206,49 +1124,9 @@ public class CodeHubBridge {
         try { MusicSessionBridge.prev(); } catch (Throwable ignored) {}
     }
 
-    /** % de CPU usado desde la llamada anterior, por delta de ticks idle/
-     *  total en /proc/stat. La primera llamada solo guarda la muestra
-     *  (devuelve -1); desde la segunda calcula el delta real. */
-    private static long sCpuLastTotal = -1;
-    private static long sCpuLastIdle = -1;
-
-    private static double readCpuPercent() {
-        try (BufferedReader r = new BufferedReader(new FileReader("/proc/stat"))) {
-            String line = r.readLine();
-            if (line == null || !line.startsWith("cpu")) return -1;
-            String[] parts = line.trim().split("\\s+");
-            long idle = 0, total = 0;
-            for (int i = 1; i < parts.length; i++) {
-                long v = Long.parseLong(parts[i]);
-                total += v;
-                if (i == 4 || i == 5) idle += v; // idle + iowait
-            }
-            if (sCpuLastTotal <= 0) {
-                sCpuLastTotal = total;
-                sCpuLastIdle = idle;
-                return -1;
-            }
-            long dTotal = total - sCpuLastTotal;
-            long dIdle = idle - sCpuLastIdle;
-            sCpuLastTotal = total;
-            sCpuLastIdle = idle;
-            if (dTotal <= 0) return -1;
-            double pct = (dTotal - dIdle) * 100.0 / dTotal;
-            return Math.max(0.0, Math.min(100.0, pct));
-        } catch (Exception e) {
-            return -1;
-        }
-    }
-
     @JavascriptInterface
     public boolean isIgnoringBatteryOptimizations() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
-        try {
-            PowerManager pm = (PowerManager) activity.getSystemService(Context.POWER_SERVICE);
-            return pm != null && pm.isIgnoringBatteryOptimizations(activity.getPackageName());
-        } catch (Exception e) {
-            return false;
-        }
+        return DeviceMetrics.isIgnoringBatteryOptimizations(activity);
     }
 
     /** Abre el diálogo nativo para eximir a CodeHub de la optimización de batería. */

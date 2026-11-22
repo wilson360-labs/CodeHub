@@ -43,6 +43,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenProfile()
         fun onOpenWeather()
         fun onOpenCodeSu()
+        fun onOpenReleases()
+        fun onEditShortcuts()
         fun onStartAppUpdate()
         fun onManagePrivacyVpn(start: Boolean)
         fun onForceStopApp()
@@ -75,6 +77,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var weatherCard: View
     private lateinit var toolsCard: View
     private lateinit var optimizerCard: View
+    private lateinit var releasesCard: View
     private lateinit var privacyCard: View
     private lateinit var privacyStatus: TextView
     private lateinit var forceStopCard: View
@@ -120,8 +123,9 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(24))
         }
-        addEntranceTarget(content, sectionTitle("Acceso rápido", "Tus aplicaciones principales, listas en Android"),
-            LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        addEntranceTarget(content, sectionTitle("Acceso rápido", "Tus aplicaciones principales, listas en Android", "Editar") {
+            listener.onEditShortcuts()
+        }, LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
         storeCard = actionCard(R.drawable.ic_home_store, "CodeHub Store", "Aplicaciones de código abierto para Android", accent) {
             listener.onOpenStore()
@@ -165,6 +169,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             listener.onOpenCodeSu()
         }
         addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
+
+        releasesCard = featureCard(R.drawable.ic_home_releases, "Novedades", "Releases e issues de CodeHub", accent) {
+            listener.onOpenReleases()
+        }
+        addEntranceTarget(content, releasesCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         privacyCard = buildPrivacyCard()
         addEntranceTarget(content, privacyCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -841,11 +850,25 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }, LayoutParams(-1, dp(44)).apply { topMargin = dp(16) })
     }
 
-    private fun sectionTitle(title: String, subtitle: String): View = LinearLayout(context).apply {
-        orientation = VERTICAL
-        addView(label(title, 18f, textPrimary, false))
-        addView(label(subtitle, 12f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(4) })
-    }
+    private fun sectionTitle(title: String, subtitle: String,
+                             actionLabel: String? = null, onAction: (() -> Unit)? = null): View =
+        LinearLayout(context).apply {
+            orientation = VERTICAL
+            addView(LinearLayout(context).apply {
+                orientation = HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(label(title, 18f, textPrimary, false), LayoutParams(0, -2, 1f))
+                if (actionLabel != null && onAction != null) {
+                    addView(label(actionLabel, 12f, accent, true).apply {
+                        setPadding(dp(6), dp(4), dp(2), dp(4))
+                        isClickable = true
+                        isFocusable = true
+                        setOnClickListener { onAction() }
+                    }, LayoutParams(-2, -2))
+                }
+            }, LayoutParams(-1, -2))
+            addView(label(subtitle, 12f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        }
 
     private fun actionCard(icon: Int, title: String, description: String, accent: Int, tintIcon: Boolean = true, onClick: () -> Unit): View =
         LinearLayout(context).apply {

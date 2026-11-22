@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_device_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_device_background"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_device_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:text="Estado del dispositivo"
+        android:textColor="@color/widget_device_muted"
+        android:textSize="10sp"
+        android:maxLines="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_device_battery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:text="--%"
+            android:textColor="@color/widget_device_accent"
+            android:textSize="28sp"
+            android:maxLines="1" />
+
+        <TextView
+            android:id="@+id/widget_device_charge"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:includeFontPadding="false"
+            android:text="Batería"
+            android:textColor="@color/widget_device_muted"
+            android:textSize="10sp"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:orientation="vertical"
+            android:background="@drawable/widget_device_cell"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="CPU"
+                android:textColor="@color/widget_device_muted"
+                android:textSize="9sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_device_cpu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="—"
+                android:textColor="@color/widget_device_text"
+                android:textSize="13sp"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:orientation="vertical"
+            android:background="@drawable/widget_device_cell"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="RAM libre"
+                android:textColor="@color/widget_device_muted"
+                android:textSize="9sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_device_ram"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="—"
+                android:textColor="@color/widget_device_sage"
+                android:textSize="13sp"
+                android:maxLines="1" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:orientation="vertical"
+            android:background="@drawable/widget_device_cell"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="Almacenamiento"
+                android:textColor="@color/widget_device_muted"
+                android:textSize="9sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_device_storage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="—"
+                android:textColor="@color/widget_device_text"
+                android:textSize="13sp"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:orientation="vertical"
+            android:background="@drawable/widget_device_cell"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="Red"
+                android:textColor="@color/widget_device_muted"
+                android:textSize="9sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_device_network"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="—"
+                android:textColor="@color/widget_device_sage"
+                android:textSize="13sp"
+                android:maxLines="1" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_device_uptime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:includeFontPadding="false"
+        android:text="Encendido —"
+        android:textColor="@color/widget_device_muted"
+        android:textSize="9sp"
+        android:maxLines="1" />
+</LinearLayout>

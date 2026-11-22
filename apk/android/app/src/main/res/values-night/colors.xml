@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_device_bg">#17130F</color>
+    <color name="widget_device_panel">#201A14</color>
+    <color name="widget_device_text">#F5EDE0</color>
+    <color name="widget_device_muted">#C2B09B</color>
+    <color name="widget_device_accent">#D98A67</color>
+    <color name="widget_device_sage">#9DB99E</color>
+    <color name="widget_device_border">#3D142E24</color>
+</resources>

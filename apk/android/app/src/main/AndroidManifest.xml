@@ -71,12 +71,8 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Atajos dinámicos — long-press del icono en el launcher.
-                 Res/xml/shortcuts.xml: 4 accesos (JARVIS, Clima, Apps, Herramientas)
-                 que se abren como deep links del dominio propio. -->
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
+            <!-- Atajos dinámicos gestionados por HomeShortcuts: el usuario elige
+                 hasta 4 destinos desde "Editar" en Acceso rápido. -->
             <!-- Los enlaces del sitio permanecen en el navegador y no se
                  interceptan aquí; las funciones de CodeHub se abren desde Inicio nativo. -->
         </activity>
@@ -148,6 +144,13 @@
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- Novedades: releases e issues públicos de GitHub en pantalla nativa. -->
+        <activity
+            android:name=".NativeReleasesActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".CodeHubPrivacyActivity"
@@ -264,6 +267,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/quick_access_widget_info" />
+        </receiver>
+
+        <!-- Widget 4x2 de estado del dispositivo. Sin servicios en segundo plano. -->
+        <receiver
+            android:name=".DeviceStatusWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/device_status_widget_info" />
         </receiver>
 
         <!-- Detector de sismos por acelerómetro (capa C de alerta temprana).
