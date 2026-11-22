@@ -161,6 +161,29 @@ const OS_CATEGORIES = [
 ];
 const CAT_EMOJI = Object.fromEntries(OS_CATEGORIES.map(c => [c.categoria, c.emoji]));
 
+// Subset Lucide (ISC) en SVG inline: sin CDN, sin fetch y hereda currentColor.
+// Se usa en chips y etiquetas de categoría; el emoji queda solo como fallback
+// de imagen, donde hace falta texto plano para el atributo onerror.
+const OS_LUCIDE = {
+  'Root y Sistema': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  'Música': '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  'Video': '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4"/><path d="m15 9-4 3 4 3z"/>',
+  'VPN y Privacidad': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  'Productividad': '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/>',
+  'Lectura': '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  'Mensajería': '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>',
+  'Fotografía': '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+  'Utilidades': '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  __default: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'
+};
+function osCategoryIcon(categoria) {
+  const paths = OS_LUCIDE[categoria] || OS_LUCIDE.__default;
+  return '<svg class="os-cat-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" '
+    + 'width="1em" height="1em" style="vertical-align:-.15em;flex:none" '
+    + 'viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg>';
+}
+
 // ── DIÁLOGOS DE INSTRUCCIONES ────────────────────────────────
 function openHowToDialog(appId) {
   const modal = document.getElementById(`how-to-${appId}-modal`);
@@ -261,7 +284,7 @@ function buildOSCard(app, ratingInfo) {
       </button>
     </div>
     <div class="app-body">
-      <div class="app-cat-tag">${emoji} ${esc(app.categoria)}</div>
+      <div class="app-cat-tag">${osCategoryIcon(app.categoria)} ${esc(app.categoria)}</div>
       <div class="app-name">${esc(app.nombre)}</div>
       <div class="os-rating" data-rating-for="${app.appId}" title="${count} voto${count === 1 ? '' : 's'}">
         <span class="os-rating-stars">${starsHtml}</span>
@@ -690,8 +713,7 @@ function osUpdateChips() {
 
   let html = `<button type="button" class="os-chip${OS_FILTER.cat === 'all' ? ' on' : ''}" data-cat="all"><i class="fa-solid fa-border-all"></i> Todo <span class="os-chip-count">${total}</span></button>`;
   cats.forEach(cat => {
-    const emoji = CAT_EMOJI[cat] || '📦';
-    html += `<button type="button" class="os-chip${OS_FILTER.cat === cat ? ' on' : ''}" data-cat="${esc(cat)}">${emoji} ${esc(cat)} <span class="os-chip-count">${counts[cat] || 0}</span></button>`;
+    html += `<button type="button" class="os-chip${OS_FILTER.cat === cat ? ' on' : ''}" data-cat="${esc(cat)}">${osCategoryIcon(cat)} ${esc(cat)} <span class="os-chip-count">${counts[cat] || 0}</span></button>`;
   });
   wrap.innerHTML = html;
   wrap.querySelectorAll('.os-chip').forEach(btn => {
@@ -767,6 +789,7 @@ function renderAppDetail(app) {
   const body = document.getElementById('app-detail-body');
   if (!body) return;
   const emoji = CAT_EMOJI[app.categoria] || '📦';
+  const catIcon = osCategoryIcon(app.categoria);
   const img = getOptimizedImageUrl(app.imagen || '', 128, 128);
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
   const updated = timeAgo(app.updatedAt);
@@ -819,7 +842,7 @@ function renderAppDetail(app) {
     <div class="app-detail-head">
       <img class="app-detail-img" src="${img}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="osImgFallback(this,'${esc(app.imagen || '')}','${emoji}')">
       <div class="app-detail-titlewrap">
-        <div class="app-detail-cat">${emoji} ${esc(app.categoria || 'Utilidades')}</div>
+        <div class="app-detail-cat">${catIcon} ${esc(app.categoria || 'Utilidades')}</div>
         <div class="app-detail-title" id="app-detail-title">${esc(app.nombre)}</div>
         <div class="app-detail-badges">${badges}</div>
       </div>

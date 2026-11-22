@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glifo del icono adaptativo. La zona segura es el círculo central de 66dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M42,32 L28,54 L42,76 L46,72 L36,54 L46,36 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M66,32 L80,54 L66,76 L62,72 L72,54 L62,36 Z" />
+    <path
+        android:fillColor="#DCE7F5"
+        android:pathData="M57,30 L51,78 L47,78 L53,30 Z" />
+</vector>

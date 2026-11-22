@@ -45,8 +45,8 @@
     <application
         android:name=".CodeHubApp"
         android:allowBackup="false"
-        android:icon="@drawable/ic_launcher_real"
-        android:roundIcon="@drawable/ic_launcher_real"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.CodeHub"
