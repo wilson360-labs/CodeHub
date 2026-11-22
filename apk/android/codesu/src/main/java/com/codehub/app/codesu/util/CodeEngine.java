@@ -53,6 +53,9 @@ public final class CodeEngine {
     public static final String PREF_ORIGINAL_BRIGHTNESS = "codeEngineOriginalBrightness";
     public static final String PREF_ORIGINAL_BRIGHTNESS_MODE = "codeEngineOriginalBrightnessMode";
     public static final String PREF_DOZE_APPLIED = "codeEngineDozeApplied";
+    public static final String PREF_ALLOW_DND = "codeEngineAllowDnd";
+    public static final String PREF_ORIGINAL_DND = "codeEngineOriginalDnd";
+    public static final String PREF_DND_APPLIED = "codeEngineDndApplied";
 
     public static final String PROFILE_ULTRA = "ultra_saver";
     public static final String PROFILE_SAVER = "saver";
@@ -117,6 +120,33 @@ public final class CodeEngine {
 
     public static boolean isDozeAllowed(Context context) {
         return context != null && prefs(context).getBoolean(PREF_ALLOW_DOZE, false);
+    }
+
+    public static boolean isDndAllowed(Context context) {
+        return context != null && prefs(context).getBoolean(PREF_ALLOW_DND, false);
+    }
+
+    /** El modo no molestar requiere permiso del usuario; nunca se activa a escondidas. */
+    public static boolean hasDndAccess(Context context) {
+        if (context == null) return false;
+        NotificationManager manager = (NotificationManager)
+                context.getSystemService(Context.NOTIFICATION_SERVICE);
+        return manager != null && manager.isNotificationPolicyAccessGranted();
+    }
+
+    public static void setDndAllowed(Context context, boolean enabled) {
+        if (context == null) return;
+        final Context app = context.getApplicationContext();
+        SharedPreferences prefs = prefs(app);
+        prefs.edit().putBoolean(PREF_ALLOW_DND, enabled).apply();
+        Runnable task = () -> {
+            String result = applyDnd(app, prefs);
+            if (!result.isEmpty())
+                prefs.edit().putString(PREF_LAST_RESULT, result)
+                        .putLong(PREF_LAST_AT, System.currentTimeMillis()).apply();
+        };
+        if (App.executorService != null) App.executorService.execute(task);
+        else new Thread(task, "codeengine-dnd").start();
     }
 
     public static boolean isBatteryDetectionEnabled(Context context) {
@@ -212,10 +242,14 @@ public final class CodeEngine {
         if (context == null) return false;
         try {
             List<AppInfo> apps = AppListHelper.getFilteredAppsList(context, true);
-            if (keepPackage != null && !keepPackage.isEmpty()) {
-                Iterator<AppInfo> iterator = apps.iterator();
-                while (iterator.hasNext())
-                    if (keepPackage.equals(iterator.next().getPkgName())) iterator.remove();
+            Iterator<AppInfo> iterator = apps.iterator();
+            while (iterator.hasNext()) {
+                String pkg = iterator.next().getPkgName();
+                // Ningún juego de la lista se cierra, aunque UsageStats vaya con retraso.
+                if (GameList.isGame(context, pkg)
+                        || (keepPackage != null && keepPackage.equals(pkg))) {
+                    iterator.remove();
+                }
             }
             return !apps.isEmpty() && Killer.killListOfApps(apps, level);
         } catch (RuntimeException ignored) {
@@ -237,10 +271,9 @@ public final class CodeEngine {
             boolean tune = !PROFILE_BALANCED.equals(profile);
             if (tune && shizuku) {
                 ensureOriginals(prefs);
-                if (PROFILE_PERFORMANCE.equals(profile)) {
-                    log.append(restoreBrightness(prefs));
-                    log.append(applyAnimations("0.5"));
-                } else if (PROFILE_ADAPTIVE.equals(profile) && !adaptiveLow) {
+                if (PROFILE_PERFORMANCE.equals(profile)
+                        || (PROFILE_ADAPTIVE.equals(profile) && !adaptiveLow)) {
+                    // Rendimiento no debe ralentizar animaciones: vuelven a su valor original.
                     log.append(restoreSettings(prefs));
                 } else {
                     log.append(applySaverSettings(profile));
@@ -251,12 +284,13 @@ public final class CodeEngine {
                 log.append("Shizuku inactivo: ajustes del sistema sin cambios. ");
             }
             log.append(applyDoze(app, prefs, profile, shizuku));
+            log.append(applyDnd(app, prefs));
             boolean killApps = PROFILE_ULTRA.equals(profile) || PROFILE_SAVER.equals(profile)
                     || PROFILE_PERFORMANCE.equals(profile) || adaptiveLow;
             if (killApps) {
-                int level = PROFILE_PERFORMANCE.equals(profile) ? 1 : 0;
                 String foreground = protectedGamePackage(app, keepPackage);
-                boolean killed = killBackgroundApps(app, foreground, level);
+                // am kill libera RAM sin force-stop de procesos que el juego pueda necesitar.
+                boolean killed = killBackgroundApps(app, foreground, 0);
                 log.append(killed ? "Apps en segundo plano cerradas. "
                         : "Sin apps cerradas: revisa Shizuku/root. ");
             }
@@ -276,8 +310,13 @@ public final class CodeEngine {
         if (profile.equals(prefs.getString(PREF_OVERRIDE, ""))
                 && reason.equals(prefs.getString(PREF_OVERRIDE_REASON, ""))) {
             // Cambio de juego con el mismo perfil: actualiza la protección sin volver a cerrar apps.
-            if (!wantedKeep.equals(prefs.getString(PREF_OVERRIDE_KEEP, "")))
+            String previousKeep = prefs.getString(PREF_OVERRIDE_KEEP, "");
+            if (!wantedKeep.equals(previousKeep)) {
+                // Un falso negativo del primer plano nunca debe quitar la protección del juego.
+                if (!GameList.isGame(context, wantedKeep)
+                        && GameList.isGame(context, previousKeep)) return;
                 prefs.edit().putString(PREF_OVERRIDE_KEEP, wantedKeep).apply();
+            }
             return;
         }
         prefs.edit().putString(PREF_OVERRIDE, profile).putString(PREF_OVERRIDE_REASON, reason)
@@ -328,17 +367,6 @@ public final class CodeEngine {
         String result = ShizukuPlusUtils.setSystemSetting("system", "screen_brightness", brightness);
         if (!result.isEmpty()) errors.append("brillo: ").append(result).append(". ");
         return errors.length() == 0 ? "Ajustes de ahorro aplicados. " : errors.toString();
-    }
-
-    private static String restoreBrightness(SharedPreferences prefs) {
-        StringBuilder errors = new StringBuilder();
-        String mode = numericOr(prefs.getString(PREF_ORIGINAL_BRIGHTNESS_MODE, ""), "0");
-        String modeResult = ShizukuPlusUtils.setSystemSetting("system", "screen_brightness_mode", mode);
-        if (!modeResult.isEmpty()) errors.append("brillo automático: ").append(modeResult).append(". ");
-        String brightness = numericOr(prefs.getString(PREF_ORIGINAL_BRIGHTNESS, ""), "128");
-        String brightnessResult = ShizukuPlusUtils.setSystemSetting("system", "screen_brightness", brightness);
-        if (!brightnessResult.isEmpty()) errors.append("brillo: ").append(brightnessResult).append(". ");
-        return errors.length() == 0 ? "Brillo restaurado. " : errors.toString();
     }
 
     private static boolean isLowBattery(Context context) {
@@ -396,6 +424,46 @@ public final class CodeEngine {
             return "Doze: " + result + ". ";
         }
         return "";
+    }
+
+    /** No molestar solo mientras hay un juego en primer plano y el usuario lo activó. */
+    private static String applyDnd(Context context, SharedPreferences prefs) {
+        boolean game = REASON_GAME.equals(prefs.getString(PREF_OVERRIDE_REASON, ""));
+        boolean wanted = game && isDndAllowed(context) && hasDndAccess(context);
+        boolean applied = prefs.getBoolean(PREF_DND_APPLIED, false);
+        if (wanted && !applied) {
+            NotificationManager manager = (NotificationManager)
+                    context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager == null) return "";
+            try {
+                int original = manager.getCurrentInterruptionFilter();
+                prefs.edit().putInt(PREF_ORIGINAL_DND, original).apply();
+                // ALARMS permite alarmas, pero calla el resto de notificaciones.
+                manager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS);
+                prefs.edit().putBoolean(PREF_DND_APPLIED, true).apply();
+                return "No molestar activado. ";
+            } catch (Exception e) {
+                return "No molestar: " + e.getClass().getSimpleName() + ". ";
+            }
+        }
+        if (!wanted && applied) return restoreDnd(context, prefs);
+        return "";
+    }
+
+    private static String restoreDnd(Context context, SharedPreferences prefs) {
+        NotificationManager manager = (NotificationManager)
+                context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return "";
+        try {
+            int original = prefs.getInt(PREF_ORIGINAL_DND,
+                    NotificationManager.INTERRUPTION_FILTER_ALL);
+            manager.setInterruptionFilter(original);
+            prefs.edit().putBoolean(PREF_DND_APPLIED, false)
+                    .remove(PREF_ORIGINAL_DND).apply();
+            return "No molestar restaurado. ";
+        } catch (Exception e) {
+            return "No molestar: " + e.getClass().getSimpleName() + ". ";
+        }
     }
 
     private static String valueOr(String value, String fallback) {

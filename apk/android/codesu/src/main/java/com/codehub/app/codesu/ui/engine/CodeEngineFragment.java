@@ -1,6 +1,8 @@
 package com.codehub.app.codesu.ui.engine;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -57,6 +59,19 @@ public class CodeEngineFragment extends Fragment {
             CodeEngine.setDozeAllowed(requireContext(), checked);
             refresh();
         });
+        binding.engineDnd.setOnCheckedChangeListener((button, checked) -> {
+            if (updating) return;
+            if (checked && !CodeEngine.hasDndAccess(requireContext())) {
+                updating = true;
+                binding.engineDnd.setChecked(false);
+                updating = false;
+                openDndSettings();
+                return;
+            }
+            CodeEngine.setDndAllowed(requireContext(), checked);
+            refresh();
+        });
+        binding.engineDndPermission.setOnClickListener(v -> openDndSettings());
         binding.engineApplyButton.setOnClickListener(v -> {
             String profile = CodeEngine.currentProfile(requireContext());
             String keep = CodeEngine.REASON_GAME.equals(CodeEngine.overrideReason(requireContext()))
@@ -122,6 +137,9 @@ public class CodeEngineFragment extends Fragment {
         checkProfile(active);
         binding.engineAuto.setChecked(CodeEngine.isAuto(requireContext()));
         binding.engineDoze.setChecked(CodeEngine.isDozeAllowed(requireContext()));
+        binding.engineDnd.setChecked(CodeEngine.isDndAllowed(requireContext()));
+        binding.engineDndPermission.setVisibility(
+                CodeEngine.hasDndAccess(requireContext()) ? View.GONE : View.VISIBLE);
         binding.engineShizukuStatus.setText(ShizukuPlusUtils.checkShizuku()
                 ? "Shizuku: Activo · los ajustes se escriben y restauran"
                 : "Shizuku: inactivo · los ajustes del sistema no se cambiarán");
@@ -163,6 +181,14 @@ public class CodeEngineFragment extends Fragment {
         else
             id = R.id.engine_profile_balanced;
         binding.engineProfiles.check(id);
+    }
+
+    private void openDndSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+        } catch (RuntimeException ignored) {
+            CapsuleToast.showInfo(requireActivity(), "Este dispositivo no permite cambiar no molestar");
+        }
     }
 
     private static String profileFor(int id) {

@@ -7,6 +7,7 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import androidx.core.content.ContextCompat;
 import androidx.work.Constraints;
@@ -21,6 +22,7 @@ import com.codehub.app.codesu.worker.PowerCheckWorker;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Puente dejado por compatibilidad: decide cuándo evaluar batería y primer plano,
@@ -44,11 +46,16 @@ public final class PowerGuard {
 
     private static final String WORK_NAME = "codesu_power_check";
     private static final long GAME_POLL_MS = 6_000L;
+    /** UsageStats puede ir con retraso en Android 16: no sueltes el juego a la primera lectura. */
+    private static final long GAME_GRACE_MS = 45_000L;
 
     private static final Handler HANDLER = new Handler(Looper.getMainLooper());
     private static final Object LOCK = new Object();
+    private static final AtomicBoolean GAME_CHECK_IN_FLIGHT = new AtomicBoolean();
     private static int clients;
     private static volatile boolean registered;
+    private static volatile String lastGamePackage;
+    private static volatile long lastGameSeenAt;
 
     private static final BroadcastReceiver BATTERY_RECEIVER = new BroadcastReceiver() {
         @Override
@@ -67,10 +74,18 @@ public final class PowerGuard {
         @Override
         public void run() {
             if (!registered || App.context == null) return;
-            try {
-                evaluateGame(App.context);
-            } catch (RuntimeException ignored) {
-                // Una ROM puede devolver estadísticas incompletas: reintentamos en el próximo ciclo.
+            if (GAME_CHECK_IN_FLIGHT.compareAndSet(false, true)) {
+                Runnable check = () -> {
+                    try {
+                        evaluateGame(App.context);
+                    } catch (RuntimeException ignored) {
+                        // Una ROM puede devolver estadísticas incompletas: reintentamos luego.
+                    } finally {
+                        GAME_CHECK_IN_FLIGHT.set(false);
+                    }
+                };
+                if (App.executorService != null) App.executorService.execute(check);
+                else new Thread(check, "codesu-game-poll").start();
             }
             HANDLER.postDelayed(this, GAME_POLL_MS);
         }
@@ -181,8 +196,18 @@ public final class PowerGuard {
     /** El primer plano lo decide CodeEngine; aquí solo se detecta la app. */
     private static void evaluateGame(Context context) {
         if (context == null) return;
-        CodeEngine.onForegroundApp(context.getApplicationContext(),
-                CodeEngine.foregroundGamePackage(context.getApplicationContext()));
+        String game = CodeEngine.foregroundGamePackage(context.getApplicationContext());
+        long now = SystemClock.elapsedRealtime();
+        if (game != null) {
+            lastGamePackage = game;
+            lastGameSeenAt = now;
+        } else if (lastGamePackage != null && now - lastGameSeenAt < GAME_GRACE_MS) {
+            // Mantén el perfil de juego aunque UsageStats omita una lectura.
+            game = lastGamePackage;
+        } else {
+            lastGamePackage = null;
+        }
+        CodeEngine.onForegroundApp(context.getApplicationContext(), game);
     }
 
     /** Acción explícita del receiver; mantiene la preferencia de engine del usuario. */

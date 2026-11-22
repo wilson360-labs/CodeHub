@@ -140,6 +140,19 @@
                     android:text="Doze forzado solo en Ultra ahorro (según ROM)"
                     android:textSize="14sp" />
 
+                <CheckBox
+                    android:id="@+id/engine_dnd"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No molestar mientras juegas"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/engine_dnd_permission"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Permitir no molestar" />
+
                 <TextView
                     android:id="@+id/engine_shizuku_status"
                     android:layout_width="match_parent"
