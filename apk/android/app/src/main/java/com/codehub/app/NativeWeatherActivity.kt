@@ -8,7 +8,13 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Outline
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.location.Location
@@ -20,9 +26,11 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.ViewOutlineProvider
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -218,30 +226,51 @@ class NativeWeatherActivity : Activity() {
         content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
         val conditionColor = if (code == 0 || code in 1..2) sage else secondary
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
-            background = rounded(elevated, dp(20))
+        val hero = FrameLayout(this).apply {
+            background = rounded(bg, dp(24))
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, dp(24).toFloat())
+                }
+            }
+            clipToOutline = true
         }
-        hero.addView(text("${weatherName(code)}  ·  ${current.optString("time").substringAfter('T', "Ahora")}", 14f, conditionColor))
-        hero.addView(NativeWeatherGlyph(this, code, 72, animated = true), LinearLayout.LayoutParams(dp(80), dp(80)).apply {
+        val lake = WeatherLakeView(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            lake.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
+                dp(8).toFloat(), dp(8).toFloat(), Shader.TileMode.CLAMP))
+        }
+        hero.addView(lake, FrameLayout.LayoutParams(-1, -1))
+
+        val heroContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+            background = GlassPanelDrawable()
+        }
+        heroContent.addView(text("${weatherName(code)}  ·  ${current.optString("time").substringAfter('T', "Ahora")}", 14f, conditionColor))
+        heroContent.addView(NativeWeatherGlyph(this, code, 72, animated = true), LinearLayout.LayoutParams(dp(80), dp(80)).apply {
             topMargin = dp(8)
             gravity = Gravity.CENTER_HORIZONTAL
         })
-        hero.addView(text("${current.optInt("temperature_2m")}°", 56f, accent))
+        heroContent.addView(text("${current.optInt("temperature_2m")}°", 56f, accent))
         val measure = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         measure.addView(View(this).apply { setBackgroundColor(accent) }, LinearLayout.LayoutParams(dp(40), dp(1)))
         measure.addView(View(this).apply {
             background = GradientDrawable().apply { setColor(accent); cornerRadius = dp(2).toFloat() }
         }, LinearLayout.LayoutParams(dp(4), dp(4)).apply { marginStart = dp(4) })
-        hero.addView(measure, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
-        hero.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        hero.addView(text("Mín. ${minToday ?: "—"}°     Máx. ${maxToday ?: "—"}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        heroContent.addView(measure, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
+        heroContent.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        heroContent.addView(text("Mín. ${minToday ?: "—"}°     Máx. ${maxToday ?: "—"}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
         val sunrise = daily.optJSONArray("sunrise")?.optString(0)?.substringAfter('T', "")
         val sunset = daily.optJSONArray("sunset")?.optString(0)?.substringAfter('T', "")
         if (!sunrise.isNullOrBlank() || !sunset.isNullOrBlank()) {
-            hero.addView(text("☀  ${sunrise.orEmpty()}     ◒  ${sunset.orEmpty()}", 12f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+            val dawn = sunrise.takeUnless { it.isNullOrBlank() } ?: "—"
+            val dusk = sunset.takeUnless { it.isNullOrBlank() } ?: "—"
+            heroContent.addView(text("Amanecer $dawn     Atardecer $dusk", 12f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         }
+        hero.addView(heroContent, FrameLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(12); bottomMargin = dp(12); leftMargin = dp(12); rightMargin = dp(12)
+        })
         content.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         content.addView(text("Ahora mismo", 17f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
@@ -706,6 +735,131 @@ class NativeWeatherActivity : Activity() {
         backgroundTintList = android.content.res.ColorStateList.valueOf(if (tint == accent) tint else panel)
         setOnClickListener { onClick() }
     }
+    /** Lago al atardecer dibujado a mano: sin imagen, sin textura y sin movimiento. */
+    private inner class WeatherLakeView(context: android.content.Context) : View(context) {
+        private val skyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        private val waterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        private val ripplePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1).toFloat()
+            strokeCap = Paint.Cap.ROUND
+        }
+        private val sunPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(2).toFloat()
+            strokeCap = Paint.Cap.ROUND
+        }
+        private val reedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1).toFloat()
+            strokeCap = Paint.Cap.ROUND
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat()
+            val h = height.toFloat()
+            if (w <= 0f || h <= 0f) return
+            val horizon = h * 0.52f
+
+            skyPaint.color = if (dark) 0xFF2A221A.toInt() else 0xFFE8C9A4.toInt()
+            waterPaint.color = if (dark) 0xFF121A16.toInt() else 0xFF6E6A4E.toInt()
+            canvas.drawRect(0f, 0f, w, horizon, skyPaint)
+            canvas.drawRect(0f, horizon, w, h, waterPaint)
+
+            waterPaint.color = if (dark) 0xFF0B100D.toInt() else 0xFF3E5140.toInt()
+            for (i in 0 until 4) {
+                val y = horizon + (h - horizon) * (0.18f + i * 0.19f)
+                canvas.drawRect(0f, y, w, y + dp(2), waterPaint)
+            }
+
+            val sunX = w * 0.74f
+            val sunY = horizon - h * 0.10f
+            sunPaint.color = accent
+            canvas.drawCircle(sunX, sunY, dp(10).toFloat(), sunPaint)
+
+            ripplePaint.color = if (dark) 0x2A9DB99E.toInt() else 0x2A6F8F72.toInt()
+            for (i in 0 until 6) {
+                val y = horizon + (h - horizon) * (0.06f + i * 0.13f)
+                val half = w * (0.06f + i * 0.015f)
+                canvas.drawLine(sunX - half, y, sunX + half, y, ripplePaint)
+            }
+            reflectionPaint.color = if (dark) 0x4AD98A67.toInt() else 0x4AB85C3C.toInt()
+            for (i in 0 until 9) {
+                val y = horizon + (h - horizon) * (0.04f + i * 0.10f)
+                val spread = dp(2 + (i % 3) * 3).toFloat()
+                canvas.drawLine(sunX - spread, y, sunX + spread, y, reflectionPaint)
+            }
+
+            reedPaint.color = if (dark) 0x8C9DB99E.toInt() else 0x8C6F8F72.toInt()
+            for (i in 0..5) {
+                val x = w * (0.04f + i * 0.018f)
+                val top = h - h * (0.16f + (i % 3) * 0.04f)
+                canvas.drawPath(Path().apply {
+                    moveTo(x, h)
+                    quadTo(x + dp(6), (top + h) / 2f, x + dp(2), top)
+                }, reedPaint)
+            }
+            for (i in 0..5) {
+                val x = w * (0.96f - i * 0.018f)
+                val top = h - h * (0.14f + (i % 3) * 0.05f)
+                canvas.drawPath(Path().apply {
+                    moveTo(x, h)
+                    quadTo(x - dp(6), (top + h) / 2f, x - dp(2), top)
+                }, reedPaint)
+            }
+        }
+    }
+
+    /** Velo translúcido con doble borde y brillo superior, igual que Inicio. */
+    private inner class GlassPanelDrawable : GradientDrawable() {
+        private val bronze = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = 0x338C6A3F.toInt()
+            strokeWidth = dp(1).toFloat()
+        }
+        private val sheen = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, dp(12).toFloat(),
+                intArrayOf(
+                    if (dark) 0x24F4ECE1.toInt() else 0x24FFFFFF.toInt(),
+                    if (dark) 0x00F4ECE1.toInt() else 0x00FFFFFF.toInt(),
+                ),
+                null, Shader.TileMode.CLAMP,
+            )
+        }
+
+        init {
+            shape = RECTANGLE
+            cornerRadius = dp(12).toFloat()
+            setColor(if (dark) 0xE0201A14.toInt() else 0xE6FBF6ED.toInt())
+            setStroke(dp(1), border)
+        }
+
+        override fun draw(canvas: Canvas) {
+            super.draw(canvas)
+            val r = bounds
+            val inset = dp(1).toFloat()
+            canvas.drawRoundRect(
+                r.left + inset, r.top + inset, r.right - inset, r.bottom - inset,
+                (dp(12) - dp(1)).toFloat(), (dp(12) - dp(1)).toFloat(), bronze,
+            )
+            canvas.save()
+            canvas.clipPath(Path().apply {
+                addRoundRect(
+                    r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat(),
+                    dp(12).toFloat(), dp(12).toFloat(), Path.Direction.CW,
+                )
+            })
+            canvas.drawRect(
+                r.left.toFloat(), r.top.toFloat(), r.right.toFloat(),
+                r.top + dp(12).toFloat(), sheen,
+            )
+            canvas.restore()
+        }
+    }
+
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
         setColor(color); cornerRadius = radius.toFloat(); setStroke(dp(1), border)
     }
