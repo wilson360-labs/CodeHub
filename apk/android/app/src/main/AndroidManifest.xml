@@ -145,13 +145,6 @@
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- Novedades: releases e issues públicos de GitHub en pantalla nativa. -->
-        <activity
-            android:name=".NativeReleasesActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
-            android:screenOrientation="unspecified" />
-
         <activity
             android:name=".CodeHubPrivacyActivity"
             android:exported="false"

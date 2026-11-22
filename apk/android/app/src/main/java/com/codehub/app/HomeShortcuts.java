@@ -62,8 +62,6 @@ public final class HomeShortcuts {
                 R.drawable.ic_shortcut_codestream, null, "codestream"),
             new Option("codesu", "CodeSu", "Optimización Android con Shizuku",
                 R.drawable.ic_shortcut_codesu, null, "codesu"),
-            new Option("novedades", "Novedades", "Releases e issues de CodeHub",
-                R.drawable.ic_shortcut_releases, null, "releases"),
             new Option("perfil", "Perfil", "Mi cuenta CodeHub",
                 R.drawable.ic_shortcut_profile, null, "profile")
         );

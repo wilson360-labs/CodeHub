@@ -94,12 +94,17 @@ public class MainActivity extends Activity {
     private AppUpdateChecker.UpdateInfo pendingAppUpdate;
     private boolean appUpdateRunning;
     private boolean appUpdateAwaitingConfirmation;
-    private AlertDialog requiredUpdateDialog;
+    private AlertDialog updateDialog;
+    private String updateDialogShownFor = "";
+    private String changelogLoadedFor = "";
+    private String lastChangelogText = "";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        updateDialogShownFor = getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE)
+                .getString("update_dialog_shown_version", "");
 
         swipeRefreshLayout = new SwipeRefreshLayout(this);
         swipeRefreshLayout.setColorSchemeColors(0xFF6366F1, 0xFF00E5FF, 0xFF6366F1);
@@ -143,7 +148,6 @@ public class MainActivity extends Activity {
             @Override public void onOpenProfile() { openNativeProfile(); }
             @Override public void onOpenWeather() { openNativeWeather(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
-            @Override public void onOpenReleases() { openNativeReleases(); }
             @Override public void onEditShortcuts() { showShortcutEditor(); }
             @Override public void onStartAppUpdate() { startAppUpdate(); }
             @Override public void onManagePrivacyVpn(boolean start) {
@@ -337,32 +341,77 @@ public class MainActivity extends Activity {
         pendingAppUpdate = info;
         if (nativeHome != null) nativeHome.showAppUpdateAvailable(
                 info.version, info.buildLabel, info.publishedDate, ShizukuInstaller.isReady(), info.required);
-        if (info.required) showRequiredUpdateDialog(info);
-        else dismissRequiredUpdateDialog();
+        loadUpdateChangelog(info);
     }
 
-    private void dismissRequiredUpdateDialog() {
-        if (requiredUpdateDialog != null) {
-            if (requiredUpdateDialog.isShowing()) requiredUpdateDialog.dismiss();
-            requiredUpdateDialog = null;
+    /** Trae los cambios publicados en la web y los muestra en el panel/diálogo de Updates. */
+    private void loadUpdateChangelog(final AppUpdateChecker.UpdateInfo info) {
+        final String key = info.versionCode + ":" + info.version;
+        if (info.required) showUpdateDialog(info, lastChangelogText, true);
+        if (key.equals(changelogLoadedFor)) {
+            if (nativeHome != null) nativeHome.showAppUpdateChangelog(lastChangelogText);
+            if (!info.required) showUpdateDialog(info, lastChangelogText, false);
+            return;
+        }
+        changelogLoadedFor = key;
+        new Thread(() -> {
+            final String changelog = AppUpdateChecker.fetchChangelogText();
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed() || pendingAppUpdate != info) return;
+                lastChangelogText = changelog;
+                if (nativeHome != null) nativeHome.showAppUpdateChangelog(changelog);
+                if (info.required) {
+                    if (updateDialog != null && updateDialog.isShowing()) {
+                        updateDialog.setMessage(buildUpdateMessage(info, changelog, true));
+                    }
+                } else {
+                    showUpdateDialog(info, changelog, false);
+                }
+            });
+        }, "codehub-changelog").start();
+    }
+
+    private void dismissUpdateDialog() {
+        if (updateDialog != null) {
+            if (updateDialog.isShowing()) updateDialog.dismiss();
+            updateDialog = null;
         }
     }
 
-    private void showRequiredUpdateDialog(AppUpdateChecker.UpdateInfo info) {
-        if (info == null || !info.required || isFinishing() || isDestroyed()) return;
-        if (requiredUpdateDialog != null && requiredUpdateDialog.isShowing()) return;
-        requiredUpdateDialog = new AlertDialog.Builder(this)
-            .setTitle("Actualización obligatoria")
-            .setMessage("Esta versión de CodeHub ya no tiene soporte. Actualiza a v" + info.version
+    private void showUpdateDialog(AppUpdateChecker.UpdateInfo info, String changelog, boolean required) {
+        if (info == null || isFinishing() || isDestroyed()) return;
+        if (updateDialog != null && updateDialog.isShowing()) return;
+        String key = info.versionCode + ":" + info.version;
+        if (key.equals(updateDialogShownFor)) return;
+        updateDialogShownFor = key;
+        if (!required) {
+            getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE).edit()
+                    .putString("update_dialog_shown_version", key).apply();
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(required ? "Actualización obligatoria" : "Nueva actualización disponible")
+                .setMessage(buildUpdateMessage(info, changelog, required))
+                .setPositiveButton("Actualizar ahora", (dialog, which) -> startAppUpdate());
+        if (required) builder.setNegativeButton("Cerrar CodeHub", (dialog, which) -> finish());
+        else builder.setNegativeButton("Ahora no", null);
+        updateDialog = builder.create();
+        updateDialog.setCancelable(!required);
+        updateDialog.setCanceledOnTouchOutside(!required);
+        updateDialog.show();
+    }
+
+    private String buildUpdateMessage(AppUpdateChecker.UpdateInfo info, String changelog, boolean required) {
+        String details = "v" + info.version
                 + (info.buildLabel == null || info.buildLabel.trim().isEmpty() ? "" : " · " + info.buildLabel)
-                + (info.publishedDate == null || info.publishedDate.trim().isEmpty() ? "" : "\n" + info.publishedDate)
-                + " para seguir usando la aplicación.")
-            .setPositiveButton("Actualizar ahora", (dialog, which) -> startAppUpdate())
-            .setNegativeButton("Cerrar CodeHub", (dialog, which) -> finish())
-            .create();
-        requiredUpdateDialog.setCancelable(false);
-        requiredUpdateDialog.setCanceledOnTouchOutside(false);
-        requiredUpdateDialog.show();
+                + (info.publishedDate == null || info.publishedDate.trim().isEmpty() ? "" : "\n" + info.publishedDate);
+        String notes = changelog == null || changelog.trim().isEmpty()
+                ? "Sin notas de cambios publicadas todavía." : changelog.trim();
+        return (required
+                ? "Esta versión de CodeHub ya no tiene soporte. Actualiza a "
+                : "Hay una nueva versión de CodeHub disponible.\n\n")
+                + details + "\n\nQué hay de nuevo:\n" + notes
+                + (required ? "\n\npara seguir usando la aplicación." : "");
     }
 
     void hideAppUpdateBanner() {
@@ -1060,7 +1109,6 @@ public class MainActivity extends Activity {
                 case "codebeat": openNativeCodeBeat(); break;
                 case "codestream": openNativeCodeStream(); break;
                 case "codesu": openNativeCodeSu(); break;
-                case "releases": openNativeReleases(); break;
                 case "profile": openNativeProfile(); break;
                 default: return;
             }
@@ -1268,15 +1316,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void openNativeReleases() {
-        try {
-            startActivity(new Intent(this, NativeReleasesActivity.class));
-        } catch (Exception e) {
-            android.util.Log.e("CodeHub", "No se pudo abrir Novedades", e);
-            Toast.makeText(this, "Novedades no pudo iniciarse.", Toast.LENGTH_SHORT).show();
-        }
-    }
-
     private void showShortcutEditor() {
         final List<HomeShortcuts.Option> options = HomeShortcuts.options();
         final Set<String> currentIds = new HashSet<>();
@@ -1445,14 +1484,20 @@ public class MainActivity extends Activity {
             appUpdateAwaitingConfirmation = false;
             long installedCode = AppUpdateChecker.localVersionCode(this);
             if (pendingAppUpdate.versionCode > 0 && installedCode >= pendingAppUpdate.versionCode) {
-                dismissRequiredUpdateDialog();
+                dismissUpdateDialog();
                 if (nativeHome != null) nativeHome.showAppUpdateInstalled(pendingAppUpdate.version);
             } else {
                 clearPendingSelfUpdate();
-                if (nativeHome != null) nativeHome.showAppUpdateAvailable(
-                    pendingAppUpdate.version, pendingAppUpdate.buildLabel, pendingAppUpdate.publishedDate,
-                    ShizukuInstaller.isReady(), pendingAppUpdate.required);
-                if (pendingAppUpdate.required) showRequiredUpdateDialog(pendingAppUpdate);
+                if (nativeHome != null) {
+                    nativeHome.showAppUpdateAvailable(
+                        pendingAppUpdate.version, pendingAppUpdate.buildLabel, pendingAppUpdate.publishedDate,
+                        ShizukuInstaller.isReady(), pendingAppUpdate.required);
+                    nativeHome.showAppUpdateChangelog(lastChangelogText);
+                }
+                if (pendingAppUpdate.required) {
+                    updateDialogShownFor = "";
+                    showUpdateDialog(pendingAppUpdate, lastChangelogText, true);
+                }
             }
         }
         try { if (nativeHome != null) nativeHome.refreshActivitySummary(); } catch (Throwable ignored) {}

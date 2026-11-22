@@ -43,7 +43,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenProfile()
         fun onOpenWeather()
         fun onOpenCodeSu()
-        fun onOpenReleases()
         fun onEditShortcuts()
         fun onStartAppUpdate()
         fun onManagePrivacyVpn(start: Boolean)
@@ -77,7 +76,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var weatherCard: View
     private lateinit var toolsCard: View
     private lateinit var optimizerCard: View
-    private lateinit var releasesCard: View
     private lateinit var privacyCard: View
     private lateinit var privacyStatus: TextView
     private lateinit var forceStopCard: View
@@ -87,6 +85,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var updateBanner: LinearLayout
     private lateinit var updateTitle: TextView
     private lateinit var updateSubtitle: TextView
+    private lateinit var updateChangelog: TextView
     private lateinit var updateProgress: ProgressBar
     private lateinit var updateAction: TextView
     private var tourStepIndex = 0
@@ -169,11 +168,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             listener.onOpenCodeSu()
         }
         addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
-
-        releasesCard = featureCard(R.drawable.ic_home_releases, "Novedades", "Releases e issues de CodeHub", accent) {
-            listener.onOpenReleases()
-        }
-        addEntranceTarget(content, releasesCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         privacyCard = buildPrivacyCard()
         addEntranceTarget(content, privacyCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -738,6 +732,13 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         row.addView(updateAction, LayoutParams(-2, dp(36)).apply { marginStart = dp(8) })
         addView(row, LayoutParams(-1, -2))
+        updateChangelog = TextView(context).apply {
+            textSize = 10f
+            setTextColor(secondaryText)
+            visibility = View.GONE
+            setPadding(dp(4), dp(6), dp(4), dp(2))
+        }
+        addView(updateChangelog, LayoutParams(-1, -2).apply { topMargin = dp(6) })
         updateProgress = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progressTintList = ColorStateList.valueOf(accent)
@@ -747,8 +748,20 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(updateProgress, LayoutParams(-1, dp(4)).apply { topMargin = dp(8) })
     }
 
+    fun showAppUpdateChangelog(changelog: String) {
+        if (!::updateChangelog.isInitialized) return
+        val notes = changelog.trim()
+        if (notes.isEmpty()) {
+            updateChangelog.visibility = View.GONE
+            return
+        }
+        updateChangelog.text = notes
+        updateChangelog.visibility = View.VISIBLE
+    }
+
     @JvmOverloads
     fun showAppUpdateAvailable(version: String, build: String, publishedDate: String, shizukuReady: Boolean, required: Boolean = false) {
+        showAppUpdateChangelog("")
         updateTitle.text = if (required) "Actualización obligatoria" else "Hay una actualización disponible"
         updateSubtitle.text = (if (required) "Esta versión ya no tiene soporte · " else "") + "v$version" +
             (if (build.isNotBlank()) " · $build" else "") +

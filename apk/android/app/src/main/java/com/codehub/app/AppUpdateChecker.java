@@ -46,6 +46,8 @@ public class AppUpdateChecker {
         "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/releases/latest";
     private static final String UPDATE_POLICY_URL =
         "https://codehub-98s6.onrender.com/api/mobile/policy";
+    private static final String CHANGELOG_URL =
+        "https://codehub-98s6.onrender.com/api/changelog";
 
     private static final String APK_ASSET_NAME = "app-release-signed.apk";
     private static final String APK_ARM64_ASSET_NAME = "app-release-arm64-v8a.apk";
@@ -412,6 +414,60 @@ public class AppUpdateChecker {
             String formatted = new java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(date);
             return "Actualizada el " + formatted;
         } catch (Exception ignored) { return ""; }
+    }
+
+    /**
+     * Lista de cambios publicada en la web (GET /api/changelog). Alimenta el
+     * diálogo y el panel de actualizaciones; no sustituye la validación
+     * SHA-256 del APK.
+     */
+    public static String fetchChangelogText() {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(CHANGELOG_URL).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("User-Agent", "CodeHub-Android");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return "";
+            StringBuilder response = new StringBuilder();
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) response.append(line);
+            reader.close();
+
+            JSONArray entries = new JSONObject(response.toString()).optJSONArray("entries");
+            if (entries == null || entries.length() == 0) return "";
+            StringBuilder out = new StringBuilder();
+            int shown = 0;
+            for (int i = 0; i < entries.length() && shown < 3; i++) {
+                JSONObject entry = entries.optJSONObject(i);
+                if (entry == null) continue;
+                String version = entry.optString("version").trim();
+                String title = entry.optString("title").trim();
+                JSONArray changes = entry.optJSONArray("changes");
+                if (version.isEmpty() && title.isEmpty() && changes == null) continue;
+                if (shown > 0) out.append("\n\n");
+                out.append("• ").append(version);
+                if (!title.isEmpty()) out.append(" — ").append(title);
+                if (changes != null) {
+                    for (int j = 0; j < changes.length() && j < 8; j++) {
+                        String change = changes.optString(j).trim();
+                        if (change.isEmpty()) continue;
+                        out.append("\n   - ").append(change);
+                    }
+                }
+                shown++;
+            }
+            return out.toString();
+        } catch (Exception e) {
+            Log.w(TAG, "No se pudo leer /api/changelog: " + e.getMessage());
+            return "";
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
     }
 
     public static final class UpdateInfo {
