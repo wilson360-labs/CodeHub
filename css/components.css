@@ -3207,14 +3207,7 @@ header nav{ display: none !important; }nav ul{ flex-wrap: wrap; gap: 0.3rem; }na
   opacity: 0; pointer-events: none;
   transition: opacity .25s ease;
   will-change: opacity;
-}/* ── #changelog-dot — badge de "novedades sin leer" en el botón de actividad ── */
-#changelog-dot{
-  position: absolute; top: 5px; right: 5px;
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #ff5252; box-shadow: 0 0 6px rgba(255,82,82,.85);
-  display: none; pointer-events: none;
-}
-#changelog-dot.show{ display: block; }/* ── badge text morph — fix overflow clipping (permite el blur del gooey) ── */
+}/* ── badge text morph — fix overflow clipping (permite el blur del gooey) ── */
 .header-logo-badge{ overflow: visible !important; }/* ═══════════════════════════════════════════════════════════════
    COACH TIPS — burbujas de ayuda contextual (patrón reutilizable)
    Muestran brevemente para qué sirve un botón/función, apuntando
