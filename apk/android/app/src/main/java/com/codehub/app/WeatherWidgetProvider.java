@@ -10,12 +10,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.RadialGradient;
-import android.graphics.RectF;
-import android.graphics.Shader;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -35,18 +30,19 @@ import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Widget de clima de CodeHub para el launcher — diseño One UI 8.5.
+ * Widget de clima de CodeHub para el launcher — lenguaje AMOLED de la app.
  *
  * Reutiliza la ubicación (lat/lon) que guarda CodeHubSyncWorker en
  * SharedPreferences("codehub") y consulta Open-Meteo directamente.
  *
  * Composición:
- *  - Escena dibujada en Canvas (degradado + sol/luna + nubes + lluvia/
- *    nieve/niebla/estrellas) adaptada al tamaño real del widget.
+ *  - Escena vectorial dibujada en Canvas (lago del Inicio, sol/luna y
+ *    señales de lluvia/nieve/niebla) adaptada al tamaño real del widget.
  *  - Ciudad + hora, temperatura grande, condición y sensación.
- *  - Franja de 4 horas y pronóstico de 3 días.
+ *  - Franja de 4 horas y pronóstico de 3 días con glifos vectoriales.
  *  - Detalles (humedad · viento · lluvia) y "actualizado hace…".
- *  - Texto tinta oscura de día y blanco de noche (contraste AA).
+ *  - Negro puro, texto hueso #F4ECE1, acentos terracota/salvia. Sin
+ *    degradados decorativos, glows ni emoji.
  *
  * El widget se adapta a su altura: COMPACTO (ciudad + hero + footer),
  * MEDIO (+ franja horaria y detalles) o COMPLETO (+ 3 días). Pinta
@@ -517,7 +513,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         return sb.toString();
     }
 
-    // ── Pronóstico de 3 días: "Hoy\n🌤️\n26° / 15°". ──
+    // ── Pronóstico de 3 días: "Hoy|code|26° / 15°". ──
     private static String forecastCell(JSONArray max, JSONArray min, JSONArray code, int idx) {
         try {
             Calendar c = Calendar.getInstance();
@@ -527,8 +523,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                 : capitalize(new SimpleDateFormat("EEE", Locale.getDefault()).format(c.getTime()));
             float hi = (float) max.getDouble(idx);
             float lo = (float) min.getDouble(idx);
-            String emoji = emojiFor(code.optInt(idx, -1));
-            return day + "\n" + emoji + "\n" + Math.round(hi) + "° / " + Math.round(lo) + "°";
+            return day + "|" + code.optInt(idx, -1) + "|" + Math.round(hi) + "° / " + Math.round(lo) + "°";
         } catch (Exception e) { return "—"; }
     }
 
@@ -556,8 +551,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_feels,
             Float.isNaN(feels) ? " " : "Sensación " + Math.round(feels) + "°");
 
-        fillHourly(views, hourly);
-        fillDaily(views, fc1, fc2, fc3);
+        fillHourly(views, hourly, night);
+        fillDaily(views, fc1, fc2, fc3, night);
 
         // Detalles: humedad · viento · lluvia (lo más útil, sin saturar).
         StringBuilder det = new StringBuilder();
@@ -610,9 +605,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private static void applyTextColors(RemoteViews views, boolean night) {
-        int primary = night ? 0xFFFFFFFF : 0xFF0B2545;
-        int secondary = night ? 0xFFC7D6EA : 0xFF16324F;
-        int accent = night ? 0xFFC9E8FF : 0xFF1D4ED8;
+        int primary = 0xFFF4ECE1;
+        int secondary = 0xFFC2B6A8;
+        int accent = 0xFFD98A67;
         views.setTextColor(R.id.widget_city, primary);
         views.setTextColor(R.id.widget_updated, secondary);
         views.setTextColor(R.id.widget_temp, primary);
@@ -627,7 +622,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         for (int id : D_TEMP) views.setTextColor(id, primary);
     }
 
-    private static void fillHourly(RemoteViews views, String hourly) {
+    // ── Franja horaria: glifo vectorial teñido, sin emoji. ──
+    private static void fillHourly(RemoteViews views, String hourly, boolean night) {
         String[] slots = (hourly == null || hourly.isEmpty()) ? new String[0] : hourly.split(";");
         for (int k = 0; k < 4; k++) {
             String t = "--:--", temp = "--", code = "-1";
@@ -635,27 +631,41 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                 String[] p = slots[k].split("\\|");
                 if (p.length >= 3) { t = p[0]; temp = p[1]; code = p[2]; }
             }
-            int codeInt = -1;
-            try { codeInt = Integer.parseInt(code); } catch (Exception ignored) {}
+            int codeInt = parseCode(code);
             views.setTextViewText(H_TIME[k], t);
-            views.setTextViewText(H_ICON[k], emojiFor(codeInt));
+            views.setImageViewResource(H_ICON[k], iconFor(codeInt, night));
+            views.setInt(H_ICON[k], "setColorFilter", tintFor(codeInt));
             views.setTextViewText(H_TEMP[k], "--".equals(temp) ? "--" : temp + "°");
         }
     }
 
-    private static void fillDaily(RemoteViews views, String fc1, String fc2, String fc3) {
+    // ── Pronóstico: "Hoy|code|26° / 15°". El código viaja en vez del emoji. ──
+    private static void fillDaily(RemoteViews views, String fc1, String fc2, String fc3, boolean night) {
         String[] cells = {fc1, fc2, fc3};
         for (int k = 0; k < 3; k++) {
-            String day = "--", icon = "—", temp = "--° / --°";
+            String day = "--", code = "-1", temp = "--° / --°";
             String cell = cells[k] == null ? "" : cells[k];
-            String[] lines = cell.split("\\n");
-            if (lines.length > 0 && !lines[0].isEmpty()) day = lines[0];
-            if (lines.length > 1 && !lines[1].isEmpty()) icon = lines[1];
-            if (lines.length > 2 && !lines[2].isEmpty()) temp = lines[2];
+            if (cell.contains("\n")) {
+                // Entradas guardadas por versiones anteriores: "Hoy\n🌤️\n26° / 15°".
+                String[] old = cell.split("\\n");
+                if (old.length > 0) day = old[0];
+                if (old.length > 2) temp = old[2];
+            } else {
+                String[] parts = cell.split("\\|");
+                if (parts.length > 0 && !parts[0].isEmpty()) day = parts[0];
+                if (parts.length > 1 && !parts[1].isEmpty()) code = parts[1];
+                if (parts.length > 2 && !parts[2].isEmpty()) temp = parts[2];
+            }
+            int codeInt = parseCode(code);
             views.setTextViewText(D_DAY[k], day);
-            views.setTextViewText(D_ICON[k], icon);
+            views.setImageViewResource(D_ICON[k], iconFor(codeInt, night));
+            views.setInt(D_ICON[k], "setColorFilter", tintFor(codeInt));
             views.setTextViewText(D_TEMP[k], temp);
         }
+    }
+
+    private static int parseCode(String value) {
+        try { return Integer.parseInt(value); } catch (Exception e) { return -1; }
     }
 
     // ── Modo según la altura real del widget (dp). ──
@@ -672,7 +682,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // ── Escena de fondo: degradado + sol/luna + nubes + lluvia/nieve/niebla.
+    // ── Escena de fondo: lago AMOLED + sol/luna + lluvia/nieve/niebla.
     //    Se dibuja al tamaño real del widget (en px), con tope para no
     //    rebasar el límite de transacción Binder (~1 MB): 512 px de lado
     //    y 262 144 px totales en RGB_565 (≤ 524 KB). ──
@@ -704,165 +714,118 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
     private static void drawScene(Canvas c, int w, int h, int wcode, boolean night) {
         int[] colors = palette(wcode, night);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setShader(new LinearGradient(0, 0, 0, h, colors, null, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, p);
-        p.setShader(null);
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        stroke.setStyle(Paint.Style.STROKE);
+        stroke.setStrokeCap(Paint.Cap.ROUND);
 
-        boolean storm = wcode >= 95;
+        // Cielo y agua: planos. El lago del Inicio se reduce a dos franjas
+        // para no competir con la lectura de la temperatura.
+        float horizon = h * 0.58f;
+        fill.setColor(colors[0]);
+        c.drawRect(0, 0, w, horizon, fill);
+        fill.setColor(colors[1]);
+        c.drawRect(0, horizon, w, h, fill);
+
         boolean rain = (wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82);
         boolean snow = (wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86);
         boolean fog = wcode == 45 || wcode == 48;
-        boolean overcast = wcode == 3;
-        boolean partly = wcode >= 1 && wcode <= 2;
-        boolean clear = !storm && !rain && !snow && !fog && !overcast && !partly;
+        boolean clear = wcode < 0 || wcode == 0 || (wcode >= 1 && wcode <= 2);
 
-        // Sol / luna con halo (solo despejado/parcial: con nubes densas,
-        // lluvia, nieve o niebla no se asoma un sol que no toca).
-        if (clear || partly) {
-            float cx = w * 0.82f;
-            float cy = h * 0.22f;
-            float r = Math.min(w, h) * 0.09f;
+        // Sol/luna sin halo: terracota de día, hueso de noche.
+        if (clear) {
+            float cx = w * 0.78f;
+            float cy = horizon - h * 0.13f;
+            float r = Math.max(3f, Math.min(w, h) * 0.075f);
+            fill.setColor(night ? 0xFFF4ECE1 : 0xFFD98A67);
+            c.drawCircle(cx, cy, r, fill);
 
-            Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            glow.setShader(new RadialGradient(cx, cy, r * 2.6f,
-                new int[]{night ? 0x66C9D8FF : 0x66FFF1B8, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
-            c.drawCircle(cx, cy, r * 2.6f, glow);
-            glow.setShader(null);
-
-            Paint disc = new Paint(Paint.ANTI_ALIAS_FLAG);
-            disc.setColor(night ? 0xFFF3F0DF : 0xFFFFE08A);
-            c.drawCircle(cx, cy, r, disc);
-
-            if (!night) {
-                Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
-                halo.setColor(0x33FFFFFF);
-                c.drawCircle(cx, cy, r * 1.28f, halo);
-            } else {
-                Paint crater = new Paint(Paint.ANTI_ALIAS_FLAG);
-                crater.setColor(0x22000000);
-                c.drawCircle(cx - r * 0.26f, cy - r * 0.16f, r * 0.18f, crater);
-                c.drawCircle(cx + r * 0.22f, cy + r * 0.2f, r * 0.12f, crater);
+            stroke.setColor(0x669DB99E);
+            stroke.setStrokeWidth(Math.max(1f, h * 0.005f));
+            for (int i = 0; i < 5; i++) {
+                float y = horizon + (h - horizon) * (0.14f + i * 0.17f);
+                float half = r * (1.1f + i * 0.35f);
+                c.drawLine(cx - half, y, cx + half, y, stroke);
             }
         }
 
-        // Nubes (translúcidas, más marcadas de día).
-        if (!clear) {
-            int cloudAlpha = night ? 46 : 150;
-            drawCloud(c, w * 0.64f, h * 0.34f, w * 0.15f, cloudAlpha, night);
-            drawCloud(c, w * 0.31f, h * 0.54f, w * 0.12f, Math.max(30, cloudAlpha - 30), night);
-            if (overcast || rain || storm || snow) {
-                drawCloud(c, w * 0.83f, h * 0.50f, w * 0.13f, Math.max(30, cloudAlpha - 20), night);
+        // Señales funcionales de condición, discretas.
+        if (rain || wcode >= 95) {
+            stroke.setColor(0x809DB99E);
+            stroke.setStrokeWidth(Math.max(1f, w * 0.004f));
+            for (int i = 0; i < 10; i++) {
+                float x = w * (0.60f + (i % 5) * 0.07f);
+                float y = h * (0.20f + (i / 5) * 0.11f + (i % 5) * 0.012f);
+                c.drawLine(x, y, x - w * 0.015f, y + h * 0.035f, stroke);
             }
         }
-
-        // Lluvia.
-        if (rain) {
-            Paint rainP = new Paint(Paint.ANTI_ALIAS_FLAG);
-            rainP.setColor(night ? 0x66BFD8FF : 0x7760A5FF);
-            rainP.setStrokeWidth(Math.max(1.5f, w * 0.004f));
-            for (int i = 0; i < 14; i++) {
-                float x = w * (0.56f + (i % 7) * 0.055f);
-                float y = h * (0.40f + (i / 7) * 0.12f + (i % 7) * 0.018f);
-                c.drawLine(x, y, x - w * 0.02f, y + h * 0.06f, rainP);
-            }
-        }
-
-        // Nieve.
         if (snow) {
-            Paint snowP = new Paint(Paint.ANTI_ALIAS_FLAG);
-            snowP.setColor(0xCCFFFFFF);
-            for (int i = 0; i < 18; i++) {
-                float x = w * (0.54f + ((i * 37) % 42) / 100f);
-                float y = h * (0.30f + ((i * 53) % 46) / 100f);
-                c.drawCircle(x, y, Math.max(1.5f, w * 0.006f), snowP);
-            }
-        }
-
-        // Estrellas (noche despejada / parcial), solo mitad derecha.
-        if (night && (clear || partly)) {
-            Paint star = new Paint(Paint.ANTI_ALIAS_FLAG);
-            star.setColor(0xCCFFFFFF);
+            fill.setColor(0xCCF4ECE1);
             for (int i = 0; i < 12; i++) {
-                float x = w * (0.50f + ((i * 29) % 44) / 100f);
-                float y = h * (0.06f + ((i * 47) % 36) / 100f);
-                c.drawCircle(x, y, Math.max(1f, w * 0.0035f), star);
+                float x = w * (0.58f + ((i * 37) % 40) / 100f);
+                float y = h * (0.18f + ((i * 53) % 34) / 100f);
+                c.drawCircle(x, y, Math.max(1f, w * 0.005f), fill);
             }
         }
-
-        // Niebla.
         if (fog) {
-            Paint fogP = new Paint(Paint.ANTI_ALIAS_FLAG);
-            fogP.setColor(night ? 0x1FFFFFFF : 0x4DFFFFFF);
+            stroke.setColor(0x66C2B6A8);
+            stroke.setStrokeWidth(Math.max(1f, h * 0.008f));
             for (int i = 0; i < 3; i++) {
-                float y = h * (0.36f + i * 0.11f);
-                c.drawRect(0, y, w, y + h * 0.05f, fogP);
+                float y = h * (0.28f + i * 0.09f);
+                c.drawLine(w * 0.10f, y, w * 0.90f, y, stroke);
             }
         }
 
-        // Bruma superior sutil (profundidad, no contraste).
-        Paint haze = new Paint(Paint.ANTI_ALIAS_FLAG);
-        haze.setShader(new LinearGradient(0, 0, 0, h * 0.42f,
-            night ? 0x14000000 : 0x1FFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h * 0.42f, haze);
+        // Juncos: cierran el lago sin textura ni movimiento.
+        stroke.setColor(0x809DB99E);
+        stroke.setStrokeWidth(Math.max(1f, w * 0.003f));
+        for (int i = 0; i < 4; i++) {
+            float x = w * (0.05f + i * 0.02f);
+            c.drawLine(x, h, x + w * 0.01f, h - h * (0.08f + (i % 2) * 0.04f), stroke);
+            float xr = w * (0.95f - i * 0.02f);
+            c.drawLine(xr, h, xr - w * 0.01f, h - h * (0.07f + (i % 2) * 0.04f), stroke);
+        }
     }
 
-    private static void drawCloud(Canvas c, float cx, float cy, float r, int alpha, boolean night) {
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        int a = Math.max(0, Math.min(255, alpha));
-        p.setColor(night ? Color.argb(a, 210, 224, 244) : Color.argb(a, 255, 255, 255));
-        c.drawCircle(cx, cy, r, p);
-        c.drawCircle(cx - r * 0.78f, cy + r * 0.16f, r * 0.7f, p);
-        c.drawCircle(cx + r * 0.76f, cy + r * 0.2f, r * 0.62f, p);
-        c.drawRoundRect(new RectF(cx - r * 1.38f, cy + r * 0.1f, cx + r * 1.38f, cy + r * 0.86f),
-            r * 0.5f, r * 0.5f, p);
-    }
-
-    // Paletas One UI 8.5. Día: cielos claros y luminosos (texto tinta
-    // oscura, contraste AA). Noche: azules profundos (texto blanco).
+    // Lago AMOLED: cielo negro puro y agua casi negra. La condición solo
+    // matiza el agua; no hay degradados decorativos ni glows.
     private static int[] palette(int wcode, boolean night) {
         boolean rain = (wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82);
         boolean storm = wcode >= 95;
         boolean snow = (wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86);
-        boolean overcast = wcode == 3;
         boolean fog = wcode == 45 || wcode == 48;
-        boolean partly = wcode >= 1 && wcode <= 2;
 
-        int top, mid, bottom;
-        if (night) {
-            if (storm)         { top = 0xFF0A0A1A; mid = 0xFF1C1736; bottom = 0xFF33284F; }
-            else if (rain)     { top = 0xFF0C1222; mid = 0xFF1C2A44; bottom = 0xFF2C4060; }
-            else if (snow)     { top = 0xFF141C33; mid = 0xFF2B3C60; bottom = 0xFF596F94; }
-            else if (fog)      { top = 0xFF141A26; mid = 0xFF2A3342; bottom = 0xFF475262; }
-            else if (overcast) { top = 0xFF111729; mid = 0xFF222C42; bottom = 0xFF3A4557; }
-            else if (partly)   { top = 0xFF0B1128; mid = 0xFF1A2850; bottom = 0xFF34466F; }
-            else               { top = 0xFF070B1F; mid = 0xFF14214F; bottom = 0xFF2A3F7E; }
-        } else {
-            if (storm)         { top = 0xFF8A8FB8; mid = 0xFFA9ADD0; bottom = 0xFFD9DBEC; }
-            else if (rain)     { top = 0xFF7E97B5; mid = 0xFF9DB4CC; bottom = 0xFFD6E1EC; }
-            else if (snow)     { top = 0xFFC2D5E8; mid = 0xFFDDEAF7; bottom = 0xFFF6FAFF; }
-            else if (fog)      { top = 0xFFC1CBD4; mid = 0xFFD8E0E7; bottom = 0xFFF0F4F7; }
-            else if (overcast) { top = 0xFFA6B4C4; mid = 0xFFC3CEDB; bottom = 0xFFE8EEF4; }
-            else if (partly)   { top = 0xFF7FB8F5; mid = 0xFFA9D2FA; bottom = 0xFFE6F3FF; }
-            else               { top = 0xFF6FB0FF; mid = 0xFFA5D4FF; bottom = 0xFFE9F7FF; }
-        }
-        return new int[]{top, mid, bottom};
+        int water;
+        if (storm) water = 0xFF0B0A0E;
+        else if (rain) water = 0xFF080D12;
+        else if (snow) water = 0xFF0B1012;
+        else if (fog) water = 0xFF0A0C0D;
+        else water = 0xFF080A0A;
+        return new int[]{0xFF000000, water};
     }
 
-    // Códigos WMO de Open-Meteo → emoji + etiqueta corta en español.
-    private static String emojiFor(int wcode) {
-        if (wcode < 0) return "🌤️";
-        if (wcode == 0) return "☀️";
-        if (wcode <= 2) return "🌤️";
-        if (wcode == 3) return "☁️";
-        if (wcode == 45 || wcode == 48) return "🌫️";
-        if (wcode >= 51 && wcode <= 57) return "🌦️";
-        if (wcode >= 61 && wcode <= 67) return "🌧️";
-        if (wcode >= 71 && wcode <= 77) return "🌨️";
-        if (wcode >= 80 && wcode <= 82) return "🌧️";
-        if (wcode >= 85 && wcode <= 86) return "🌨️";
-        if (wcode >= 95) return "⛈️";
-        return "🌤️";
+    // Códigos WMO de Open-Meteo → drawable vectorial. El color se aplica
+    // con setColorFilter desde RemoteViews, sin depender de tintes del launcher.
+    private static int iconFor(int wcode, boolean night) {
+        if (wcode < 0) return R.drawable.ic_wx_partly;
+        if (wcode == 0) return night ? R.drawable.ic_wx_night : R.drawable.ic_wx_clear;
+        if (wcode <= 2) return night ? R.drawable.ic_wx_night : R.drawable.ic_wx_partly;
+        if (wcode == 3) return R.drawable.ic_wx_cloud;
+        if (wcode == 45 || wcode == 48) return R.drawable.ic_wx_fog;
+        if (wcode >= 95) return R.drawable.ic_wx_storm;
+        if ((wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86)) return R.drawable.ic_wx_snow;
+        if ((wcode >= 51 && wcode <= 57) || (wcode >= 61 && wcode <= 67)
+            || (wcode >= 80 && wcode <= 82)) return R.drawable.ic_wx_rain;
+        return R.drawable.ic_wx_partly;
+    }
+
+    private static int tintFor(int wcode) {
+        if (wcode < 0) return 0xFFC2B6A8;
+        if (wcode == 0 || wcode == 1 || wcode == 2) return 0xFFD98A67;
+        if ((wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82) || wcode >= 95) {
+            return 0xFF9DB99E;
+        }
+        return 0xFFF4ECE1;
     }
 
     private static String labelFor(int wcode) {

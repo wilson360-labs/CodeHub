@@ -67,7 +67,7 @@ public class WeatherWidgetAnimService extends RemoteViewsService {
         }
 
         // Secuencia de emojis por condición + momento del día. Mismo
-        // mapeo WMO que WeatherWidgetProvider.emojiFor (mantener en sintonía).
+        // mapeo WMO que WeatherWidgetProvider.iconFor (mantener en sintonía).
         private String[] framesFor(int wcode) {
             boolean night = isNight();
             if (wcode == 0)  return night ? new String[]{"🌙", "✨", "🌙"} : new String[]{"☀️", "🌤️", "☀️"};

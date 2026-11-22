@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget de clima de CodeHub — diseño One UI 8.5 para el launcher.
+  Widget de clima de CodeHub — mismo lenguaje AMOLED que la app.
 
   Capas:
-   1) ImageView con la escena dibujada en Canvas (cielo + sol/luna + nubes
-      + lluvia/nieve/niebla), generada por WeatherWidgetProvider.
+   1) ImageView con la escena vectorial dibujada en Canvas (lago, sol/luna
+      y señales de lluvia/nieve/niebla), generada por WeatherWidgetProvider.
    2) Contenido: ciudad + hora, hero (temperatura + condición/sensación),
       franja horaria de 4 h, pronóstico de 3 días, detalles y footer con
       "actualizado hace…" + refrescar.
+
+  Jerarquía: negro puro, texto hueso #F4ECE1, acentos terracota/salvia.
+  Los glifos son drawables vectoriales teñidos por RemoteViews; sin emoji.
 
   El provider elige modo COMPACTO / MEDIO / COMPLETO según la altura real
   del widget (AppWidgetOptions) y oculta franjas para que nada se corte.
@@ -54,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="CodeHub"
-                android:textColor="#0B2545"
+                android:textColor="#F4ECE1"
                 android:textSize="14sp"
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
@@ -66,7 +69,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#16324F"
+                android:textColor="#C2B6A8"
                 android:textSize="11sp"
                 android:maxLines="1" />
         </LinearLayout>
@@ -87,7 +90,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="--°"
-                android:textColor="#0B2545"
+                android:textColor="#F4ECE1"
                 android:textSize="44sp"
                 android:fontFamily="sans-serif-light"
                 android:maxLines="1" />
@@ -106,7 +109,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Cargando…"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
@@ -119,7 +122,7 @@
                     android:layout_height="wrap_content"
                     android:paddingStart="8dp"
                     android:text=""
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="10sp"
                     android:maxLines="1" />
             </LinearLayout>
@@ -152,18 +155,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Ahora"
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="9sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:includeFontPadding="false"
+                <ImageView
                     android:id="@+id/widget_h1_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌤️"
-                    android:textSize="14sp"
-                    android:maxLines="1" />
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_wx_partly" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -171,7 +172,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--°"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1" />
@@ -190,18 +191,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--:--"
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="9sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:includeFontPadding="false"
+                <ImageView
                     android:id="@+id/widget_h2_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌤️"
-                    android:textSize="14sp"
-                    android:maxLines="1" />
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_wx_partly" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -209,7 +208,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--°"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1" />
@@ -228,18 +227,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--:--"
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="9sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:includeFontPadding="false"
+                <ImageView
                     android:id="@+id/widget_h3_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌤️"
-                    android:textSize="14sp"
-                    android:maxLines="1" />
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_wx_partly" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -247,7 +244,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--°"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1" />
@@ -266,18 +263,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--:--"
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="9sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:includeFontPadding="false"
+                <ImageView
                     android:id="@+id/widget_h4_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌤️"
-                    android:textSize="14sp"
-                    android:maxLines="1" />
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_wx_partly" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -285,7 +280,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--°"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1" />
@@ -314,18 +309,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Hoy"
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="9sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:includeFontPadding="false"
+                <ImageView
                     android:id="@+id/widget_d1_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌤️"
-                    android:textSize="14sp"
-                    android:maxLines="1" />
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_wx_partly" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -333,7 +326,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--° / --°"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1" />
@@ -352,18 +345,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--"
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="9sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:includeFontPadding="false"
+                <ImageView
                     android:id="@+id/widget_d2_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌤️"
-                    android:textSize="14sp"
-                    android:maxLines="1" />
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_wx_partly" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -371,7 +362,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--° / --°"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1" />
@@ -390,18 +381,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--"
-                    android:textColor="#16324F"
+                    android:textColor="#C2B6A8"
                     android:textSize="9sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:includeFontPadding="false"
+                <ImageView
                     android:id="@+id/widget_d3_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌤️"
-                    android:textSize="14sp"
-                    android:maxLines="1" />
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_wx_partly" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -409,7 +398,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--° / --°"
-                    android:textColor="#0B2545"
+                    android:textColor="#F4ECE1"
                     android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1" />
@@ -424,7 +413,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:text="Humedad --%  ·  Viento -- km/h"
-            android:textColor="#16324F"
+            android:textColor="#C2B6A8"
             android:textSize="9sp"
             android:gravity="center"
             android:maxLines="1"
@@ -445,7 +434,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text=""
-                android:textColor="#16324F"
+                android:textColor="#C2B6A8"
                 android:textSize="9sp"
                 android:maxLines="1" />
 
@@ -463,7 +452,7 @@
                 android:layout_height="20dp"
                 android:gravity="center"
                 android:text="↻"
-                android:textColor="#1D4ED8"
+                android:textColor="#D98A67"
                 android:textSize="15sp"
                 android:contentDescription="Actualizar clima" />
         </LinearLayout>

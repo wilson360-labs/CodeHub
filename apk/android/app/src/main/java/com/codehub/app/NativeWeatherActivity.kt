@@ -10,11 +10,9 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.location.Location
@@ -62,16 +60,16 @@ class NativeWeatherActivity : Activity() {
         OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(12, TimeUnit.SECONDS).build()
     }
     private val dark by lazy { (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES }
-    private val bg by lazy { if (dark) 0xFF17130F.toInt() else 0xFFF3EADD.toInt() }
-    private val panel by lazy { if (dark) 0xFF201A14.toInt() else 0xFFFBF6ED.toInt() }
-    private val elevated by lazy { if (dark) 0xFF2A221A.toInt() else 0xFFF6EEDF.toInt() }
-    private val primary by lazy { if (dark) 0xFFF5EDE0.toInt() else 0xFF2E241C.toInt() }
-    private val secondary by lazy { if (dark) 0xFFC2B09B.toInt() else 0xFF6E5D4B.toInt() }
-    private val muted by lazy { if (dark) 0xFF94836F.toInt() else 0xFF9A8B78.toInt() }
-    private val border by lazy { if (dark) 0x14F5EDE0.toInt() else 0x142E241C.toInt() }
+    private val bg by lazy { if (dark) 0xFF000000.toInt() else 0xFFF3EADD.toInt() }
+    private val panel by lazy { if (dark) 0xFF0A0A0C.toInt() else 0xFFFBF6ED.toInt() }
+    private val elevated by lazy { if (dark) 0xFF101013.toInt() else 0xFFF6EEDF.toInt() }
+    private val primary by lazy { if (dark) 0xFFF4ECE1.toInt() else 0xFF2E241C.toInt() }
+    private val secondary by lazy { if (dark) 0xFFC2B6A8.toInt() else 0xFF6E5D4B.toInt() }
+    private val muted by lazy { if (dark) 0xFF8E8377.toInt() else 0xFF9A8B78.toInt() }
+    private val border by lazy { if (dark) 0x14F4ECE1.toInt() else 0x142E241C.toInt() }
     private val accent by lazy { if (dark) 0xFFD98A67.toInt() else 0xFFB85C3C.toInt() }
     private val sage by lazy { if (dark) 0xFF9DB99E.toInt() else 0xFF6F8F72.toInt() }
-    private val accentSoft by lazy { if (dark) 0xFF3A2A20.toInt() else 0xFFEAD7C8.toInt() }
+    private val accentSoft by lazy { if (dark) 0xFF1A1210.toInt() else 0xFFEAD7C8.toInt() }
     private lateinit var content: LinearLayout
     private var request: Call? = null
     private var lat = 0.0
@@ -236,95 +234,87 @@ class NativeWeatherActivity : Activity() {
             clipToOutline = true
         }
         val lake = WeatherLakeView(this)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            lake.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
-                dp(8).toFloat(), dp(8).toFloat(), Shader.TileMode.CLAMP))
-        }
         hero.addView(lake, FrameLayout.LayoutParams(-1, -1))
 
         val heroContent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(20))
+            setPadding(dp(16), dp(16), dp(16), dp(16))
             background = GlassPanelDrawable()
         }
-        heroContent.addView(text("${weatherName(code)}  ·  ${current.optString("time").substringAfter('T', "Ahora")}", 14f, conditionColor))
-        heroContent.addView(NativeWeatherGlyph(this, code, 72, animated = true), LinearLayout.LayoutParams(dp(80), dp(80)).apply {
-            topMargin = dp(8)
+        heroContent.addView(text("${weatherName(code)}  ·  ${current.optString("time").substringAfter('T', "Ahora")}", 13f, conditionColor))
+        heroContent.addView(NativeWeatherGlyph(this, code, 64, animated = true), LinearLayout.LayoutParams(dp(72), dp(72)).apply {
+            topMargin = dp(6)
             gravity = Gravity.CENTER_HORIZONTAL
         })
-        heroContent.addView(text("${current.optInt("temperature_2m")}°", 56f, accent))
-        val measure = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        measure.addView(View(this).apply { setBackgroundColor(accent) }, LinearLayout.LayoutParams(dp(40), dp(1)))
-        measure.addView(View(this).apply {
-            background = GradientDrawable().apply { setColor(accent); cornerRadius = dp(2).toFloat() }
-        }, LinearLayout.LayoutParams(dp(4), dp(4)).apply { marginStart = dp(4) })
-        heroContent.addView(measure, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
-        heroContent.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        heroContent.addView(text("Mín. ${minToday ?: "—"}°     Máx. ${maxToday ?: "—"}°", 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        heroContent.addView(text("${current.optInt("temperature_2m")}°", 52f, accent))
+        val measure = View(this).apply { setBackgroundColor(accent) }
+        heroContent.addView(measure, LinearLayout.LayoutParams(dp(32), dp(1)).apply { topMargin = dp(6) })
+        heroContent.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 13f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        heroContent.addView(text("Mín. ${minToday ?: "—"}°     Máx. ${maxToday ?: "—"}°", 13f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         val sunrise = daily.optJSONArray("sunrise")?.optString(0)?.substringAfter('T', "")
         val sunset = daily.optJSONArray("sunset")?.optString(0)?.substringAfter('T', "")
         if (!sunrise.isNullOrBlank() || !sunset.isNullOrBlank()) {
             val dawn = sunrise.takeUnless { it.isNullOrBlank() } ?: "—"
             val dusk = sunset.takeUnless { it.isNullOrBlank() } ?: "—"
-            heroContent.addView(text("Amanecer $dawn     Atardecer $dusk", 12f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+            heroContent.addView(text("Amanecer $dawn     Atardecer $dusk", 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         }
         hero.addView(heroContent, FrameLayout.LayoutParams(-1, -2).apply {
             topMargin = dp(12); bottomMargin = dp(12); leftMargin = dp(12); rightMargin = dp(12)
         })
         content.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        content.addView(text("Ahora mismo", 17f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
+        content.addView(text("Condiciones actuales", 16f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20); bottomMargin = dp(8) })
         val metricRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        metricRow1.addView(metricCard("Humedad", "${current.optInt("relative_humidity_2m")} %", "Gotas", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginEnd = dp(4) })
+        metricRow1.addView(metricCard("Humedad", "${current.optInt("relative_humidity_2m")} %", "Humedad relativa", accent), LinearLayout.LayoutParams(0, dp(88), 1f).apply { marginEnd = dp(6) })
         val gusts = current.optInt("wind_gusts_10m", current.optInt("wind_speed_10m"))
         val windDirection = current.optInt("wind_direction_10m", -1).let { if (it < 0) "" else " · ${it}°" }
-        metricRow1.addView(metricCard("Viento", "${current.optInt("wind_speed_10m")} km/h", "Ráfagas $gusts km/h$windDirection", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginStart = dp(4) })
+        metricRow1.addView(metricCard("Viento", "${current.optInt("wind_speed_10m")} km/h", "Ráfagas $gusts km/h$windDirection", accent), LinearLayout.LayoutParams(0, dp(88), 1f).apply { marginStart = dp(6) })
         content.addView(metricRow1)
         val metricRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val rain = hours.optJSONArray("precipitation_probability")?.optInt(currentHourIndex) ?: 0
         val rainMm = hours.optJSONArray("precipitation")?.optDouble(currentHourIndex)?.let { String.format(java.util.Locale.getDefault(), "%.1f mm", it) } ?: "—"
-        metricRow2.addView(metricCard("Lluvia", "$rain %", "$rainMm · próxima hora", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginEnd = dp(4) })
+        metricRow2.addView(metricCard("Lluvia", "$rain %", "$rainMm · próxima hora", accent), LinearLayout.LayoutParams(0, dp(88), 1f).apply { marginEnd = dp(6) })
         val uv = hours.optJSONArray("uv_index")?.optDouble(currentHourIndex)?.let { String.format(java.util.Locale.getDefault(), "%.1f", it) } ?: "—"
-        metricRow2.addView(metricCard("Índice UV", uv, "Hoy", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginStart = dp(4) })
+        metricRow2.addView(metricCard("Índice UV", uv, "Ahora", sage), LinearLayout.LayoutParams(0, dp(88), 1f).apply { marginStart = dp(6) })
         content.addView(metricRow2, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-        val metricRow3 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        metricRow3.addView(metricCard("Nubosidad", "${current.optInt("cloud_cover")} %", "Cobertura del cielo", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginEnd = dp(4) })
+        // Datos secundarios en una sola línea: no compiten con los cuatro
+        // indicadores principales ni empujan el pronóstico fuera de pantalla.
         val pressure = current.optDouble("pressure_msl", Double.NaN).takeIf { it.isFinite() }?.toInt()?.toString() ?: "—"
-        metricRow3.addView(metricCard("Presión", "$pressure hPa", "A nivel del mar", accent), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginStart = dp(4) })
-        content.addView(metricRow3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         val visibilityKm = current.optDouble("visibility", Double.NaN).takeIf { it.isFinite() }?.let { String.format(java.util.Locale.getDefault(), "%.1f km", it / 1000.0) } ?: "—"
-        content.addView(metricCard("Visibilidad", visibilityKm, "Alcance estimado", accent), LinearLayout.LayoutParams(-1, dp(88)).apply { topMargin = dp(8) })
+        content.addView(card {
+            addView(text("Nubosidad ${current.optInt("cloud_cover")} %   ·   Presión $pressure hPa   ·   Visibilidad $visibilityKm", 11f, muted))
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-        content.addView(text("Pronóstico por hora", 17f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
+        content.addView(text("Próximas horas", 16f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20); bottomMargin = dp(8) })
         val hourlyRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val times = forecastTimes
         val temps = hours.optJSONArray("temperature_2m")
         val rains = hours.optJSONArray("precipitation_probability")
         val codes = hours.optJSONArray("weather_code")
-        val uvValues = hours.optJSONArray("uv_index")
         val start = currentHourIndex
-        repeat(10) { offset ->
+        // Cuatro horas, como el widget: escaneo rápido sin franja que se
+        // desplace horizontalmente en teléfonos de 380 dp.
+        repeat(4) { offset ->
             val index = start + offset
             if (times != null && temps != null && index < minOf(times.length(), temps.length())) {
-                val time = times.optString(index).substringAfter('T', "--:--")
+                val time = if (offset == 0) "Ahora" else times.optString(index).substringAfter('T', "--:--")
                 val hourCard = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                    setPadding(dp(8), dp(8), dp(8), dp(8)); background = rounded(panel, dp(14))
-                    addView(text(time, 11f, muted, true))
-                    addView(NativeWeatherGlyph(this@NativeWeatherActivity, codes?.optInt(index) ?: 0, 28), LinearLayout.LayoutParams(-1, dp(32)).apply {
-                        topMargin = dp(8)
+                    setPadding(dp(6), dp(8), dp(6), dp(8)); background = rounded(panel, dp(14))
+                    addView(text(time, 10f, muted, true))
+                    addView(NativeWeatherGlyph(this@NativeWeatherActivity, codes?.optInt(index) ?: 0, 26), LinearLayout.LayoutParams(-1, dp(30)).apply {
+                        topMargin = dp(6)
                     })
-                    addView(text("${temps.optDouble(index).toInt()}°", 15f, primary, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                    addView(text("${temps.optDouble(index).toInt()}°", 15f, primary, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
                     addView(text("${rains?.optInt(index) ?: 0}% lluvia", 9f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-                    if (uvValues != null && index < uvValues.length()) addView(text("UV ${uvValues.optDouble(index).toInt()}", 9f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                 }
-                hourlyRow.addView(hourCard, LinearLayout.LayoutParams(dp(88), dp(128)).apply { marginEnd = dp(8) })
+                hourlyRow.addView(hourCard, LinearLayout.LayoutParams(dp(78), dp(112)).apply { marginEnd = dp(6) })
             }
         }
         val horizontal = android.widget.HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(hourlyRow) }
         content.addView(horizontal)
-        content.addView(text("Próximos días", 17f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
+        content.addView(text("Próximos días", 16f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20); bottomMargin = dp(8) })
         val dates = daily.optJSONArray("time")
         val dayCodes = daily.optJSONArray("weather_code")
         val maxes = daily.optJSONArray("temperature_2m_max")
@@ -334,19 +324,19 @@ class NativeWeatherActivity : Activity() {
         repeat(dates?.length() ?: 0) { i ->
             content.addView(card {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                addView(text(if (i == 0) "Hoy" else formatDay(dates?.optString(i).orEmpty()), 14f, primary), LinearLayout.LayoutParams(0, -2, 1f))
+                addView(text(if (i == 0) "Hoy" else formatDay(dates?.optString(i).orEmpty()), 13f, primary, true), LinearLayout.LayoutParams(dp(48), -2))
+                addView(NativeWeatherGlyph(this@NativeWeatherActivity, dayCodes?.optInt(i) ?: 0, 26), LinearLayout.LayoutParams(dp(30), dp(30)))
                 val rainTotal = rainTotals?.optDouble(i, 0.0) ?: 0.0
                 val rainSummary = "Lluvia ${rainChances?.optInt(i) ?: 0}% · ${String.format(java.util.Locale.getDefault(), "%.1f", rainTotal)} mm"
                 val dayDescription = LinearLayout(this@NativeWeatherActivity).apply {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER_VERTICAL
-                    addView(text(weatherName(dayCodes?.optInt(i) ?: 0), 10f, muted, true), LinearLayout.LayoutParams(-1, -2))
-                    addView(text(rainSummary, 9f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                    addView(text(weatherName(dayCodes?.optInt(i) ?: 0), 11f, secondary, true), LinearLayout.LayoutParams(-1, -2))
+                    addView(text(rainSummary, 9f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
                 }
                 addView(dayDescription, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
-                addView(NativeWeatherGlyph(this@NativeWeatherActivity, dayCodes?.optInt(i) ?: 0, 30), LinearLayout.LayoutParams(dp(36), dp(36)))
-                addView(text("${mins?.optDouble(i)?.toInt() ?: 0}°  ${maxes?.optDouble(i)?.toInt() ?: 0}°", 13f, primary, true))
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(8) })
+                addView(text("${mins?.optDouble(i)?.toInt() ?: 0}° / ${maxes?.optDouble(i)?.toInt() ?: 0}°", 12f, primary, true))
+            }, LinearLayout.LayoutParams(-1, dp(64)).apply { bottomMargin = dp(6) })
         }
         addBackgroundControls()
         animateEntrance(content)
@@ -603,7 +593,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun addBackgroundControls() {
-        content.addView(text("Servicios de fondo", 16f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24); bottomMargin = dp(8) })
+        content.addView(text("Servicios de fondo", 16f, primary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20); bottomMargin = dp(8) })
         val widget = Switch(this).apply {
             text = "Alertas de clima y widget"; textSize = 13f; setTextColor(primary)
             isChecked = prefs.getBoolean("weather_notification_enabled", true)
@@ -699,11 +689,11 @@ class NativeWeatherActivity : Activity() {
     private fun metricCard(title: String, value: String, detail: String, accent: Int): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(16), dp(12), dp(16), dp(12))
+        setPadding(dp(12), dp(10), dp(12), dp(10))
         background = rounded(elevated, dp(14))
-        addView(text(title, 11f, muted, true))
-        addView(text(value, 19f, primary, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        addView(text(detail, 10f, accent), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        addView(text(title, 10f, muted, true))
+        addView(text(value, 18f, primary, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        addView(text(detail, 9f, accent), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
     }
 
     private fun animateEntrance(parent: LinearLayout) {
@@ -724,7 +714,7 @@ class NativeWeatherActivity : Activity() {
         in 80..82 -> "Chubascos"; in 85..86 -> "Nevadas"; in 95..99 -> "Tormenta eléctrica"; else -> "Condiciones variables"
     }
     private fun card(block: LinearLayout.() -> Unit): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(16)); background = rounded(panel, dp(16)); block()
+        orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(14), dp(14), dp(14)); background = rounded(panel, dp(16)); block()
     }
     private fun text(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
         text = value; textSize = size; setTextColor(color); if (bold) typeface = Typeface.DEFAULT_BOLD
@@ -763,12 +753,12 @@ class NativeWeatherActivity : Activity() {
             if (w <= 0f || h <= 0f) return
             val horizon = h * 0.52f
 
-            skyPaint.color = if (dark) 0xFF2A221A.toInt() else 0xFFE8C9A4.toInt()
-            waterPaint.color = if (dark) 0xFF121A16.toInt() else 0xFF6E6A4E.toInt()
+            skyPaint.color = if (dark) 0xFF0B0B0E.toInt() else 0xFFE8C9A4.toInt()
+            waterPaint.color = if (dark) 0xFF07090A.toInt() else 0xFF6E6A4E.toInt()
             canvas.drawRect(0f, 0f, w, horizon, skyPaint)
             canvas.drawRect(0f, horizon, w, h, waterPaint)
 
-            waterPaint.color = if (dark) 0xFF0B100D.toInt() else 0xFF3E5140.toInt()
+            waterPaint.color = if (dark) 0xFF050708.toInt() else 0xFF3E5140.toInt()
             for (i in 0 until 4) {
                 val y = horizon + (h - horizon) * (0.18f + i * 0.19f)
                 canvas.drawRect(0f, y, w, y + dp(2), waterPaint)
@@ -779,7 +769,7 @@ class NativeWeatherActivity : Activity() {
             sunPaint.color = accent
             canvas.drawCircle(sunX, sunY, dp(10).toFloat(), sunPaint)
 
-            ripplePaint.color = if (dark) 0x2A9DB99E.toInt() else 0x2A6F8F72.toInt()
+            ripplePaint.color = if (dark) 0x229DB99E.toInt() else 0x2A6F8F72.toInt()
             for (i in 0 until 6) {
                 val y = horizon + (h - horizon) * (0.06f + i * 0.13f)
                 val half = w * (0.06f + i * 0.015f)
@@ -792,7 +782,7 @@ class NativeWeatherActivity : Activity() {
                 canvas.drawLine(sunX - spread, y, sunX + spread, y, reflectionPaint)
             }
 
-            reedPaint.color = if (dark) 0x8C9DB99E.toInt() else 0x8C6F8F72.toInt()
+            reedPaint.color = if (dark) 0x669DB99E.toInt() else 0x8C6F8F72.toInt()
             for (i in 0..5) {
                 val x = w * (0.04f + i * 0.018f)
                 val top = h - h * (0.16f + (i % 3) * 0.04f)
@@ -812,28 +802,18 @@ class NativeWeatherActivity : Activity() {
         }
     }
 
-    /** Velo translúcido con doble borde y brillo superior, igual que Inicio. */
+    /** Velo AMOLED: negro translúcido con borde terracota tenue, sin brillo. */
     private inner class GlassPanelDrawable : GradientDrawable() {
         private val bronze = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            color = 0x338C6A3F.toInt()
+            color = 0x2BD98A67.toInt()
             strokeWidth = dp(1).toFloat()
-        }
-        private val sheen = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(
-                0f, 0f, 0f, dp(12).toFloat(),
-                intArrayOf(
-                    if (dark) 0x24F4ECE1.toInt() else 0x24FFFFFF.toInt(),
-                    if (dark) 0x00F4ECE1.toInt() else 0x00FFFFFF.toInt(),
-                ),
-                null, Shader.TileMode.CLAMP,
-            )
         }
 
         init {
             shape = RECTANGLE
-            cornerRadius = dp(12).toFloat()
-            setColor(if (dark) 0xE0201A14.toInt() else 0xE6FBF6ED.toInt())
+            cornerRadius = dp(16).toFloat()
+            setColor(if (dark) 0xE6000000.toInt() else 0xE6FBF6ED.toInt())
             setStroke(dp(1), border)
         }
 
@@ -843,20 +823,8 @@ class NativeWeatherActivity : Activity() {
             val inset = dp(1).toFloat()
             canvas.drawRoundRect(
                 r.left + inset, r.top + inset, r.right - inset, r.bottom - inset,
-                (dp(12) - dp(1)).toFloat(), (dp(12) - dp(1)).toFloat(), bronze,
+                dp(15).toFloat(), dp(15).toFloat(), bronze,
             )
-            canvas.save()
-            canvas.clipPath(Path().apply {
-                addRoundRect(
-                    r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat(),
-                    dp(12).toFloat(), dp(12).toFloat(), Path.Direction.CW,
-                )
-            })
-            canvas.drawRect(
-                r.left.toFloat(), r.top.toFloat(), r.right.toFloat(),
-                r.top + dp(12).toFloat(), sheen,
-            )
-            canvas.restore()
         }
     }
 
