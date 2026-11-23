@@ -28,7 +28,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
-import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 
@@ -45,7 +44,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenWeather()
         fun onOpenCodeSu()
         fun onEditShortcuts()
-        fun onStartAppUpdate()
         fun onManagePrivacyVpn(start: Boolean)
         fun onForceStopApp()
         fun onOpenWebsite(path: String)
@@ -83,11 +81,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var websiteCard: View
     private lateinit var profilePill: View
     private lateinit var guideButton: View
-    private lateinit var updateBanner: LinearLayout
-    private lateinit var updateTitle: TextView
-    private lateinit var updateSubtitle: TextView
-    private lateinit var updateProgress: ProgressBar
-    private lateinit var updateAction: TextView
     private var tourStepIndex = 0
     private val tourSteps = mutableListOf<Triple<View, String, String>>()
     private var entrancePlayed = false
@@ -107,10 +100,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
         val foreground = LinearLayout(context).apply { orientation = VERTICAL }
         foreground.addView(buildHeader(), LayoutParams(-1, dp(64)))
-        updateBanner = buildUpdateBanner()
-        foreground.addView(updateBanner, LayoutParams(-1, -2).apply {
-            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(8)
-        })
 
         homeScroll = ScrollView(context).apply {
             clipToPadding = false
@@ -122,10 +111,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(24))
         }
-        addEntranceTarget(content, sectionTitle("Acceso rápido", "Tus aplicaciones principales, listas en Android", "Editar") {
-            listener.onEditShortcuts()
-        }, LayoutParams(-1, -2).apply { topMargin = dp(4) })
-
         storeCard = actionCard(R.drawable.ic_home_store, "CodeHub Store", "Aplicaciones de código abierto para Android", accent) {
             listener.onOpenStore()
         }
@@ -179,12 +164,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
         websiteCard = buildWebsiteCard()
         addEntranceTarget(content, websiteCard, LayoutParams(-1, -2).apply { topMargin = dp(18) })
-        content.addView(TextView(context).apply {
-            text = "CodeHub · Guatemala"
-            textSize = 11f
-            setTextColor(muted)
-            gravity = Gravity.CENTER
-        }, LayoutParams(-1, -2).apply { topMargin = dp(24) })
 
         homeScroll.addView(content)
         foreground.addView(homeScroll, LayoutParams(-1, 0, 1f))
@@ -695,129 +674,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             addView(label("Mi perfil", 10f, accent, true), LayoutParams(-2, -2).apply { marginStart = dp(4) })
         }
         addView(profilePill, LayoutParams(-2, dp(40)).apply { marginStart = dp(8) })
-    }
-
-    private fun buildUpdateBanner() = LinearLayout(context).apply {
-        orientation = VERTICAL
-        visibility = View.GONE
-        setPadding(dp(12), dp(12), dp(12), dp(12))
-        background = glassSurface(dp(14))
-        val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        row.addView(TextView(context).apply {
-            text = "↑"
-            textSize = 16f
-            typeface = Typeface.DEFAULT
-            gravity = Gravity.CENTER
-            setTextColor(sageBright)
-            background = rounded(accentSoft, dp(10))
-            contentDescription = "Actualización disponible"
-        }, LayoutParams(dp(36), dp(36)))
-        val copy = LinearLayout(context).apply { orientation = VERTICAL }
-        updateTitle = label(if (englishUi) "Update available" else "Hay una actualización disponible", 13f, textPrimary, true)
-        updateSubtitle = label(if (englishUi) "CodeHub · preparing details…" else "CodeHub · preparando información…", 10f, secondaryText, false)
-        copy.addView(updateTitle)
-        copy.addView(updateSubtitle, LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        row.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
-        updateAction = TextView(context).apply {
-            text = if (englishUi) "Details" else "Ver detalles"
-            textSize = 11f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(textPrimary)
-            setPadding(dp(12), 0, dp(12), 0)
-            background = rounded(accent, dp(10))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { listener.onStartAppUpdate() }
-        }
-        row.addView(updateAction, LayoutParams(-2, dp(36)).apply { marginStart = dp(8) })
-        addView(row, LayoutParams(-1, -2))
-        updateProgress = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progressTintList = ColorStateList.valueOf(accent)
-            progressBackgroundTintList = ColorStateList.valueOf(accentSoft)
-            visibility = View.GONE
-        }
-        addView(updateProgress, LayoutParams(-1, dp(4)).apply { topMargin = dp(8) })
-    }
-
-    @JvmOverloads
-    fun showAppUpdateAvailable(version: String, build: String, publishedDate: String, shizukuReady: Boolean, required: Boolean = false) {
-        updateTitle.text = if (required) { if (englishUi) "Update required" else "Actualización necesaria" }
-            else if (englishUi) "A new update is available" else "Hay una actualización disponible"
-        updateSubtitle.text = (if (required) { if (englishUi) "This version is unsupported · " else "Esta versión ya no tiene soporte · " } else "") + "v$version" +
-            (if (build.isNotBlank()) " · $build" else "") +
-            (if (publishedDate.isNotBlank()) " · $publishedDate" else "") +
-            if (shizukuReady) { if (englishUi) " · Shizuku ready" else " · Shizuku listo" }
-            else { if (englishUi) " · Android confirmation" else " · confirmación de Android" }
-        updateAction.text = if (englishUi) "Details" else "Ver detalles"
-        updateAction.isEnabled = true
-        updateAction.alpha = 1f
-        updateProgress.visibility = View.GONE
-        updateBanner.visibility = View.VISIBLE
-        updateBanner.alpha = 0f
-        updateBanner.animate().alpha(1f).setDuration(240).start()
-    }
-
-    fun showAppUpdateProgress(percent: Int?, message: String) {
-        updateTitle.text = message
-        updateSubtitle.text = if (percent == null) { if (englishUi) "Preparing download and package" else "Preparando descarga y paquete" }
-            else if (englishUi) "Downloading CodeHub…" else "Descargando CodeHub…"
-        updateAction.text = if (percent == null) { if (englishUi) "Preparing" else "Preparando" } else "$percent%"
-        updateAction.isEnabled = false
-        updateAction.alpha = .75f
-        if (percent == null) {
-            updateProgress.isIndeterminate = true
-        } else {
-            updateProgress.isIndeterminate = false
-            updateProgress.progress = percent.coerceIn(0, 100)
-        }
-        updateProgress.visibility = View.VISIBLE
-        updateBanner.visibility = View.VISIBLE
-    }
-
-    fun showAppUpdateAwaitingConfirmation() {
-        updateTitle.text = if (englishUi) "Confirm the update in Android" else "Confirma la actualización en Android"
-        updateSubtitle.text = if (englishUi) "Android's installer keeps its security checks." else "El instalador de Android conserva sus comprobaciones de seguridad."
-        updateProgress.visibility = View.GONE
-        updateAction.text = if (englishUi) "Installer open" else "Instalador abierto"
-        updateAction.isEnabled = false
-        updateAction.alpha = .72f
-        updateBanner.visibility = View.VISIBLE
-    }
-
-    fun showAppUpdateInstallPermission() {
-        updateTitle.text = if (englishUi) "Allow installs from CodeHub" else "Permite instalar desde CodeHub"
-        updateSubtitle.text = if (englishUi) "Enable this permission in Android settings, then retry." else "Activa este permiso en Ajustes de Android y vuelve a intentarlo."
-        updateProgress.visibility = View.GONE
-        updateAction.text = if (englishUi) "Retry" else "Reintentar"
-        updateAction.isEnabled = true
-        updateAction.alpha = 1f
-        updateBanner.visibility = View.VISIBLE
-    }
-
-    fun showAppUpdateError(message: String) {
-        updateTitle.text = if (englishUi) "CodeHub could not update" else "No se pudo actualizar CodeHub"
-        updateSubtitle.text = message.take(280).ifBlank { if (englishUi) "Check your connection and try again." else "Revisa la conexión e inténtalo otra vez." }
-        updateProgress.visibility = View.GONE
-        updateAction.text = if (englishUi) "Retry" else "Reintentar"
-        updateAction.isEnabled = true
-        updateAction.alpha = 1f
-        updateBanner.visibility = View.VISIBLE
-    }
-
-    fun showAppUpdateInstalled(version: String) {
-        updateTitle.text = if (englishUi) "Update installed" else "Actualización instalada"
-        updateSubtitle.text = if (englishUi) "CodeHub is now on version $version." else "CodeHub ya está en la versión $version."
-        updateProgress.visibility = View.GONE
-        updateAction.text = if (englishUi) "Done" else "Listo"
-        updateAction.isEnabled = false
-        updateAction.alpha = .72f
-        updateBanner.visibility = View.VISIBLE
-    }
-
-    fun hideAppUpdateBanner() {
-        if (::updateBanner.isInitialized) updateBanner.visibility = View.GONE
     }
 
     private fun buildHero(): View = LinearLayout(context).apply {

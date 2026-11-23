@@ -72,7 +72,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!-- Atajos dinámicos gestionados por HomeShortcuts: el usuario elige
-                 hasta 4 destinos desde "Editar" en Acceso rápido. -->
+                 hasta 4 destinos según la configuración guardada. -->
             <!-- Los enlaces del sitio permanecen en el navegador y no se
                  interceptan aquí; las funciones de CodeHub se abren desde Inicio nativo. -->
         </activity>

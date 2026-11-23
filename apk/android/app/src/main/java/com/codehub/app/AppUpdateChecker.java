@@ -196,7 +196,7 @@ public class AppUpdateChecker {
                     Log.i(TAG, "sin actualización (local v" + localVersion + " code " + localCode
                             + ", remota v" + remoteVersion + " code " + remoteCode + ")");
                     clearCachedUpdate(activity);
-                    activity.runOnUiThread(activity::hideAppUpdateBanner);
+                    activity.runOnUiThread(activity::onAppUpdateUnavailable);
                     return;
                 }
 
@@ -208,7 +208,7 @@ public class AppUpdateChecker {
                         minimumSupportedCode > 0 && localCode < minimumSupportedCode,
                         formatPublishedDate(release.optString("published_at", "")));
                 cacheUpdate(activity, info);
-                activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
+                activity.runOnUiThread(() -> activity.onAppUpdateAvailable(info));
             } catch (Throwable t) {
                 Log.e(TAG, "Error chequeando actualización", t);
             } finally {
@@ -244,13 +244,13 @@ public class AppUpdateChecker {
             } catch (Exception ignored) { }
             if (!required && !isNewerBuild(version, code, localVersion, localCode)) {
                 clearCachedUpdate(activity);
-                activity.runOnUiThread(activity::hideAppUpdateBanner);
+                activity.runOnUiThread(activity::onAppUpdateUnavailable);
                 return;
             }
             UpdateInfo info = new UpdateInfo(version, build, url, code, required,
                     current.getString("app_update_available_date", ""));
             cacheUpdate(activity, info);
-            activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
+            activity.runOnUiThread(() -> activity.onAppUpdateAvailable(info));
         }).start();
     }
 
@@ -544,12 +544,12 @@ public class AppUpdateChecker {
         } catch (Exception ignored) { }
         if (!required && !isNewerBuild(version, code, localVersion, localVersionCode(activity))) {
             clearCachedUpdate(activity);
-            activity.runOnUiThread(activity::hideAppUpdateBanner);
+            activity.runOnUiThread(activity::onAppUpdateUnavailable);
             return;
         }
         UpdateInfo info = new UpdateInfo(version, build, url, code, required,
                 prefs.getString("app_update_available_date", ""));
-        activity.runOnUiThread(() -> activity.showAppUpdateBanner(info));
+        activity.runOnUiThread(() -> activity.onAppUpdateAvailable(info));
     }
 
     public static long localVersionCode(Context context) {

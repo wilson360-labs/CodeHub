@@ -157,7 +157,6 @@ public class MainActivity extends Activity {
             @Override public void onOpenWeather() { openNativeWeather(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
             @Override public void onEditShortcuts() { showShortcutEditor(); }
-            @Override public void onStartAppUpdate() { openAppUpdateDetails(); }
             @Override public void onManagePrivacyVpn(boolean start) {
                 if (start) {
                     Intent intent = new Intent(MainActivity.this, CodeHubPrivacyActivity.class);
@@ -344,15 +343,17 @@ public class MainActivity extends Activity {
         }
     }
 
-    void showAppUpdateBanner(AppUpdateChecker.UpdateInfo info) {
+    /** Única vista de actualización: el diálogo. No se muestra franja en el inicio. */
+    void onAppUpdateAvailable(AppUpdateChecker.UpdateInfo info) {
         if (info == null || isFinishing()) return;
         pendingAppUpdate = info;
-        if (nativeHome != null) nativeHome.showAppUpdateAvailable(
-                info.version, info.buildLabel, info.publishedDate, ShizukuInstaller.isReady(), info.required);
+        // Sin banner de inicio, el diálogo es la única entrada: una versión
+        // ya vista no debe dejar al usuario sin forma de actualizar.
+        if (!info.required) updateDialogShownFor = "";
         loadUpdateChangelog(info);
     }
 
-    /** Trae los cambios publicados en la web y los muestra en el panel/diálogo de Updates. */
+    /** Trae los cambios publicados en la web y los muestra en el diálogo de Updates. */
     private void loadUpdateChangelog(final AppUpdateChecker.UpdateInfo info) {
         final String key = info.versionCode + ":" + info.version;
         if (info.required) showUpdateDialog(info, lastChangelogText, true);
@@ -450,7 +451,7 @@ public class MainActivity extends Activity {
         panel.addView(version, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(5); }});
 
         TextView what = new TextView(this);
-        what.setText(en ? "What's new" : "Novedades de esta versión");
+        what.setText(en ? "What's new:" : "Qué hay de nuevo:");
         what.setTextColor(0xFF8FCDB5); what.setTextSize(14); what.setTypeface(null, android.graphics.Typeface.BOLD);
         panel.addView(what, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(18); }});
 
@@ -515,16 +516,10 @@ public class MainActivity extends Activity {
         if (updateDialogNotes != null) updateDialogNotes.setText(changelogForDialog(changelog, isEnglishDevice()));
     }
 
-    private void openAppUpdateDetails() {
-        if (pendingAppUpdate == null) return;
-        updateDialogShownFor = "";
-        showUpdateDialog(pendingAppUpdate, lastChangelogText, pendingAppUpdate.required);
-    }
-
-    void hideAppUpdateBanner() {
+    void onAppUpdateUnavailable() {
         if (pendingAppUpdate != null && pendingAppUpdate.required) return;
         if (appUpdateRunning || appUpdateAwaitingConfirmation) return;
-        if (nativeHome != null) nativeHome.hideAppUpdateBanner();
+        dismissUpdateDialog();
     }
 
     private void startAppUpdate() {
@@ -549,7 +544,6 @@ public class MainActivity extends Activity {
                 && !ShizukuInstaller.hasPermission()) {
             appUpdateRunning = true;
             String authorize = isEnglishDevice() ? "Authorize CodeHub in Shizuku…" : "Autoriza CodeHub en Shizuku…";
-            if (nativeHome != null) nativeHome.showAppUpdateProgress(null, authorize);
             setUpdateDialogProgress(null, authorize);
             ShizukuInstaller.requestPermission(granted -> runOnUiThread(() -> {
                 appUpdateRunning = false;
@@ -561,7 +555,6 @@ public class MainActivity extends Activity {
         boolean shizukuReady = ShizukuInstaller.isReady();
         if (!shizukuReady && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && !getPackageManager().canRequestPackageInstalls()) {
-            if (nativeHome != null) nativeHome.showAppUpdateInstallPermission();
             setUpdateDialogStatus(isEnglishDevice() ? "Allow installs from CodeHub in Android settings, then retry." : "Permite instalaciones de CodeHub en Ajustes de Android y reintenta.");
             if (updateDialogAction != null) {
                 updateDialogAction.setText(isEnglishDevice() ? "Retry" : "Reintentar");
@@ -579,7 +572,6 @@ public class MainActivity extends Activity {
         appUpdateRunning = true;
         appUpdateAwaitingConfirmation = false;
         String preparing = isEnglishDevice() ? "Preparing update…" : "Preparando actualización…";
-        if (nativeHome != null) nativeHome.showAppUpdateProgress(null, preparing);
         setUpdateDialogProgress(null, preparing);
         getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE).edit()
             .putBoolean(AppUpdateChecker.PREF_UPDATE_PENDING, true)
@@ -601,40 +593,33 @@ public class MainActivity extends Activity {
                     @Override public void onProgress(long downloadedBytes, long totalBytes) {
                         final Integer percent = totalBytes > 0
                                 ? (int) Math.min(100L, downloadedBytes * 100L / totalBytes) : null;
-                        runOnUiThread(() -> {
-                            if (nativeHome != null) nativeHome.showAppUpdateProgress(percent, "Descargando CodeHub…");
-                            setUpdateDialogProgress(percent, isEnglishDevice() ? "Downloading CodeHub…" : "Descargando CodeHub…");
-                        });
+                        runOnUiThread(() -> setUpdateDialogProgress(percent,
+                                isEnglishDevice() ? "Downloading CodeHub…" : "Descargando CodeHub…"));
                     }
 
                     @Override public void onFinished(NativeStoreApkInstaller.Status status, String message) {
                         runOnUiThread(() -> {
                             appUpdateRunning = false;
                             if (status == NativeStoreApkInstaller.Status.INSTALLED) {
-                                if (nativeHome != null) nativeHome.showAppUpdateInstalled(update.version);
                                 setUpdateDialogProgress(100, isEnglishDevice() ? "Update installed. CodeHub is restarting." : "Actualización instalada. CodeHub se está iniciando de nuevo.");
                                 if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Installed" : "Instalada"); updateDialogAction.setEnabled(false); }
                             } else if (status == NativeStoreApkInstaller.Status.INSTALLER_OPENED) {
                                 appUpdateAwaitingConfirmation = true;
-                                if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
                                 setUpdateDialogStatus(isEnglishDevice() ? "Confirm the install in Android's installer to finish." : "Confirma la instalación en Android para terminar.");
                                 if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Installer opened" : "Instalador abierto"); updateDialogAction.setEnabled(false); }
                                 if (message != null && !message.isEmpty())
                                     Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                             } else if (status == NativeStoreApkInstaller.Status.READY_BACKGROUND) {
                                 appUpdateAwaitingConfirmation = true;
-                                if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
                                 setUpdateDialogStatus(isEnglishDevice() ? "The package is ready. Finish in Android's installer." : "El paquete está listo. Finaliza en el instalador de Android.");
                                 if (message != null && !message.isEmpty())
                                     Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                             } else if (status == NativeStoreApkInstaller.Status.SIGNATURE_MISMATCH) {
                                 clearPendingSelfUpdate();
-                                if (nativeHome != null) nativeHome.showAppUpdateError(message);
                                 setUpdateDialogStatus(message == null ? (isEnglishDevice() ? "The signature changed. Review the message before reinstalling." : "La firma cambió. Revisa el mensaje antes de reinstalar.") : message);
                                 if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Retry" : "Reintentar"); updateDialogAction.setEnabled(true); }
                             } else {
                                 clearPendingSelfUpdate();
-                                if (nativeHome != null) nativeHome.showAppUpdateError(message);
                                 setUpdateDialogStatus(message == null ? (isEnglishDevice() ? "Update failed. Check your connection and retry." : "No se pudo actualizar. Revisa la conexión e inténtalo de nuevo.") : message);
                                 if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Retry" : "Reintentar"); updateDialogAction.setEnabled(true); }
                             }
@@ -649,7 +634,11 @@ public class MainActivity extends Activity {
             appUpdateRunning = false;
             clearPendingSelfUpdate();
             android.util.Log.e("CodeHubUpdater", "No se pudo iniciar la actualización", error);
-            if (nativeHome != null) nativeHome.showAppUpdateError(error.getMessage());
+            setUpdateDialogStatus(error.getMessage());
+            if (updateDialogAction != null) {
+                updateDialogAction.setText(isEnglishDevice() ? "Retry" : "Reintentar");
+                updateDialogAction.setEnabled(true);
+            }
         }
     }
 
@@ -1633,17 +1622,16 @@ public class MainActivity extends Activity {
             long installedCode = AppUpdateChecker.localVersionCode(this);
             if (pendingAppUpdate.versionCode > 0 && installedCode >= pendingAppUpdate.versionCode) {
                 dismissUpdateDialog();
-                if (nativeHome != null) nativeHome.showAppUpdateInstalled(pendingAppUpdate.version);
+                Toast.makeText(this, isEnglishDevice()
+                    ? "CodeHub " + pendingAppUpdate.version + " installed."
+                    : "CodeHub " + pendingAppUpdate.version + " instalado.", Toast.LENGTH_LONG).show();
             } else {
                 clearPendingSelfUpdate();
-                if (nativeHome != null) {
-                    nativeHome.showAppUpdateAvailable(
-                        pendingAppUpdate.version, pendingAppUpdate.buildLabel, pendingAppUpdate.publishedDate,
-                        ShizukuInstaller.isReady(), pendingAppUpdate.required);
-                }
                 if (pendingAppUpdate.required) {
                     updateDialogShownFor = "";
                     showUpdateDialog(pendingAppUpdate, lastChangelogText, true);
+                } else {
+                    onAppUpdateAvailable(pendingAppUpdate);
                 }
             }
         }
