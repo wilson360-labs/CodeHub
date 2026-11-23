@@ -615,7 +615,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setTextColor(R.id.widget_feels, secondary);
         views.setTextColor(R.id.widget_details, secondary);
         views.setTextColor(R.id.widget_updated2, secondary);
-        views.setTextColor(R.id.widget_refresh, accent);
+        views.setInt(R.id.widget_refresh, "setColorFilter", accent);
         for (int id : H_TIME) views.setTextColor(id, secondary);
         for (int id : H_TEMP) views.setTextColor(id, primary);
         for (int id : D_DAY) views.setTextColor(id, secondary);

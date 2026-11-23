@@ -4,22 +4,35 @@ import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
-import android.content.Intent;
 import android.os.Build;
 import android.widget.RemoteViews;
 
+import java.util.List;
+
 /**
- * Widget de accesos rápidos de CodeHub (pantalla de inicio).
+ * Widget de acceso directo completo de CodeHub (pantalla de inicio).
  *
- * Los widgets son interfaces estáticos que no hacen trabajo en segundo
- * plano; mantienen la misma URL base del resto de la app.
- *
- * Pinta un grid 2x2 con las 4 secciones principales (JARVIS, Clima,
- * Catálogo Open Source y Herramientas), cada una con su icono del set
- * de shortcuts y un deep link del dominio propio que abre MainActivity
- * en la sección correcta.
+ * Rejilla 3x3 con los nueve destinos de HomeShortcuts. Cada celda usa el
+ * mismo índice vectorial y el mismo deep link que los atajos dinámicos,
+ * así el widget no tiene rutas propias que se puedan desincronizar.
  */
 public class QuickAccessWidgetProvider extends AppWidgetProvider {
+
+    private static final int[] CELLS = {
+        R.id.quick_cell_wile, R.id.quick_cell_weather, R.id.quick_cell_apps,
+        R.id.quick_cell_catalog, R.id.quick_cell_tools, R.id.quick_cell_codebeat,
+        R.id.quick_cell_codestream, R.id.quick_cell_codesu, R.id.quick_cell_profile
+    };
+    private static final int[] ICONS = {
+        R.id.quick_icon_wile, R.id.quick_icon_weather, R.id.quick_icon_apps,
+        R.id.quick_icon_catalog, R.id.quick_icon_tools, R.id.quick_icon_codebeat,
+        R.id.quick_icon_codestream, R.id.quick_icon_codesu, R.id.quick_icon_profile
+    };
+    private static final int[] LABELS = {
+        R.id.quick_label_wile, R.id.quick_label_weather, R.id.quick_label_apps,
+        R.id.quick_label_catalog, R.id.quick_label_tools, R.id.quick_label_codebeat,
+        R.id.quick_label_codestream, R.id.quick_label_codesu, R.id.quick_label_profile
+    };
 
     @Override
     public void onUpdate(Context context, AppWidgetManager mgr, int[] appWidgetIds) {
@@ -30,24 +43,24 @@ public class QuickAccessWidgetProvider extends AppWidgetProvider {
 
     private static RemoteViews buildViews(Context context) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick);
-        views.setOnClickPendingIntent(R.id.quick_cell_wile, openApp(context, 210,
-            "https://wilson360-labs.vercel.app/index.html#open-to-work"));
-        views.setOnClickPendingIntent(R.id.quick_cell_weather, openApp(context, 211,
-            "https://wilson360-labs.vercel.app/index.html#weather-section"));
-        views.setOnClickPendingIntent(R.id.quick_cell_catalog, openApp(context, 212,
-            "https://wilson360-labs.vercel.app/opensource"));
-        views.setOnClickPendingIntent(R.id.quick_cell_tools, openApp(context, 213,
-            "https://wilson360-labs.vercel.app/tools"));
+        List<HomeShortcuts.Option> options = HomeShortcuts.options();
+        views.setTextViewText(R.id.quick_header_hint,
+            context.getString(R.string.quick_access_count, options.size()));
+
+        int count = Math.min(CELLS.length, options.size());
+        for (int i = 0; i < count; i++) {
+            HomeShortcuts.Option option = options.get(i);
+            views.setImageViewResource(ICONS[i], option.icon);
+            views.setTextViewText(LABELS[i], option.shortLabel);
+            views.setContentDescription(CELLS[i], option.longLabel);
+            views.setOnClickPendingIntent(CELLS[i],
+                PendingIntent.getActivity(context, 210 + i, HomeShortcuts.intentFor(context, option), flags()));
+        }
         return views;
     }
 
-    private static PendingIntent openApp(Context context, int requestCode, String url) {
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.setAction(Intent.ACTION_VIEW);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        intent.putExtra("open_url", url);
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT |
+    private static int flags() {
+        return PendingIntent.FLAG_UPDATE_CURRENT |
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
-        return PendingIntent.getActivity(context, requestCode, intent, flags);
     }
 }
