@@ -26,7 +26,10 @@ public class AutoKillReceiver extends BroadcastReceiver {
                 scheduleDailyAlarm(context);
             else
                 cancelDailyAlarm(context);
-            AutoKillHelper.syncServiceState();
+            // No arrancar el foreground service desde un receiver en segundo
+            // plano: Android 12+ lanza ForegroundServiceStartNotAllowedException.
+            // PowerGuardReceiver ya sincroniza el servicio con try/catch y
+            // App.init() lo hace al abrir la app.
             return;
         }
 
