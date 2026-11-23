@@ -60,16 +60,16 @@ class NativeWeatherActivity : Activity() {
         OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(12, TimeUnit.SECONDS).build()
     }
     private val dark by lazy { (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES }
-    private val bg by lazy { if (dark) 0xFF08110D.toInt() else 0xFFF0F3EA.toInt() }
-    private val panel by lazy { if (dark) 0xFF111B16.toInt() else 0xFFFAFCF5.toInt() }
-    private val elevated by lazy { if (dark) 0xFF19241D.toInt() else 0xFFE5ECDF.toInt() }
-    private val primary by lazy { if (dark) 0xFFF1F4E9.toInt() else 0xFF26362D.toInt() }
-    private val secondary by lazy { if (dark) 0xFFB9C7B9.toInt() else 0xFF536658.toInt() }
-    private val muted by lazy { if (dark) 0xFF87998B.toInt() else 0xFF718173.toInt() }
-    private val border by lazy { if (dark) 0x333B614A.toInt() else 0x293F684D.toInt() }
-    private val accent by lazy { if (dark) 0xFFD7A17B.toInt() else 0xFFA76443.toInt() }
-    private val sage by lazy { if (dark) 0xFFA6C69C.toInt() else 0xFF5E8768.toInt() }
-    private val accentSoft by lazy { if (dark) 0xFF1B2A21.toInt() else 0xFFE2EBDD.toInt() }
+    private val bg by lazy { if (dark) 0xFF000000.toInt() else 0xFFF3EADD.toInt() }
+    private val panel by lazy { if (dark) 0xFF0A0A0C.toInt() else 0xFFFBF6ED.toInt() }
+    private val elevated by lazy { if (dark) 0xFF101013.toInt() else 0xFFF6EEDF.toInt() }
+    private val primary by lazy { if (dark) 0xFFF4ECE1.toInt() else 0xFF2E241C.toInt() }
+    private val secondary by lazy { if (dark) 0xFFC2B6A8.toInt() else 0xFF6E5D4B.toInt() }
+    private val muted by lazy { if (dark) 0xFF8E8377.toInt() else 0xFF9A8B78.toInt() }
+    private val border by lazy { if (dark) 0x14F4ECE1.toInt() else 0x142E241C.toInt() }
+    private val accent by lazy { if (dark) 0xFFD98A67.toInt() else 0xFFB85C3C.toInt() }
+    private val sage by lazy { if (dark) 0xFF9DB99E.toInt() else 0xFF6F8F72.toInt() }
+    private val accentSoft by lazy { if (dark) 0xFF1A1210.toInt() else 0xFFEAD7C8.toInt() }
     private lateinit var content: LinearLayout
     private var request: Call? = null
     private var lat = 0.0
@@ -758,15 +758,15 @@ class NativeWeatherActivity : Activity() {
             val foggy = weatherCode == 45 || weatherCode == 48
             val cloudy = weatherCode == 3 || weatherCode in 1..2
             skyPaint.color = when {
-                dark && (rainy || foggy) -> 0xFF111A18.toInt()
-                dark -> 0xFF17251D.toInt()
-                rainy || foggy -> 0xFFB8C5B6.toInt()
-                else -> 0xFFD7E4C9.toInt()
+                dark && (rainy || foggy) -> 0xFF07080A.toInt()
+                dark -> 0xFF0B0B0E.toInt()
+                rainy || foggy -> 0xFFC2B6A8.toInt()
+                else -> 0xFFE8C9A4.toInt()
             }
             waterPaint.color = when {
-                dark -> 0xFF0B1711.toInt()
-                rainy -> 0xFF536C5B.toInt()
-                else -> 0xFF718A6B.toInt()
+                dark -> 0xFF050708.toInt()
+                rainy -> 0xFF6E6A4E.toInt()
+                else -> 0xFF6E6A4E.toInt()
             }
             canvas.drawRect(0f, 0f, w, horizon, skyPaint)
             canvas.drawRect(0f, horizon, w, h, waterPaint)
@@ -780,12 +780,12 @@ class NativeWeatherActivity : Activity() {
             val sunX = w * 0.74f
             val sunY = horizon - h * 0.10f
             if (!cloudy && !rainy && !snowy && !foggy) {
-                sunPaint.color = if (isDay) accent else 0xFFDCE5CF.toInt()
+                sunPaint.color = if (isDay) accent else 0xFFF4ECE1.toInt()
                 canvas.drawCircle(sunX, sunY, dp(10).toFloat(), sunPaint)
             }
 
             if (cloudy || rainy || snowy || foggy) {
-                sunPaint.color = if (dark) 0xFF718477.toInt() else 0xFFEDF1E6.toInt()
+                sunPaint.color = if (dark) 0xFF2A2320.toInt() else 0xFFEAD7C8.toInt()
                 val cloudX = w * 0.70f
                 val cloudY = horizon * 0.60f
                 val radius = dp(13).toFloat()
@@ -797,7 +797,7 @@ class NativeWeatherActivity : Activity() {
             }
 
             if (rainy) {
-                ripplePaint.color = if (dark) 0x99A6C69C.toInt() else 0xAA496F58.toInt()
+                ripplePaint.color = if (dark) 0x809DB99E.toInt() else 0x2A6F8F72.toInt()
                 ripplePaint.strokeWidth = dp(2).toFloat()
                 for (i in 0..7) {
                     val x = w * (.57f + (i % 4) * .07f)
@@ -806,11 +806,11 @@ class NativeWeatherActivity : Activity() {
                 }
             }
             if (snowy) {
-                sunPaint.color = if (dark) 0xFFE3EBDC.toInt() else 0xFFFFFFFF.toInt()
+                sunPaint.color = if (dark) 0xCCF4ECE1.toInt() else 0xFFFFFFFF.toInt()
                 for (i in 0..9) canvas.drawCircle(w * (.55f + (i % 5) * .075f), horizon * (.5f + (i / 5) * .35f), dp(2).toFloat(), sunPaint)
             }
             if (foggy) {
-                ripplePaint.color = 0x668FA397
+                ripplePaint.color = if (dark) 0x66C2B6A8.toInt() else 0x2A6F8F72.toInt()
                 ripplePaint.strokeWidth = dp(3).toFloat()
                 for (i in 0..2) {
                     val y = horizon * (.48f + i * .18f)
