@@ -412,7 +412,8 @@ public class AppUpdateChecker {
             }
             if (date == null) return "";
             String formatted = new java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(date);
-            return "Actualizada el " + formatted;
+            return ("en".equalsIgnoreCase(java.util.Locale.getDefault().getLanguage())
+                    ? "Updated " : "Actualizada el ") + formatted;
         } catch (Exception ignored) { return ""; }
     }
 
@@ -422,6 +423,10 @@ public class AppUpdateChecker {
      * SHA-256 del APK.
      */
     public static String fetchChangelogText() {
+        return fetchChangelogText(false);
+    }
+
+    public static String fetchChangelogText(boolean english) {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(CHANGELOG_URL).openConnection();
@@ -446,15 +451,20 @@ public class AppUpdateChecker {
                 JSONObject entry = entries.optJSONObject(i);
                 if (entry == null) continue;
                 String version = entry.optString("version").trim();
-                String title = entry.optString("title").trim();
+                String title = entry.optString(english ? "title_en" : "title").trim();
+                if (english && title.isEmpty()) title = "CodeHub update";
+                if (!english && title.isEmpty()) title = entry.optString("title").trim();
                 JSONArray changes = entry.optJSONArray("changes");
-                if (version.isEmpty() && title.isEmpty() && changes == null) continue;
+                JSONArray localizedChanges = english ? entry.optJSONArray("changes_en") : changes;
+                if (english && (localizedChanges == null || localizedChanges.length() == 0)) continue;
+                if (version.isEmpty() && title.isEmpty() && localizedChanges == null) continue;
                 if (shown > 0) out.append("\n\n");
                 out.append("• ").append(version);
                 if (!title.isEmpty()) out.append(" — ").append(title);
-                if (changes != null) {
-                    for (int j = 0; j < changes.length() && j < 8; j++) {
-                        String change = changes.optString(j).trim();
+                if (localizedChanges == null) localizedChanges = changes;
+                if (localizedChanges != null) {
+                    for (int j = 0; j < localizedChanges.length() && j < 8; j++) {
+                        String change = localizedChanges.optString(j).trim();
                         if (change.isEmpty()) continue;
                         out.append("\n   - ").append(change);
                     }

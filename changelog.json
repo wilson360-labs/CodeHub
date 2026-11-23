@@ -1,17 +1,36 @@
 [
   {
+    "version": "v7.72",
+    "date": "2026-11-22",
+    "type": "feat",
+    "title": "Actualizador nativo y clima Nature renovado",
+    "title_en": "Native updater and refreshed Nature weather",
+    "changes": [
+      "Actualizador nativo con lista de cambios, versión, fecha y progreso de descarga en un solo diálogo.",
+      "Changelog del actualizador localizado en español e inglés según el idioma del teléfono.",
+      "Clima con paleta Nature para tema claro y oscuro; el paisaje cambia con sol, nubes, lluvia, nieve y niebla.",
+      "Widget de clima con iconos vectoriales por condición y glifos corregidos."
+    ],
+    "changes_en": [
+      "Native updater brings release notes, version, date and download progress together in one dialog.",
+      "Updater changelog is localized in Spanish or English based on the device language.",
+      "Weather uses the Nature palette in light and dark themes; the landscape reflects sun, clouds, rain, snow and fog.",
+      "Weather widget uses condition-specific vector icons with corrected glyphs."
+    ]
+  },
+  {
     "version": "v7.61",
     "date": "2026-11-19",
     "type": "feat",
-    "title": "CodeSu inteligente: Turbo fiable, cambios en vivo y ahorro de bateria",
+    "title": "CodeSu inteligente: Turbo fiable, cambios en vivo y ahorro de batería",
     "title_en": "Smarter CodeSu: reliable Turbo, live results and battery care",
     "changes": [
-      "Turbo por Accesibilidad reescrito: sondeo real, gestos de respaldo y sin verificacion bloqueante.",
-      "Al terminar el tasker vuelve a CodeSu y la lista se actualiza con cache real y resultados por app en vivo.",
-      "Ahorro de bateria al 5%: cierra apps seguras y sugiere conectar el cargador antes de KillMyApps.",
+      "Turbo por Accesibilidad reescrito: sondeo real, gestos de respaldo y sin verificación bloqueante.",
+      "Al terminar el tasker vuelve a CodeSu y la lista se actualiza con caché real y resultados por app en vivo.",
+      "Ahorro de batería al 5%: cierra apps seguras y sugiere conectar el cargador antes de KillMyApps.",
       "Modo juego: al detectar tu juego activa el perfil de rendimiento y libera apps en segundo plano.",
-      "Debloater con busqueda, filtros por categoria/estado, badges de color y acciones por lote.",
-      "Registro de cambios bilingue espanol/ingles con dialogo de actualizacion y boton cerrar.",
+      "Debloater con búsqueda, filtros por categoría/estado, indicadores de color y acciones por lote.",
+      "Registro de cambios bilingüe en español e inglés con diálogo de actualización y botón para cerrar.",
       "CI genera el APK sin firma listo para instalar con MT Manager."
     ],
     "changes_en": [

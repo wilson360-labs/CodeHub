@@ -34,6 +34,7 @@ import android.widget.TextView
 
 /** Native Android home for the APK; web-only sections remain available through the site action. */
 class NativeHomeView(context: Context, private val listener: Listener) : LinearLayout(context) {
+    private val englishUi: Boolean get() = context.resources.configuration.locales[0].language == "en"
     interface Listener {
         fun onOpenStore()
         fun onOpenMyApps()
@@ -85,7 +86,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var updateBanner: LinearLayout
     private lateinit var updateTitle: TextView
     private lateinit var updateSubtitle: TextView
-    private lateinit var updateChangelog: TextView
     private lateinit var updateProgress: ProgressBar
     private lateinit var updateAction: TextView
     private var tourStepIndex = 0
@@ -713,13 +713,13 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             contentDescription = "Actualización disponible"
         }, LayoutParams(dp(36), dp(36)))
         val copy = LinearLayout(context).apply { orientation = VERTICAL }
-        updateTitle = label("Hay una actualización disponible", 13f, textPrimary, true)
-        updateSubtitle = label("CodeHub · preparando información…", 10f, secondaryText, false)
+        updateTitle = label(if (englishUi) "Update available" else "Hay una actualización disponible", 13f, textPrimary, true)
+        updateSubtitle = label(if (englishUi) "CodeHub · preparing details…" else "CodeHub · preparando información…", 10f, secondaryText, false)
         copy.addView(updateTitle)
         copy.addView(updateSubtitle, LayoutParams(-1, -2).apply { topMargin = dp(4) })
         row.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
         updateAction = TextView(context).apply {
-            text = "Actualizar"
+            text = if (englishUi) "Details" else "Ver detalles"
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
@@ -732,13 +732,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         row.addView(updateAction, LayoutParams(-2, dp(36)).apply { marginStart = dp(8) })
         addView(row, LayoutParams(-1, -2))
-        updateChangelog = TextView(context).apply {
-            textSize = 10f
-            setTextColor(secondaryText)
-            visibility = View.GONE
-            setPadding(dp(4), dp(6), dp(4), dp(2))
-        }
-        addView(updateChangelog, LayoutParams(-1, -2).apply { topMargin = dp(6) })
         updateProgress = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progressTintList = ColorStateList.valueOf(accent)
@@ -748,26 +741,16 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(updateProgress, LayoutParams(-1, dp(4)).apply { topMargin = dp(8) })
     }
 
-    fun showAppUpdateChangelog(changelog: String) {
-        if (!::updateChangelog.isInitialized) return
-        val notes = changelog.trim()
-        if (notes.isEmpty()) {
-            updateChangelog.visibility = View.GONE
-            return
-        }
-        updateChangelog.text = notes
-        updateChangelog.visibility = View.VISIBLE
-    }
-
     @JvmOverloads
     fun showAppUpdateAvailable(version: String, build: String, publishedDate: String, shizukuReady: Boolean, required: Boolean = false) {
-        showAppUpdateChangelog("")
-        updateTitle.text = if (required) "Actualización obligatoria" else "Hay una actualización disponible"
-        updateSubtitle.text = (if (required) "Esta versión ya no tiene soporte · " else "") + "v$version" +
+        updateTitle.text = if (required) { if (englishUi) "Update required" else "Actualización necesaria" }
+            else if (englishUi) "A new update is available" else "Hay una actualización disponible"
+        updateSubtitle.text = (if (required) { if (englishUi) "This version is unsupported · " else "Esta versión ya no tiene soporte · " } else "") + "v$version" +
             (if (build.isNotBlank()) " · $build" else "") +
             (if (publishedDate.isNotBlank()) " · $publishedDate" else "") +
-            if (shizukuReady) " · instalación rápida lista" else " · instalación confirmada por Android"
-        updateAction.text = if (required) "Actualizar ahora" else "Actualizar"
+            if (shizukuReady) { if (englishUi) " · Shizuku ready" else " · Shizuku listo" }
+            else { if (englishUi) " · Android confirmation" else " · confirmación de Android" }
+        updateAction.text = if (englishUi) "Details" else "Ver detalles"
         updateAction.isEnabled = true
         updateAction.alpha = 1f
         updateProgress.visibility = View.GONE
@@ -778,8 +761,9 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
     fun showAppUpdateProgress(percent: Int?, message: String) {
         updateTitle.text = message
-        updateSubtitle.text = if (percent == null) "Verificando la descarga y el paquete" else "Descargando CodeHub…"
-        updateAction.text = if (percent == null) "Preparando" else "$percent%"
+        updateSubtitle.text = if (percent == null) { if (englishUi) "Preparing download and package" else "Preparando descarga y paquete" }
+            else if (englishUi) "Downloading CodeHub…" else "Descargando CodeHub…"
+        updateAction.text = if (percent == null) { if (englishUi) "Preparing" else "Preparando" } else "$percent%"
         updateAction.isEnabled = false
         updateAction.alpha = .75f
         if (percent == null) {
@@ -793,40 +777,40 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     }
 
     fun showAppUpdateAwaitingConfirmation() {
-        updateTitle.text = "Confirma la actualización en Android"
-        updateSubtitle.text = "Play Protect y el instalador del sistema conservan sus comprobaciones."
+        updateTitle.text = if (englishUi) "Confirm the update in Android" else "Confirma la actualización en Android"
+        updateSubtitle.text = if (englishUi) "Android's installer keeps its security checks." else "El instalador de Android conserva sus comprobaciones de seguridad."
         updateProgress.visibility = View.GONE
-        updateAction.text = "Instalador abierto"
+        updateAction.text = if (englishUi) "Installer open" else "Instalador abierto"
         updateAction.isEnabled = false
         updateAction.alpha = .72f
         updateBanner.visibility = View.VISIBLE
     }
 
     fun showAppUpdateInstallPermission() {
-        updateTitle.text = "Permite la instalación desde CodeHub"
-        updateSubtitle.text = "Activa este permiso en Android y vuelve a tocar Actualizar."
+        updateTitle.text = if (englishUi) "Allow installs from CodeHub" else "Permite instalar desde CodeHub"
+        updateSubtitle.text = if (englishUi) "Enable this permission in Android settings, then retry." else "Activa este permiso en Ajustes de Android y vuelve a intentarlo."
         updateProgress.visibility = View.GONE
-        updateAction.text = "Reintentar"
+        updateAction.text = if (englishUi) "Retry" else "Reintentar"
         updateAction.isEnabled = true
         updateAction.alpha = 1f
         updateBanner.visibility = View.VISIBLE
     }
 
     fun showAppUpdateError(message: String) {
-        updateTitle.text = "No se pudo actualizar CodeHub"
-        updateSubtitle.text = message.take(280).ifBlank { "Revisa la conexión e inténtalo otra vez." }
+        updateTitle.text = if (englishUi) "CodeHub could not update" else "No se pudo actualizar CodeHub"
+        updateSubtitle.text = message.take(280).ifBlank { if (englishUi) "Check your connection and try again." else "Revisa la conexión e inténtalo otra vez." }
         updateProgress.visibility = View.GONE
-        updateAction.text = "Reintentar"
+        updateAction.text = if (englishUi) "Retry" else "Reintentar"
         updateAction.isEnabled = true
         updateAction.alpha = 1f
         updateBanner.visibility = View.VISIBLE
     }
 
     fun showAppUpdateInstalled(version: String) {
-        updateTitle.text = "Actualización instalada"
-        updateSubtitle.text = "CodeHub ya está en la versión $version."
+        updateTitle.text = if (englishUi) "Update installed" else "Actualización instalada"
+        updateSubtitle.text = if (englishUi) "CodeHub is now on version $version." else "CodeHub ya está en la versión $version."
         updateProgress.visibility = View.GONE
-        updateAction.text = "Listo"
+        updateAction.text = if (englishUi) "Done" else "Listo"
         updateAction.isEnabled = false
         updateAction.alpha = .72f
         updateBanner.visibility = View.VISIBLE

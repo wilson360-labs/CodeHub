@@ -31,6 +31,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
+import android.graphics.drawable.GradientDrawable;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
@@ -41,6 +42,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import android.widget.ImageView;
+import android.widget.ScrollView;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
@@ -95,6 +98,11 @@ public class MainActivity extends Activity {
     private boolean appUpdateRunning;
     private boolean appUpdateAwaitingConfirmation;
     private AlertDialog updateDialog;
+    private TextView updateDialogNotes;
+    private TextView updateDialogStatus;
+    private TextView updateDialogPercent;
+    private ProgressBar updateDialogProgress;
+    private Button updateDialogAction;
     private String updateDialogShownFor = "";
     private String changelogLoadedFor = "";
     private String lastChangelogText = "";
@@ -149,7 +157,7 @@ public class MainActivity extends Activity {
             @Override public void onOpenWeather() { openNativeWeather(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
             @Override public void onEditShortcuts() { showShortcutEditor(); }
-            @Override public void onStartAppUpdate() { startAppUpdate(); }
+            @Override public void onStartAppUpdate() { openAppUpdateDetails(); }
             @Override public void onManagePrivacyVpn(boolean start) {
                 if (start) {
                     Intent intent = new Intent(MainActivity.this, CodeHubPrivacyActivity.class);
@@ -349,22 +357,18 @@ public class MainActivity extends Activity {
         final String key = info.versionCode + ":" + info.version;
         if (info.required) showUpdateDialog(info, lastChangelogText, true);
         if (key.equals(changelogLoadedFor)) {
-            if (nativeHome != null) nativeHome.showAppUpdateChangelog(lastChangelogText);
             if (!info.required) showUpdateDialog(info, lastChangelogText, false);
             return;
         }
         changelogLoadedFor = key;
         new Thread(() -> {
-            final String changelog = AppUpdateChecker.fetchChangelogText();
+            final String changelog = AppUpdateChecker.fetchChangelogText(isEnglishDevice());
             runOnUiThread(() -> {
                 if (isFinishing() || isDestroyed() || pendingAppUpdate != info) return;
                 lastChangelogText = changelog;
-                if (nativeHome != null) nativeHome.showAppUpdateChangelog(changelog);
-                if (info.required) {
-                    if (updateDialog != null && updateDialog.isShowing()) {
-                        updateDialog.setMessage(buildUpdateMessage(info, changelog, true));
-                    }
-                } else {
+                if (updateDialog != null && updateDialog.isShowing()) {
+                    updateDialogNotes(changelog);
+                } else if (!info.required) {
                     showUpdateDialog(info, changelog, false);
                 }
             });
@@ -389,29 +393,132 @@ public class MainActivity extends Activity {
                     .putString("update_dialog_shown_version", key).apply();
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                .setTitle(required ? "Actualización obligatoria" : "Nueva actualización disponible")
-                .setMessage(buildUpdateMessage(info, changelog, required))
-                .setPositiveButton("Actualizar ahora", (dialog, which) -> startAppUpdate());
-        if (required) builder.setNegativeButton("Cerrar CodeHub", (dialog, which) -> finish());
-        else builder.setNegativeButton("Ahora no", null);
-        updateDialog = builder.create();
+        updateDialogNotes = null;
+        updateDialogStatus = null;
+        updateDialogPercent = null;
+        updateDialogProgress = null;
+        updateDialogAction = null;
+        updateDialog = new AlertDialog.Builder(this).setView(buildUpdateDialogView(info, changelog, required)).create();
         updateDialog.setCancelable(!required);
         updateDialog.setCanceledOnTouchOutside(!required);
         updateDialog.show();
+        android.view.Window window = updateDialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            int width = Math.min(getResources().getDisplayMetrics().widthPixels - updateDp(40), updateDp(440));
+            window.setLayout(Math.max(updateDp(280), width), ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
     }
 
-    private String buildUpdateMessage(AppUpdateChecker.UpdateInfo info, String changelog, boolean required) {
-        String details = "v" + info.version
-                + (info.buildLabel == null || info.buildLabel.trim().isEmpty() ? "" : " · " + info.buildLabel)
+    private boolean isEnglishDevice() {
+        return "en".equalsIgnoreCase(java.util.Locale.getDefault().getLanguage());
+    }
+
+    private int updateDp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+
+    private GradientDrawable updateShape(int color, int stroke) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(color);
+        shape.setCornerRadius(updateDp(22));
+        if (stroke != 0) shape.setStroke(updateDp(1), stroke);
+        return shape;
+    }
+
+    private View buildUpdateDialogView(AppUpdateChecker.UpdateInfo info, String changelog, boolean required) {
+        final boolean en = isEnglishDevice();
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(updateDp(24), updateDp(22), updateDp(24), updateDp(20));
+        panel.setBackground(updateShape(0xFF111512, 0xFF29372F));
+
+        ImageView mark = new ImageView(this);
+        mark.setImageResource(android.R.drawable.stat_sys_download_done);
+        mark.setImageTintList(ColorStateList.valueOf(0xFF8FCDB5));
+        panel.addView(mark, new LinearLayout.LayoutParams(updateDp(32), updateDp(32)));
+
+        TextView title = new TextView(this);
+        title.setText(required ? (en ? "Update required" : "Actualización necesaria")
+                : (en ? "A new update is ready" : "Hay una actualización disponible"));
+        title.setTextColor(0xFFF1F4EE); title.setTextSize(22); title.setTypeface(null, android.graphics.Typeface.BOLD);
+        panel.addView(title, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(14); }});
+
+        TextView version = new TextView(this);
+        String versionLabel = "CodeHub  ·  v" + info.version
+                + (info.buildLabel == null || info.buildLabel.trim().isEmpty() ? "" : "  ·  " + info.buildLabel)
                 + (info.publishedDate == null || info.publishedDate.trim().isEmpty() ? "" : "\n" + info.publishedDate);
-        String notes = changelog == null || changelog.trim().isEmpty()
-                ? "Sin notas de cambios publicadas todavía." : changelog.trim();
-        return (required
-                ? "Esta versión de CodeHub ya no tiene soporte. Actualiza a "
-                : "Hay una nueva versión de CodeHub disponible.\n\n")
-                + details + "\n\nQué hay de nuevo:\n" + notes
-                + (required ? "\n\npara seguir usando la aplicación." : "");
+        version.setText(versionLabel); version.setTextColor(0xFFA9B8AD); version.setTextSize(13);
+        panel.addView(version, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(5); }});
+
+        TextView what = new TextView(this);
+        what.setText(en ? "What's new" : "Novedades de esta versión");
+        what.setTextColor(0xFF8FCDB5); what.setTextSize(14); what.setTypeface(null, android.graphics.Typeface.BOLD);
+        panel.addView(what, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(18); }});
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false); scroll.setVerticalScrollBarEnabled(false);
+        updateDialogNotes = new TextView(this);
+        updateDialogNotes.setTextColor(0xFFD9E1DA); updateDialogNotes.setTextSize(14);
+        updateDialogNotes.setLineSpacing(updateDp(3), 1f);
+        updateDialogNotes.setText(changelogForDialog(changelog, en));
+        updateDialogNotes.setPadding(0, updateDp(8), updateDp(4), updateDp(8));
+        scroll.addView(updateDialogNotes);
+        panel.addView(scroll, new LinearLayout.LayoutParams(-1, updateDp(210)) {{ topMargin = updateDp(3); }});
+
+        updateDialogStatus = new TextView(this);
+        updateDialogStatus.setText(en ? "Ready to download" : "Lista para descargar");
+        updateDialogStatus.setTextColor(0xFFA9B8AD); updateDialogStatus.setTextSize(12);
+        panel.addView(updateDialogStatus, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(5); }});
+        updateDialogProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        updateDialogProgress.setMax(100); updateDialogProgress.setProgressTintList(ColorStateList.valueOf(0xFF8FCDB5));
+        updateDialogProgress.setProgressBackgroundTintList(ColorStateList.valueOf(0xFF29372F));
+        updateDialogProgress.setVisibility(View.GONE);
+        panel.addView(updateDialogProgress, new LinearLayout.LayoutParams(-1, updateDp(5)) {{ topMargin = updateDp(8); }});
+        updateDialogPercent = new TextView(this);
+        updateDialogPercent.setTextColor(0xFF8FCDB5); updateDialogPercent.setTextSize(12);
+        updateDialogPercent.setVisibility(View.GONE);
+        panel.addView(updateDialogPercent, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(4); }});
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        Button later = new Button(this);
+        later.setText(required ? (en ? "Close CodeHub" : "Cerrar CodeHub") : (en ? "Later" : "Ahora no"));
+        later.setAllCaps(false); later.setTextColor(0xFFB8C6BC);
+        later.setOnClickListener(v -> { if (required) finish(); else dismissUpdateDialog(); });
+        updateDialogAction = new Button(this);
+        updateDialogAction.setText(en ? "Download update" : "Descargar actualización");
+        updateDialogAction.setAllCaps(false); updateDialogAction.setTextColor(0xFF102018);
+        updateDialogAction.setBackgroundTintList(ColorStateList.valueOf(0xFF8FCDB5));
+        updateDialogAction.setOnClickListener(v -> startAppUpdate());
+        actions.addView(later);
+        actions.addView(updateDialogAction, new LinearLayout.LayoutParams(-2, -2) {{ leftMargin = updateDp(8); }});
+        panel.addView(actions, new LinearLayout.LayoutParams(-1, -2) {{ topMargin = updateDp(12); }});
+        return panel;
+    }
+
+    private String changelogForDialog(String raw, boolean english) {
+        String text = raw == null ? "" : raw.trim();
+        text = text.replace("**", "").replace("\r", "");
+        if (text.isEmpty()) return english ? "Release notes are not available yet." : "Las notas de esta versión aún no están disponibles.";
+        StringBuilder formatted = new StringBuilder();
+        for (String line : text.split("\n")) {
+            String item = line.trim();
+            if (item.isEmpty()) continue;
+            if (item.startsWith("- ")) item = "•  " + item.substring(2);
+            else if (item.startsWith("• ")) item = "•  " + item.substring(2);
+            if (formatted.length() > 0) formatted.append('\n');
+            formatted.append(item);
+        }
+        return formatted.toString();
+    }
+
+    private void updateDialogNotes(String changelog) {
+        if (updateDialogNotes != null) updateDialogNotes.setText(changelogForDialog(changelog, isEnglishDevice()));
+    }
+
+    private void openAppUpdateDetails() {
+        if (pendingAppUpdate == null) return;
+        updateDialogShownFor = "";
+        showUpdateDialog(pendingAppUpdate, lastChangelogText, pendingAppUpdate.required);
     }
 
     void hideAppUpdateBanner() {
@@ -441,7 +548,9 @@ public class MainActivity extends Activity {
         if (!shizukuPermissionResolved && ShizukuInstaller.isBinderAlive()
                 && !ShizukuInstaller.hasPermission()) {
             appUpdateRunning = true;
-            if (nativeHome != null) nativeHome.showAppUpdateProgress(null, "Autoriza CodeHub en Shizuku…");
+            String authorize = isEnglishDevice() ? "Authorize CodeHub in Shizuku…" : "Autoriza CodeHub en Shizuku…";
+            if (nativeHome != null) nativeHome.showAppUpdateProgress(null, authorize);
+            setUpdateDialogProgress(null, authorize);
             ShizukuInstaller.requestPermission(granted -> runOnUiThread(() -> {
                 appUpdateRunning = false;
                 startAppUpdateDownload(true);
@@ -453,6 +562,11 @@ public class MainActivity extends Activity {
         if (!shizukuReady && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && !getPackageManager().canRequestPackageInstalls()) {
             if (nativeHome != null) nativeHome.showAppUpdateInstallPermission();
+            setUpdateDialogStatus(isEnglishDevice() ? "Allow installs from CodeHub in Android settings, then retry." : "Permite instalaciones de CodeHub en Ajustes de Android y reintenta.");
+            if (updateDialogAction != null) {
+                updateDialogAction.setText(isEnglishDevice() ? "Retry" : "Reintentar");
+                updateDialogAction.setEnabled(true);
+            }
             try {
                 startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                         Uri.parse("package:" + getPackageName())));
@@ -464,7 +578,9 @@ public class MainActivity extends Activity {
 
         appUpdateRunning = true;
         appUpdateAwaitingConfirmation = false;
-        if (nativeHome != null) nativeHome.showAppUpdateProgress(null, "Preparando actualización…");
+        String preparing = isEnglishDevice() ? "Preparing update…" : "Preparando actualización…";
+        if (nativeHome != null) nativeHome.showAppUpdateProgress(null, preparing);
+        setUpdateDialogProgress(null, preparing);
         getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE).edit()
             .putBoolean(AppUpdateChecker.PREF_UPDATE_PENDING, true)
             .putLong(AppUpdateChecker.PREF_UPDATE_PENDING_AT, System.currentTimeMillis())
@@ -487,6 +603,7 @@ public class MainActivity extends Activity {
                                 ? (int) Math.min(100L, downloadedBytes * 100L / totalBytes) : null;
                         runOnUiThread(() -> {
                             if (nativeHome != null) nativeHome.showAppUpdateProgress(percent, "Descargando CodeHub…");
+                            setUpdateDialogProgress(percent, isEnglishDevice() ? "Downloading CodeHub…" : "Descargando CodeHub…");
                         });
                     }
 
@@ -495,22 +612,31 @@ public class MainActivity extends Activity {
                             appUpdateRunning = false;
                             if (status == NativeStoreApkInstaller.Status.INSTALLED) {
                                 if (nativeHome != null) nativeHome.showAppUpdateInstalled(update.version);
+                                setUpdateDialogProgress(100, isEnglishDevice() ? "Update installed. CodeHub is restarting." : "Actualización instalada. CodeHub se está iniciando de nuevo.");
+                                if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Installed" : "Instalada"); updateDialogAction.setEnabled(false); }
                             } else if (status == NativeStoreApkInstaller.Status.INSTALLER_OPENED) {
                                 appUpdateAwaitingConfirmation = true;
                                 if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
+                                setUpdateDialogStatus(isEnglishDevice() ? "Confirm the install in Android's installer to finish." : "Confirma la instalación en Android para terminar.");
+                                if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Installer opened" : "Instalador abierto"); updateDialogAction.setEnabled(false); }
                                 if (message != null && !message.isEmpty())
                                     Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                             } else if (status == NativeStoreApkInstaller.Status.READY_BACKGROUND) {
                                 appUpdateAwaitingConfirmation = true;
                                 if (nativeHome != null) nativeHome.showAppUpdateAwaitingConfirmation();
+                                setUpdateDialogStatus(isEnglishDevice() ? "The package is ready. Finish in Android's installer." : "El paquete está listo. Finaliza en el instalador de Android.");
                                 if (message != null && !message.isEmpty())
                                     Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                             } else if (status == NativeStoreApkInstaller.Status.SIGNATURE_MISMATCH) {
                                 clearPendingSelfUpdate();
                                 if (nativeHome != null) nativeHome.showAppUpdateError(message);
+                                setUpdateDialogStatus(message == null ? (isEnglishDevice() ? "The signature changed. Review the message before reinstalling." : "La firma cambió. Revisa el mensaje antes de reinstalar.") : message);
+                                if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Retry" : "Reintentar"); updateDialogAction.setEnabled(true); }
                             } else {
                                 clearPendingSelfUpdate();
                                 if (nativeHome != null) nativeHome.showAppUpdateError(message);
+                                setUpdateDialogStatus(message == null ? (isEnglishDevice() ? "Update failed. Check your connection and retry." : "No se pudo actualizar. Revisa la conexión e inténtalo de nuevo.") : message);
+                                if (updateDialogAction != null) { updateDialogAction.setText(isEnglishDevice() ? "Retry" : "Reintentar"); updateDialogAction.setEnabled(true); }
                             }
                         });
                     }
@@ -535,6 +661,28 @@ public class MainActivity extends Activity {
             .remove(AppUpdateChecker.PREF_UPDATE_PENDING_VERSION)
             .remove(AppUpdateChecker.PREF_UPDATE_PENDING_BUILD)
             .apply();
+    }
+
+    private void setUpdateDialogProgress(Integer percent, String status) {
+        if (updateDialogProgress == null) return;
+        updateDialogProgress.setVisibility(View.VISIBLE);
+        updateDialogProgress.setIndeterminate(percent == null);
+        if (percent != null) updateDialogProgress.setProgress(Math.max(0, Math.min(100, percent)));
+        if (status != null) setUpdateDialogStatus(status);
+        if (updateDialogPercent != null) {
+            updateDialogPercent.setVisibility(percent == null ? View.GONE : View.VISIBLE);
+            if (percent != null) updateDialogPercent.setText(percent + "%");
+        }
+        if (updateDialogAction != null) {
+            updateDialogAction.setEnabled(false);
+            updateDialogAction.setText(percent == null
+                    ? (isEnglishDevice() ? "Preparing…" : "Preparando…")
+                    : (isEnglishDevice() ? "Downloading…" : "Descargando…"));
+        }
+    }
+
+    private void setUpdateDialogStatus(String status) {
+        if (updateDialogStatus != null && status != null) updateDialogStatus.setText(status);
     }
 
     // ── PERMISSIONS ─────────────────────────────────────────────
@@ -1492,7 +1640,6 @@ public class MainActivity extends Activity {
                     nativeHome.showAppUpdateAvailable(
                         pendingAppUpdate.version, pendingAppUpdate.buildLabel, pendingAppUpdate.publishedDate,
                         ShizukuInstaller.isReady(), pendingAppUpdate.required);
-                    nativeHome.showAppUpdateChangelog(lastChangelogText);
                 }
                 if (pendingAppUpdate.required) {
                     updateDialogShownFor = "";
