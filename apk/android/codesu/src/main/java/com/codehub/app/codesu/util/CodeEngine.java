@@ -149,12 +149,13 @@ public final class CodeEngine {
         else new Thread(task, "codeengine-dnd").start();
     }
 
+    /** Detección desactivada por defecto: nadie debe matar apps sin que el usuario lo pida. */
     public static boolean isBatteryDetectionEnabled(Context context) {
-        return context != null && prefs(context).getBoolean(PREF_BATTERY_DETECTION, true);
+        return context != null && prefs(context).getBoolean(PREF_BATTERY_DETECTION, false);
     }
 
     public static boolean isGameDetectionEnabled(Context context) {
-        return context != null && prefs(context).getBoolean(PREF_GAME_DETECTION, true);
+        return context != null && prefs(context).getBoolean(PREF_GAME_DETECTION, false);
     }
 
     public static String lastResult(Context context) {

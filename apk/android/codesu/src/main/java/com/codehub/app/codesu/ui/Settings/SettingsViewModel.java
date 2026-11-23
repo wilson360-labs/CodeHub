@@ -69,8 +69,8 @@ public class SettingsViewModel extends ViewModel {
         screenOffAutoKill.setValue(App.settings.getBoolean(App.SCREEN_OFF_AUTO_KILL, false));
         screenOffAutoKillDelay.setValue(App.settings.getInt(App.SCREEN_OFF_AUTO_KILL_DELAY, 0));
         scheduledAutoKill.setValue(App.settings.getBoolean(App.SCHEDULED_AUTO_KILL, false));
-        powerBatterySaver.setValue(App.settings.getBoolean(PowerGuard.PREF_BATTERY_SAVER, true));
-        powerGameMode.setValue(App.settings.getBoolean(PowerGuard.PREF_GAME_MODE, true));
+        powerBatterySaver.setValue(App.settings.getBoolean(PowerGuard.PREF_BATTERY_SAVER, false));
+        powerGameMode.setValue(App.settings.getBoolean(PowerGuard.PREF_GAME_MODE, false));
 
         int hour = App.settings.getInt(App.SCHEDULED_AUTO_KILL_HOUR, 3);
         int minute = App.settings.getInt(App.SCHEDULED_AUTO_KILL_MINUTE, 30);
