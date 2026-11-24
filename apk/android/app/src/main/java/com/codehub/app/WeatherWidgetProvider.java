@@ -202,21 +202,15 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private static void paintClockOnly(Context context) {
-        // partiallyUpdateAppWidget solo existe desde API 31; en APIs viejas
-        // un RemoteViews parcial borraría el widget. Allí el reloj se
-        // actualiza con el refresco normal (cada 30 min).
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        // Tick de 60s: repinta hora y escena animada (fase por reloj de pared).
         try {
-            String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis()));
-            if (hasAnyWidget(context)) {
-                AppWidgetManager mgr = AppWidgetManager.getInstance(context);
-                int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
-                RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
-                views.setTextViewText(R.id.widget_updated, time);
-                for (int id : ids) safePartialUpdate(context, mgr, id, views);
-                // Reprogramar para el siguiente minuto.
-                scheduleClockTick(context);
+            if (!hasAnyWidget(context)) return;
+            AppWidgetManager mgr = AppWidgetManager.getInstance(context);
+            int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
+            for (int id : ids) {
+                paintFromCache(context, mgr, id);
             }
+            scheduleClockTick(context);
         } catch (Exception ignored) {}
     }
 
@@ -547,7 +541,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
         views.setTextViewText(R.id.widget_city, (city == null || city.isEmpty()) ? "CodeHub" : city);
         views.setTextViewText(R.id.widget_temp, Float.isNaN(temp) ? "--°" : Math.round(temp) + "°");
-        views.setTextViewText(R.id.widget_condition, labelFor(wcode));
+        views.setTextViewText(R.id.widget_condition, labelFor(wcode) + " · " + WeatherVisual.label(snap.state));
         views.setTextViewText(R.id.widget_feels,
             Float.isNaN(feels) ? " " : "Sensación " + Math.round(feels) + "°");
 
@@ -586,8 +580,11 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setViewVisibility(R.id.widget_daily, showDaily ? View.VISIBLE : View.GONE);
         views.setViewVisibility(R.id.widget_details, showDetails ? View.VISIBLE : View.GONE);
 
+        WeatherVisual.Snapshot snap = new WeatherVisual.Snapshot(
+            WeatherVisual.classify(wcode, Float.isNaN(temp) ? Float.NaN : temp, humidity, Float.isNaN(wind) ? Float.NaN : wind, Float.NaN),
+            wcode, night, Float.isNaN(temp) ? Float.NaN : temp, humidity, Float.isNaN(wind) ? Float.NaN : wind, Float.NaN);
         // Escena de fondo adaptada al tamaño real del widget.
-        views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(context, widgetId, wcode, night));
+        views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(context, widgetId, snap));
 
         // Tocar el widget abre la app en la sección de clima.
         Intent openIntent = new Intent(context, MainActivity.class);
@@ -682,11 +679,10 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // ── Escena de fondo: lago AMOLED + sol/luna + lluvia/nieve/niebla.
-    //    Se dibuja al tamaño real del widget (en px), con tope para no
-    //    rebasar el límite de transacción Binder (~1 MB): 512 px de lado
-    //    y 262 144 px totales en RGB_565 (≤ 524 KB). ──
-    private static Bitmap backgroundBitmap(Context context, int widgetId, int wcode, boolean night) {
+    // ── Escena de fondo animada por estado. Se dibuja al tamaño real del
+    //    widget con tope Binder-safe (512 px lado, 262144 px, RGB_565).
+    //    El tick de reloj fuerza repintado, dando animación de bajo costo. ──
+    private static Bitmap backgroundBitmap(Context context, int widgetId, WeatherVisual.Snapshot snap) {
         int wDp = 0, hDp = 0;
         try {
             Bundle o = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId);
@@ -705,80 +701,122 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
         try {
-            drawScene(new Canvas(bmp), w, h, wcode, night);
+            drawScene(new Canvas(bmp), w, h, snap);
         } catch (Exception e) {
-            bmp.eraseColor(palette(wcode, night)[1]);
+            bmp.eraseColor(0xFF000000);
         }
         return bmp;
     }
 
-    private static void drawScene(Canvas c, int w, int h, int wcode, boolean night) {
-        int[] colors = palette(wcode, night);
+    private static void drawScene(Canvas c, int w, int h, WeatherVisual.Snapshot snap) {
         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
         stroke.setStyle(Paint.Style.STROKE);
         stroke.setStrokeCap(Paint.Cap.ROUND);
-
-        // Cielo y agua: planos. El lago del Inicio se reduce a dos franjas
-        // para no competir con la lectura de la temperatura.
         float horizon = h * 0.58f;
-        fill.setColor(colors[0]);
-        c.drawRect(0, 0, w, horizon, fill);
-        fill.setColor(colors[1]);
-        c.drawRect(0, horizon, w, h, fill);
+        float t = WeatherVisual.phase(System.currentTimeMillis(), 6000L);
 
-        boolean rain = (wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82);
-        boolean snow = (wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86);
-        boolean fog = wcode == 45 || wcode == 48;
-        boolean clear = wcode < 0 || wcode == 0 || (wcode >= 1 && wcode <= 2);
+        int water;
+        switch (snap.state) {
+            case TROPICAL: water = 0xFF07110D; break;
+            case SECO: water = 0xFF120D08; break;
+            case CONTINENTAL: water = 0xFF090B0E; break;
+            case POLAR: water = 0xFF0A1014; break;
+            default: water = 0xFF080B0D; break;
+        }
+        fill.setColor(0xFF000000); c.drawRect(0, 0, w, horizon, fill);
+        fill.setColor(water); c.drawRect(0, horizon, w, h, fill);
 
-        // Sol/luna sin halo: terracota de día, hueso de noche.
-        if (clear) {
-            float cx = w * 0.78f;
-            float cy = horizon - h * 0.13f;
-            float r = Math.max(3f, Math.min(w, h) * 0.075f);
-            fill.setColor(night ? 0xFFF4ECE1 : 0xFFD98A67);
-            c.drawCircle(cx, cy, r, fill);
+        // horizon glow by state
+        stroke.setStrokeWidth(Math.max(1f, h * 0.01f));
+        stroke.setColor((WeatherVisual.accent(snap.state) & 0x00FFFFFF) | 0x22000000);
+        c.drawLine(0, horizon, w, horizon, stroke);
 
-            stroke.setColor(0x669DB99E);
-            stroke.setStrokeWidth(Math.max(1f, h * 0.005f));
-            for (int i = 0; i < 5; i++) {
-                float y = horizon + (h - horizon) * (0.14f + i * 0.17f);
-                float half = r * (1.1f + i * 0.35f);
-                c.drawLine(cx - half, y, cx + half, y, stroke);
+        float cx = w * 0.74f;
+        float cy = horizon - h * 0.13f;
+        float r = Math.max(3f, Math.min(w, h) * 0.075f);
+        float pulse = 1f + (float) Math.sin(t * Math.PI * 2) * 0.03f;
+        // orb
+        fill.setColor(snap.night ? 0xFFF4ECE1 : WeatherVisual.accent(snap.state));
+        fill.setAlpha(40); c.drawCircle(cx, cy, r * 1.9f * pulse, fill);
+        fill.setAlpha(255); c.drawCircle(cx, cy, r * pulse, fill);
+
+        if (snap.state == WeatherVisual.State.SECO) {
+            stroke.setColor(0x55D98A67); stroke.setStrokeWidth(Math.max(1f, w * 0.006f));
+            for (int i = 0; i < 8; i++) {
+                double a = (i / 8.0) * Math.PI * 2 + t * 0.4;
+                float inr = r * 1.5f, outr = r * (2.1f + (i % 2) * 0.2f);
+                c.drawLine((float)(cx + Math.cos(a) * inr), (float)(cy + Math.sin(a) * inr),
+                        (float)(cx + Math.cos(a) * outr), (float)(cy + Math.sin(a) * outr), stroke);
             }
         }
 
-        // Señales funcionales de condición, discretas.
-        if (rain || wcode >= 95) {
-            stroke.setColor(0x809DB99E);
-            stroke.setStrokeWidth(Math.max(1f, w * 0.004f));
-            for (int i = 0; i < 10; i++) {
-                float x = w * (0.60f + (i % 5) * 0.07f);
-                float y = h * (0.20f + (i / 5) * 0.11f + (i % 5) * 0.012f);
-                c.drawLine(x, y, x - w * 0.015f, y + h * 0.035f, stroke);
+        // clouds for non-dry/partly states
+        if (snap.state != WeatherVisual.State.SECO || snap.wcode > 2) {
+            int cloudA = snap.state == WeatherVisual.State.CONTINENTAL ? 0x55323133 : 0x332A2420;
+            drawCloud(c, fill, w * 0.62f, horizon * 0.42f, r * 1.1f, cloudA, t, snap.state == WeatherVisual.State.CONTINENTAL ? 1.6f : 0.8f);
+            if (snap.state == WeatherVisual.State.TROPICAL || snap.state == WeatherVisual.State.TEMPLADO) {
+                drawCloud(c, fill, w * 0.77f, horizon * 0.34f, r * 0.7f, 0x222A2420, t, 0.5f);
+            }
+        }
+
+        // precipitation / wind / mist
+        boolean rain = (snap.wcode >= 51 && snap.wcode <= 67) || (snap.wcode >= 80 && snap.wcode <= 82) || snap.wcode >= 95;
+        boolean snow = (snap.wcode >= 71 && snap.wcode <= 77) || (snap.wcode >= 85 && snap.wcode <= 86);
+        boolean fog = snap.wcode == 45 || snap.wcode == 48;
+        if (rain) {
+            int rc = snap.state == WeatherVisual.State.TROPICAL ? 0x889DB99E : 0x66C2B6A8;
+            stroke.setColor(rc); stroke.setStrokeWidth(Math.max(1f, w * 0.004f));
+            int count = snap.state == WeatherVisual.State.TROPICAL ? 12 : 8;
+            float speed = snap.state == WeatherVisual.State.CONTINENTAL ? 1.6f : 1.0f;
+            for (int i = 0; i < count; i++) {
+                float p = (t * speed + i / (float) count) % 1f;
+                float x = w * (0.2f + (i * 13 % 70) / 100f);
+                float y = horizon * (0.2f + p * 0.78f);
+                c.drawLine(x, y, x - w * 0.012f, y + h * 0.03f, stroke);
             }
         }
         if (snow) {
             fill.setColor(0xCCF4ECE1);
-            for (int i = 0; i < 12; i++) {
-                float x = w * (0.58f + ((i * 37) % 40) / 100f);
-                float y = h * (0.18f + ((i * 53) % 34) / 100f);
-                c.drawCircle(x, y, Math.max(1f, w * 0.005f), fill);
+            for (int i = 0; i < 10; i++) {
+                float p = (t * 0.45f + i / 10f) % 1f;
+                float x = w * (0.2f + (i * 11 % 65) / 100f) + (float)Math.sin((t + i) * Math.PI * 2) * w * 0.008f;
+                float y = horizon * (0.2f + p * 0.78f);
+                fill.setAlpha((int)(120 + (1f - p) * 90));
+                c.drawCircle(x, y, Math.max(1f, w * 0.006f), fill);
             }
         }
-        if (fog) {
-            stroke.setColor(0x66C2B6A8);
+        if (fog || snap.state == WeatherVisual.State.POLAR || snap.state == WeatherVisual.State.TROPICAL) {
+            stroke.setColor(snap.state == WeatherVisual.State.POLAR ? 0x22DCE7F2 : 0x18C2B6A8);
             stroke.setStrokeWidth(Math.max(1f, h * 0.008f));
-            for (int i = 0; i < 3; i++) {
-                float y = h * (0.28f + i * 0.09f);
-                c.drawLine(w * 0.10f, y, w * 0.90f, y, stroke);
+            int bands = snap.state == WeatherVisual.State.POLAR ? 3 : 2;
+            for (int i = 0; i < bands; i++) {
+                float y = horizon * (0.35f + i * 0.16f);
+                c.drawLine(w * 0.08f, y, w * 0.92f, y, stroke);
+            }
+        }
+        if (snap.state == WeatherVisual.State.CONTINENTAL) {
+            stroke.setColor(0x55C2B6A8); stroke.setStrokeWidth(Math.max(1f, h * 0.006f));
+            for (int i = 0; i < 4; i++) {
+                float p = (t * 1.3f + i / 4f) % 1f;
+                float x = w * (-0.1f + p * 1.2f);
+                float y = horizon * (0.3f + i * 0.12f);
+                c.drawLine(x, y, x + w * 0.16f, y, stroke);
             }
         }
 
-        // Juncos: cierran el lago sin textura ni movimiento.
-        stroke.setColor(0x809DB99E);
-        stroke.setStrokeWidth(Math.max(1f, w * 0.003f));
+        // ripples
+        stroke.setColor(0x229DB99E); stroke.setStrokeWidth(Math.max(1f, h * 0.003f));
+        for (int i = 0; i < 5; i++) {
+            float p = (i / 5f + t) % 1f;
+            float y = horizon + (h - horizon) * (0.12f + p * 0.75f);
+            float half = w * (0.08f + p * 0.12f);
+            stroke.setAlpha((int)(20 + (1f - p) * 35));
+            c.drawLine(cx - half, y, cx + half, y, stroke);
+        }
+
+        // reeds
+        stroke.setColor(0x559DB99E); stroke.setStrokeWidth(Math.max(1f, w * 0.003f));
         for (int i = 0; i < 4; i++) {
             float x = w * (0.05f + i * 0.02f);
             c.drawLine(x, h, x + w * 0.01f, h - h * (0.08f + (i % 2) * 0.04f), stroke);
@@ -787,21 +825,13 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // Lago AMOLED: cielo negro puro y agua casi negra. La condición solo
-    // matiza el agua; no hay degradados decorativos ni glows.
-    private static int[] palette(int wcode, boolean night) {
-        boolean rain = (wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82);
-        boolean storm = wcode >= 95;
-        boolean snow = (wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86);
-        boolean fog = wcode == 45 || wcode == 48;
-
-        int water;
-        if (storm) water = 0xFF0B0A0E;
-        else if (rain) water = 0xFF080D12;
-        else if (snow) water = 0xFF0B1012;
-        else if (fog) water = 0xFF0A0C0D;
-        else water = 0xFF080A0A;
-        return new int[]{0xFF000000, water};
+    private static void drawCloud(Canvas c, Paint fill, float x, float y, float r, int color, float t, float speed) {
+        float dx = (float) Math.sin(t * Math.PI * 2 * speed) * r * 0.25f;
+        fill.setColor(color);
+        c.drawCircle(x - r * 0.7f + dx, y, r * 0.7f, fill);
+        c.drawCircle(x + dx, y - r * 0.2f, r, fill);
+        c.drawCircle(x + r * 0.75f + dx, y, r * 0.72f, fill);
+        c.drawRoundRect(x - r * 1.4f + dx, y, x + r * 1.45f + dx, y + r * 0.65f, r * 0.3f, r * 0.3f, fill);
     }
 
     // Códigos WMO de Open-Meteo → drawable vectorial. El color se aplica

@@ -9,10 +9,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Outline
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.location.Location
@@ -21,6 +21,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -36,6 +37,8 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import kotlin.math.cos
+import kotlin.math.sin
 import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -85,6 +88,7 @@ class NativeWeatherActivity : Activity() {
     private var locationSearchInput: EditText? = null
     private var locationSearchResults: LinearLayout? = null
     private var locationSearchButton: Button? = null
+    private var heroScene: WeatherLakeView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,12 +114,19 @@ class NativeWeatherActivity : Activity() {
         locationAttemptId++
         locationToken?.cancel()
         locationToken = null
+        heroScene?.stop()
         mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
+    override fun onPause() {
+        heroScene?.pause()
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        heroScene?.resumeAnim()
         if (returningFromLocationSettings) {
             returningFromLocationSettings = false
             if (locationServicesEnabled()) requestLocation() else renderNoLocation("La ubicación sigue desactivada. Actívala para detectar tu zona, o busca una ciudad manualmente.")
@@ -166,6 +177,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderNoLocation(message: String = "Elige una ciudad o comparte tu ubicación para ver el pronóstico.") {
+        heroScene?.stop(); heroScene = null
         content.removeAllViews()
         content.addView(card {
             addView(text("Tu clima", 24f, primary, true))
@@ -177,6 +189,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderLoading() {
+        heroScene?.stop(); heroScene = null
         content.removeAllViews()
         content.addView(card {
             addView(text(city.ifBlank { "Consultando tu ubicación" }, 16f, primary, true))
@@ -212,6 +225,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderForecast(data: JSONObject) {
+        heroScene?.stop(); heroScene = null
         content.removeAllViews()
         val current = data.optJSONObject("current") ?: return
         val daily = data.optJSONObject("daily") ?: JSONObject()
@@ -221,6 +235,13 @@ class NativeWeatherActivity : Activity() {
         val code = current.optInt("weather_code")
         val minToday = daily.optJSONArray("temperature_2m_min")?.optDouble(0)?.toInt()
         val maxToday = daily.optJSONArray("temperature_2m_max")?.optDouble(0)?.toInt()
+        val tempC = current.optDouble("temperature_2m", Double.NaN).toFloat()
+        val humidity = current.optInt("relative_humidity_2m", -1)
+        val windKmh = current.optDouble("wind_speed_10m", Double.NaN).toFloat()
+        val visibilityM = current.optDouble("visibility", Double.NaN).toFloat()
+        val isDay = current.optInt("is_day", 1) == 1
+        val visualState = WeatherVisual.classify(code, tempC, humidity, windKmh, visibilityM)
+        val stateAccent = WeatherVisual.accent(visualState)
 
         val place = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
@@ -234,18 +255,19 @@ class NativeWeatherActivity : Activity() {
         content.addView(place)
         content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-        // Hero tipo One UI: datos a la izquierda, glifo grande a la derecha,
-        // paisaje vectorial de fondo. Todo sobre negro puro y texto hueso.
+        // Hero One UI 8.5 AMOLED: escena animada por estado climático.
         val hero = FrameLayout(this).apply {
             background = rounded(bg, dp(28))
             outlineProvider = object : ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: Outline) {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
                     outline.setRoundRect(0, 0, view.width, view.height, dp(28).toFloat())
                 }
             }
             clipToOutline = true
         }
-        hero.addView(WeatherLakeView(this, code, current.optInt("is_day", 1) == 1), FrameLayout.LayoutParams(-1, -1))
+        heroScene?.stop()
+        heroScene = WeatherLakeView(this, WeatherVisual.Snapshot(visualState, code, isDay, tempC, humidity, windKmh, visibilityM))
+        hero.addView(heroScene, FrameLayout.LayoutParams(-1, -1))
         val heroContent = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(18), dp(20), dp(14), dp(20)); background = GlassPanelDrawable()
@@ -257,12 +279,16 @@ class NativeWeatherActivity : Activity() {
         heroCopy.addView(text("${current.optInt("temperature_2m")}°", 60f, primary, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         heroCopy.addView(text(weatherName(code), 14f, secondary), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(1) })
         heroCopy.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        heroCopy.addView(text(WeatherVisual.label(visualState), 10f, stateAccent, true).apply {
+            setPadding(dp(10), dp(4), dp(10), dp(4))
+            background = rounded(0x22111111.toInt(), dp(10))
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
         val extremes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         extremes.addView(text("↓ ${minToday ?: "—"}°", 12f, sage, true))
         extremes.addView(text("↑ ${maxToday ?: "—"}°", 12f, accent, true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
-        heroCopy.addView(extremes, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        heroCopy.addView(extremes, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         heroContent.addView(heroCopy, LinearLayout.LayoutParams(0, -2, 1f))
-        heroContent.addView(NativeWeatherGlyph(this, code, 84, animated = true), LinearLayout.LayoutParams(dp(88), dp(88)).apply { marginStart = dp(8) })
+        heroContent.addView(NativeWeatherGlyph(this, code, 84, animated = animationsEnabled()), LinearLayout.LayoutParams(dp(88), dp(88)).apply { marginStart = dp(8) })
         hero.addView(heroContent, FrameLayout.LayoutParams(-1, -2).apply {
             topMargin = dp(10); bottomMargin = dp(10); leftMargin = dp(10); rightMargin = dp(10)
         })
@@ -375,7 +401,7 @@ class NativeWeatherActivity : Activity() {
             hint = "Ciudad, municipio o lugar"; setSingleLine(true); textSize = 14f; setTextColor(primary); setHintTextColor(muted)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
             imeOptions = EditorInfo.IME_ACTION_SEARCH
-            setPadding(dp(12), 0, dp(8), 0); setBackgroundColor(Color.TRANSPARENT)
+            setPadding(dp(12), 0, dp(8), 0); setBackgroundColor(android.graphics.Color.TRANSPARENT)
             setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
                     searchCity(text.toString().trim())
@@ -707,6 +733,15 @@ class NativeWeatherActivity : Activity() {
 
     private fun validLocation() = lat.isFinite() && lon.isFinite() && (lat != 0.0 || lon != 0.0)
 
+    private fun animationsEnabled(): Boolean {
+        val am = getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager
+        if (am?.isPowerSaveMode == true) return false
+        val scale = runCatching {
+            Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        }.getOrDefault(1f)
+        return scale > 0f
+    }
+
     private fun metricCard(title: String, value: String, detail: String, accent: Int): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_VERTICAL
@@ -754,128 +789,239 @@ class NativeWeatherActivity : Activity() {
         backgroundTintList = android.content.res.ColorStateList.valueOf(if (tint == accent) tint else panel)
         setOnClickListener { onClick() }
     }
-    /** Paisaje vectorial AMOLED adaptado a la condición actual; sin red. */
-    private inner class WeatherLakeView(context: android.content.Context, private val weatherCode: Int, private val isDay: Boolean) : View(context) {
-        private val skyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-        private val waterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-        private val ripplePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1).toFloat()
-            strokeCap = Paint.Cap.ROUND
+    /** Escena One UI 8.5 AMOLED animada por estado climático. */
+    private inner class WeatherLakeView(context: android.content.Context, private val snapshot: WeatherVisual.Snapshot) : View(context) {
+        private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+        private val frame = object : Runnable {
+            override fun run() {
+                if (!running) return
+                invalidate()
+                postOnAnimationDelayed(this, 32L)
+            }
         }
-        private val sunPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-        private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(2).toFloat()
-            strokeCap = Paint.Cap.ROUND
+        private var running = false
+
+        fun resumeAnim() {
+            if (running || !animationsEnabled() || !isAttachedToWindow) return
+            running = true
+            removeCallbacks(frame)
+            postOnAnimation(frame)
         }
-        private val reedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1).toFloat()
-            strokeCap = Paint.Cap.ROUND
+
+        fun pause() {
+            running = false
+            removeCallbacks(frame)
+        }
+
+        fun stop() { pause() }
+
+        override fun onAttachedToWindow() {
+            super.onAttachedToWindow(); resumeAnim()
+        }
+
+        override fun onDetachedFromWindow() {
+            pause(); super.onDetachedFromWindow()
+        }
+
+        override fun onVisibilityChanged(changedView: View, visibility: Int) {
+            super.onVisibilityChanged(changedView, visibility)
+            if (visibility == VISIBLE) resumeAnim() else pause()
         }
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
-            val w = width.toFloat()
-            val h = height.toFloat()
+            val w = width.toFloat(); val h = height.toFloat()
             if (w <= 0f || h <= 0f) return
-            val horizon = h * 0.52f
+            val horizon = h * .54f
+            val t = ((SystemClock.elapsedRealtime() % 6000L) / 6000f)
+            drawSky(canvas, w, horizon, t)
+            drawWater(canvas, w, horizon, h, t)
+            drawState(canvas, w, horizon, h, t)
+            drawReeds(canvas, w, h)
+        }
 
-            val rainy = weatherCode in 51..67 || weatherCode in 80..82 || weatherCode >= 95
-            val snowy = weatherCode in 71..77 || weatherCode in 85..86
-            val foggy = weatherCode == 45 || weatherCode == 48
-            val cloudy = weatherCode == 3 || weatherCode in 1..2
-            skyPaint.color = when {
-                dark && (rainy || foggy) -> 0xFF07080A.toInt()
-                dark -> 0xFF0B0B0E.toInt()
-                rainy || foggy -> 0xFFC2B6A8.toInt()
-                else -> 0xFFE8C9A4.toInt()
+        private fun drawSky(canvas: Canvas, w: Float, horizon: Float, t: Float) {
+            val top: Int; val bottom: Int
+            when (snapshot.state) {
+                WeatherVisual.State.TROPICAL -> { top = 0xFF040806.toInt(); bottom = 0xFF0A1410.toInt() }
+                WeatherVisual.State.SECO -> { top = 0xFF080502.toInt(); bottom = 0xFF15100B.toInt() }
+                WeatherVisual.State.TEMPLADO -> { top = 0xFF050608.toInt(); bottom = 0xFF0D1114.toInt() }
+                WeatherVisual.State.CONTINENTAL -> { top = 0xFF040506.toInt(); bottom = 0xFF0D1012.toInt() }
+                WeatherVisual.State.POLAR -> { top = 0xFF050708.toInt(); bottom = 0xFF101418.toInt() }
             }
-            waterPaint.color = when {
-                dark -> 0xFF050708.toInt()
-                rainy -> 0xFF6E6A4E.toInt()
-                else -> 0xFF6E6A4E.toInt()
+            fill.shader = LinearGradient(0f, 0f, 0f, horizon, top, bottom, Shader.TileMode.CLAMP)
+            canvas.drawRect(0f, 0f, w, horizon, fill)
+            fill.shader = null
+            // subtle stars at night
+            if (snapshot.night && snapshot.wcode <= 2) {
+                fill.color = 0x55F4ECE1.toInt()
+                for (i in 0..10) {
+                    val x = w * ((i * 17 % 100) / 100f)
+                    val y = horizon * (.08f + (i * 13 % 45) / 100f)
+                    val a = ((sin((t + i * .09f) * Math.PI * 2).toFloat() + 1f) * .5f)
+                    fill.alpha = (40 + 90 * a).toInt()
+                    canvas.drawCircle(x, y, dp(1).toFloat() * (.7f + a * .6f), fill)
+                }
             }
-            canvas.drawRect(0f, 0f, w, horizon, skyPaint)
-            canvas.drawRect(0f, horizon, w, h, waterPaint)
+        }
 
-            waterPaint.color = if (dark) 0xFF050708.toInt() else 0xFF3E5140.toInt()
+        private fun drawWater(canvas: Canvas, w: Float, horizon: Float, h: Float, t: Float) {
+            val waterTop = when (snapshot.state) {
+                WeatherVisual.State.TROPICAL -> 0xFF07110D.toInt()
+                WeatherVisual.State.SECO -> 0xFF120D08.toInt()
+                WeatherVisual.State.CONTINENTAL -> 0xFF090B0E.toInt()
+                WeatherVisual.State.POLAR -> 0xFF0A1014.toInt()
+                else -> 0xFF080B0D.toInt()
+            }
+            fill.shader = LinearGradient(0f, horizon, 0f, h, waterTop, 0xFF000000.toInt(), Shader.TileMode.CLAMP)
+            canvas.drawRect(0f, horizon, w, h, fill)
+            fill.shader = null
+            stroke.color = 0x249DB99E
+            stroke.strokeWidth = dp(1).toFloat()
+            for (i in 0 until 7) {
+                val p = (i / 7f + t) % 1f
+                val y = horizon + (h - horizon) * (.08f + p * .86f)
+                val half = w * (.08f + p * .12f)
+                val cx = w * .56f
+                stroke.alpha = (18 + (1f - p) * 35).toInt()
+                canvas.drawLine(cx - half, y, cx + half, y, stroke)
+            }
+        }
+
+        private fun drawState(canvas: Canvas, w: Float, horizon: Float, h: Float, t: Float) {
+            val cx = w * .74f
+            val cy = horizon - h * .14f
+            val r = dp(11).toFloat()
+            val stateColor = WeatherVisual.accent(snapshot.state)
+            when (snapshot.state) {
+                WeatherVisual.State.TROPICAL -> {
+                    drawOrb(canvas, cx, cy, r, if (snapshot.night) 0xFFF4ECE1.toInt() else 0xFFD98A67.toInt(), t)
+                    drawCloud(canvas, w * .62f, horizon * .42f, dp(13).toFloat(), 0x442E4034.toInt(), t, 1.2f)
+                    drawRain(canvas, w, horizon, t, 14, 0x889DB99E.toInt(), 1.0f)
+                    drawMist(canvas, w, horizon, 0x149DB99E.toInt(), 2)
+                }
+                WeatherVisual.State.SECO -> {
+                    drawSunRays(canvas, cx, cy, r, 0x66D98A67, t)
+                    drawOrb(canvas, cx, cy, r, 0xFFD98A67.toInt(), t)
+                    drawHeat(canvas, w, horizon, t)
+                }
+                WeatherVisual.State.TEMPLADO -> {
+                    drawOrb(canvas, cx, cy, r, if (snapshot.night) 0xFFF4ECE1.toInt() else 0xFFE2B48F.toInt(), t)
+                    drawCloud(canvas, w * .60f, horizon * .45f, dp(12).toFloat(), 0x332A2420.toInt(), t, .8f)
+                    drawCloud(canvas, w * .76f, horizon * .36f, dp(8).toFloat(), 0x222A2420.toInt(), t, .5f)
+                    if (snapshot.wcode >= 51) drawRain(canvas, w, horizon, t, 6, 0x559DB99E.toInt(), .6f)
+                }
+                WeatherVisual.State.CONTINENTAL -> {
+                    drawCloud(canvas, w * .66f, horizon * .38f, dp(15).toFloat(), 0x55323133.toInt(), t, 2.4f)
+                    drawCloud(canvas, w * .48f, horizon * .50f, dp(10).toFloat(), 0x33323133.toInt(), t, 1.7f)
+                    drawWind(canvas, w, horizon, t, stateColor)
+                    if (snapshot.wcode >= 51 || snapshot.wcode >= 95) drawRain(canvas, w, horizon, t, 10, 0x66C2B6A8.toInt(), 1.5f)
+                }
+                WeatherVisual.State.POLAR -> {
+                    drawOrb(canvas, cx, cy, r * .85f, 0xFFDCE7F2.toInt(), t)
+                    drawCloud(canvas, w * .62f, horizon * .44f, dp(12).toFloat(), 0x33444E58.toInt(), t, .5f)
+                    drawSnow(canvas, w, horizon, t)
+                    drawMist(canvas, w, horizon, 0x1ADCE7F2.toInt(), 3)
+                }
+            }
+        }
+
+        private fun drawOrb(canvas: Canvas, cx: Float, cy: Float, r: Float, color: Int, t: Float) {
+            val pulse = 1f + sin(t * Math.PI * 2).toFloat() * .03f
+            fill.color = color
+            fill.alpha = 45
+            canvas.drawCircle(cx, cy, r * 1.9f * pulse, fill)
+            fill.alpha = 255
+            canvas.drawCircle(cx, cy, r * pulse, fill)
+        }
+
+        private fun drawSunRays(canvas: Canvas, cx: Float, cy: Float, r: Float, color: Int, t: Float) {
+            stroke.color = color
+            stroke.strokeWidth = dp(2).toFloat()
+            for (i in 0 until 8) {
+                val a = (i / 8f) * Math.PI.toFloat() * 2f + t * .4f
+                val inner = r * 1.5f
+                val outer = r * (2.1f + (i % 2) * .25f)
+                canvas.drawLine(cx + cos(a) * inner, cy + sin(a) * inner, cx + cos(a) * outer, cy + sin(a) * outer, stroke)
+            }
+        }
+
+        private fun drawCloud(canvas: Canvas, x: Float, y: Float, r: Float, color: Int, t: Float, speed: Float) {
+            val dx = sin(t * Math.PI * 2 * speed).toFloat() * dp(4).toFloat()
+            fill.color = color
+            canvas.drawCircle(x - r * .7f + dx, y, r * .7f, fill)
+            canvas.drawCircle(x + dx, y - r * .2f, r, fill)
+            canvas.drawCircle(x + r * .75f + dx, y, r * .72f, fill)
+            canvas.drawRoundRect(x - r * 1.4f + dx, y, x + r * 1.45f + dx, y + r * .65f, r * .3f, r * .3f, fill)
+        }
+
+        private fun drawRain(canvas: Canvas, w: Float, horizon: Float, t: Float, count: Int, color: Int, speed: Float) {
+            stroke.color = color
+            stroke.strokeWidth = dp(1.4f).toFloat()
+            for (i in 0 until count) {
+                val p = (t * speed + i / count.toFloat()) % 1f
+                val x = w * (.18f + (i * 13 % 70) / 100f)
+                val y = horizon * (.25f + p * .75f)
+                canvas.drawLine(x, y, x - dp(2), y + dp(8), stroke)
+            }
+        }
+
+        private fun drawSnow(canvas: Canvas, w: Float, horizon: Float, t: Float) {
+            fill.color = 0xCCF4ECE1.toInt()
+            for (i in 0 until 12) {
+                val p = (t * .45f + i / 12f) % 1f
+                val x = w * (.2f + (i * 11 % 65) / 100f) + sin((t + i) * Math.PI * 2).toFloat() * dp(2)
+                val y = horizon * (.2f + p * .78f)
+                fill.alpha = (120 + (1f - p) * 90).toInt()
+                canvas.drawCircle(x, y, dp(1.8f).toFloat(), fill)
+            }
+        }
+
+        private fun drawMist(canvas: Canvas, w: Float, horizon: Float, color: Int, bands: Int) {
+            stroke.color = color
+            stroke.strokeWidth = dp(3).toFloat()
+            for (i in 0 until bands) {
+                val y = horizon * (.35f + i * .16f)
+                canvas.drawLine(w * .08f, y, w * .92f, y, stroke)
+            }
+        }
+
+        private fun drawWind(canvas: Canvas, w: Float, horizon: Float, t: Float, color: Int) {
+            stroke.color = (color and 0x00FFFFFF) or 0x55000000
+            stroke.strokeWidth = dp(2).toFloat()
             for (i in 0 until 4) {
-                val y = horizon + (h - horizon) * (0.18f + i * 0.19f)
-                canvas.drawRect(0f, y, w, y + dp(2), waterPaint)
+                val p = (t * 1.3f + i / 4f) % 1f
+                val x = w * (-.1f + p * 1.2f)
+                val y = horizon * (.28f + i * .14f)
+                canvas.drawLine(x, y, x + w * .18f, y, stroke)
             }
+        }
 
-            val sunX = w * 0.74f
-            val sunY = horizon - h * 0.10f
-            if (!cloudy && !rainy && !snowy && !foggy) {
-                sunPaint.color = if (isDay) accent else 0xFFF4ECE1.toInt()
-                canvas.drawCircle(sunX, sunY, dp(10).toFloat(), sunPaint)
-            }
-
-            if (cloudy || rainy || snowy || foggy) {
-                sunPaint.color = if (dark) 0xFF2A2320.toInt() else 0xFFEAD7C8.toInt()
-                val cloudX = w * 0.70f
-                val cloudY = horizon * 0.60f
-                val radius = dp(13).toFloat()
-                canvas.drawCircle(cloudX - radius * .65f, cloudY, radius * .72f, sunPaint)
-                canvas.drawCircle(cloudX, cloudY - radius * .18f, radius, sunPaint)
-                canvas.drawCircle(cloudX + radius * .7f, cloudY, radius * .70f, sunPaint)
-                canvas.drawRoundRect(cloudX - radius * 1.35f, cloudY, cloudX + radius * 1.4f,
-                    cloudY + radius * .65f, radius * .3f, radius * .3f, sunPaint)
-            }
-
-            if (rainy) {
-                ripplePaint.color = if (dark) 0x809DB99E.toInt() else 0x2A6F8F72.toInt()
-                ripplePaint.strokeWidth = dp(2).toFloat()
-                for (i in 0..7) {
-                    val x = w * (.57f + (i % 4) * .07f)
-                    val y = horizon * (.60f + (i / 4) * .32f)
-                    canvas.drawLine(x, y, x - dp(3), y + dp(9), ripplePaint)
+        private fun drawHeat(canvas: Canvas, w: Float, horizon: Float, t: Float) {
+            stroke.color = 0x22D98A67
+            stroke.strokeWidth = dp(1).toFloat()
+            for (i in 0 until 3) {
+                val x = w * (.2f + i * .22f)
+                val y = horizon * (.55f + sin((t + i * .2f) * Math.PI * 2).toFloat() * .03f)
+                val path = Path().apply {
+                    moveTo(x, y)
+                    quadTo(x + dp(6), y - dp(6), x, y - dp(12))
+                    quadTo(x - dp(6), y - dp(18), x, y - dp(24))
                 }
+                canvas.drawPath(path, stroke)
             }
-            if (snowy) {
-                sunPaint.color = if (dark) 0xCCF4ECE1.toInt() else 0xFFFFFFFF.toInt()
-                for (i in 0..9) canvas.drawCircle(w * (.55f + (i % 5) * .075f), horizon * (.5f + (i / 5) * .35f), dp(2).toFloat(), sunPaint)
-            }
-            if (foggy) {
-                ripplePaint.color = if (dark) 0x66C2B6A8.toInt() else 0x2A6F8F72.toInt()
-                ripplePaint.strokeWidth = dp(3).toFloat()
-                for (i in 0..2) {
-                    val y = horizon * (.48f + i * .18f)
-                    canvas.drawLine(w * .12f, y, w * .88f, y, ripplePaint)
-                }
-            }
+        }
 
-            ripplePaint.color = if (dark) 0x229DB99E.toInt() else 0x2A6F8F72.toInt()
-            for (i in 0 until 6) {
-                val y = horizon + (h - horizon) * (0.06f + i * 0.13f)
-                val half = w * (0.06f + i * 0.015f)
-                canvas.drawLine(sunX - half, y, sunX + half, y, ripplePaint)
-            }
-            reflectionPaint.color = if (dark) 0x4AD98A67.toInt() else 0x4AB85C3C.toInt()
-            for (i in 0 until 9) {
-                val y = horizon + (h - horizon) * (0.04f + i * 0.10f)
-                val spread = dp(2 + (i % 3) * 3).toFloat()
-                canvas.drawLine(sunX - spread, y, sunX + spread, y, reflectionPaint)
-            }
-
-            reedPaint.color = if (dark) 0x669DB99E.toInt() else 0x8C6F8F72.toInt()
-            for (i in 0..5) {
-                val x = w * (0.04f + i * 0.018f)
-                val top = h - h * (0.16f + (i % 3) * 0.04f)
-                canvas.drawPath(Path().apply {
-                    moveTo(x, h)
-                    quadTo(x + dp(6), (top + h) / 2f, x + dp(2), top)
-                }, reedPaint)
-            }
-            for (i in 0..5) {
-                val x = w * (0.96f - i * 0.018f)
-                val top = h - h * (0.14f + (i % 3) * 0.05f)
-                canvas.drawPath(Path().apply {
-                    moveTo(x, h)
-                    quadTo(x - dp(6), (top + h) / 2f, x - dp(2), top)
-                }, reedPaint)
+        private fun drawReeds(canvas: Canvas, w: Float, h: Float) {
+            stroke.color = 0x559DB99E.toInt()
+            stroke.strokeWidth = dp(1).toFloat()
+            for (i in 0..4) {
+                val x = w * (.04f + i * .02f)
+                val top = h - h * (.14f + (i % 3) * .04f)
+                canvas.drawPath(Path().apply { moveTo(x, h); quadTo(x + dp(5), (top + h) / 2f, x + dp(2), top) }, stroke)
+                val xr = w * (.96f - i * .02f)
+                canvas.drawPath(Path().apply { moveTo(xr, h); quadTo(xr - dp(5), (top + h) / 2f, xr - dp(2), top) }, stroke)
             }
         }
     }
