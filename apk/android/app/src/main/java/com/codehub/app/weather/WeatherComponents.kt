@@ -71,7 +71,7 @@ object WeatherComponents {
 
 /** Smooth hourly chart: temp line + precip bars. */
 class HourlyChartView(context: Context, private val hours: List<HourPoint>, private val p: WeatherDesign.Palette) : View(context) {
-    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = WeatherDesign.dpF(context, 2.5f); strokeCap = Paint.Cap.ROUND; color = p.accent }
+    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = WeatherDesign.dpF(context, 3); strokeCap = Paint.Cap.ROUND; color = p.accent }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = p.text }
     private val bar = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = ColorUtils.setAlphaComponent(p.accent, 55) }
@@ -118,7 +118,7 @@ class HourlyChartView(context: Context, private val hours: List<HourPoint>, priv
 
         hours.forEachIndexed { i, pt ->
             val px = x(i); val py = y(pt.temp)
-            canvas.drawCircle(px, py, WeatherDesign.dpF(context, 3.5f), dot)
+            canvas.drawCircle(px, py, WeatherDesign.dpF(context, 4), dot)
             canvas.drawText("${pt.temp}°", px, py - WeatherDesign.dpF(context, 8), tempP)
             canvas.drawText(pt.label, px, h - WeatherDesign.dpF(context, 3), textP)
         }

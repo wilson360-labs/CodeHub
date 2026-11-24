@@ -46,7 +46,7 @@ object WeatherDesign {
         ) else Palette(
             bgTop = 0xFF8AAFC4.toInt(), bgBottom = 0xFFEAF2F6.toInt(),
             edgeA = 0x55DCEFF8.toInt(), edgeB = 0x334A7A94.toInt(), edgeC = 0x22FFFFFF.toInt(),
-            glass = 0x52FFFFFF, glassStrong = 0x70FFFFFF, glassBorder = 0x66FFFFFF, glassHighlight = 0x80FFFFFF,
+            glass = 0x52FFFFFF.toInt(), glassStrong = 0x70FFFFFF.toInt(), glassBorder = 0x66FFFFFF.toInt(), glassHighlight = 0x80FFFFFF.toInt(),
             text = 0xFF1E2D36.toInt(), text2 = 0xCC243744.toInt(), muted = 0x99556876.toInt(),
             accent = 0xFF3F88A8.toInt(), ok = 0xFF5E8A63.toInt(), warn = 0xFFB98542.toInt(), danger = 0xFFB85C3C.toInt(),
             chip = 0x55FFFFFF
@@ -59,10 +59,10 @@ object WeatherDesign {
             accent = 0xFFD98A67.toInt(), ok = 0xFF9DB99E.toInt(), warn = 0xFFE2B48F.toInt(), danger = 0xFFFF8A80.toInt(),
             chip = 0x33202838.toInt()
         )
-        condition == WeatherCondition.CLEAR_DAY || condition == WeatherCondition.SECOISH -> Palette(
+        condition == WeatherCondition.CLEAR_DAY -> Palette(
             bgTop = 0xFFF0D6B8.toInt(), bgBottom = 0xFFF7F1E7.toInt(),
             edgeA = 0x66FFF4DE.toInt(), edgeB = 0x33D98A67.toInt(), edgeC = 0x22FFFFFF.toInt(),
-            glass = 0x59FFFFFF, glassStrong = 0x73FFFFFF, glassBorder = 0x66FFFFFF, glassHighlight = 0x88FFFFFF,
+            glass = 0x59FFFFFF.toInt(), glassStrong = 0x73FFFFFF.toInt(), glassBorder = 0x66FFFFFF.toInt(), glassHighlight = 0x88FFFFFF.toInt(),
             text = 0xFF2E241C.toInt(), text2 = 0xCC3A2E24.toInt(), muted = 0x99705D49.toInt(),
             accent = 0xFFB85C3C.toInt(), ok = 0xFF6F8F72.toInt(), warn = 0xFFC9892E.toInt(), danger = 0xFFB23A2E.toInt(),
             chip = 0x66FFFDFC.toInt()
@@ -77,7 +77,7 @@ object WeatherDesign {
         ) else Palette(
             bgTop = 0xFFE8DDD0.toInt(), bgBottom = 0xFFF8F3EB.toInt(),
             edgeA = 0x55FFFFFF.toInt(), edgeB = 0x22D98A67.toInt(), edgeC = 0x18FFFFFF.toInt(),
-            glass = 0x5CFFFFFF, glassStrong = 0x78FFFFFF, glassBorder = 0x66FFFFFF, glassHighlight = 0x80FFFFFF,
+            glass = 0x5CFFFFFF.toInt(), glassStrong = 0x78FFFFFF.toInt(), glassBorder = 0x66FFFFFF.toInt(), glassHighlight = 0x80FFFFFF.toInt(),
             text = 0xFF2E241C.toInt(), text2 = 0xCC3A2E24.toInt(), muted = 0x99705D49.toInt(),
             accent = 0xFFB85C3C.toInt(), ok = 0xFF6F8F72.toInt(), warn = 0xFFC9892E.toInt(), danger = 0xFFB23A2E.toInt(),
             chip = 0x66FFFDFC.toInt()
