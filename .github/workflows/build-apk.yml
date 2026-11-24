@@ -11,6 +11,7 @@ on:
       - 'css/**'
       - 'js/**'
       - 'scripts/build-cache.sh'
+      - 'scripts/package-source-zips.py'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -565,6 +566,14 @@ jobs:
             echo "Firma verificada: $(basename "$APK") · $DIGEST"
           done
 
+      - name: Create Android and web source ZIPs
+        id: source-zips
+        if: env.HAS_RELEASE_SECRETS == 'true' && steps.release-build.outcome == 'success'
+        shell: bash
+        env:
+          RELEASE_TAG: apk-codehub-v${{ steps.version.outputs.version }}-build${{ steps.version.outputs.build_seq }}-${{ steps.version.outputs.sha }}
+        run: python3 scripts/package-source-zips.py
+
       # Se guarda solo tras un build válido. `continue-on-error` garantiza
       # que un problema de Storage no convierta un build correcto en fallo.
       - name: Guardar particiones de build en Supabase
@@ -608,12 +617,17 @@ jobs:
             2. Abre en tu Android
             3. Acepta fuentes desconocidas
             4. ¡Listo!
+            ### Código fuente
+            - **CodeHub-Android-source-${{ steps.version.outputs.sha }}.zip** contiene el proyecto nativo Android (`apk/android`).
+            - **CodeHub-Web-source-${{ steps.version.outputs.sha }}.zip** contiene el frontend y backend web; excluye la app Android.
           files: |
             ${{ steps.find-apk.outputs.path }}
             ${{ steps.find-apk.outputs.arm64_path }}
             ${{ steps.find-apk.outputs.armv7_path }}
             ${{ steps.find-apk.outputs.x86_64_path }}
             ${{ steps.find-apk.outputs.x86_path }}
+            ${{ steps.source-zips.outputs.android_zip }}
+            ${{ steps.source-zips.outputs.web_zip }}
           make_latest: true
           generate_release_notes: true
         env:
