@@ -10,7 +10,7 @@ El proyecto Xcode se genera desde `project.yml` con XcodeGen. Para compilar loca
 
 ```sh
 brew install xcodegen
-xcodegen generate --spec ios/project.yml --project ios/CodeHub.xcodeproj
+xcodegen generate --spec ios/project.yml
 xcodebuild -project ios/CodeHub.xcodeproj -scheme CodeHub -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
