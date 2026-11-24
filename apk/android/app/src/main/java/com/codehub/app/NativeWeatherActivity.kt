@@ -842,13 +842,15 @@ class NativeWeatherActivity : Activity() {
         }
 
         private fun drawSky(canvas: Canvas, w: Float, horizon: Float, t: Float) {
-            val top: Int; val bottom: Int
+            val top: Int
+            val bottom: Int
             when (snapshot.state) {
                 WeatherVisual.State.TROPICAL -> { top = 0xFF040806.toInt(); bottom = 0xFF0A1410.toInt() }
                 WeatherVisual.State.SECO -> { top = 0xFF080502.toInt(); bottom = 0xFF15100B.toInt() }
                 WeatherVisual.State.TEMPLADO -> { top = 0xFF050608.toInt(); bottom = 0xFF0D1114.toInt() }
                 WeatherVisual.State.CONTINENTAL -> { top = 0xFF040506.toInt(); bottom = 0xFF0D1012.toInt() }
                 WeatherVisual.State.POLAR -> { top = 0xFF050708.toInt(); bottom = 0xFF101418.toInt() }
+                else -> { top = 0xFF050608.toInt(); bottom = 0xFF0D1114.toInt() }
             }
             fill.shader = LinearGradient(0f, 0f, 0f, horizon, top, bottom, Shader.TileMode.CLAMP)
             canvas.drawRect(0f, 0f, w, horizon, fill)
