@@ -111,7 +111,7 @@ public final class ShizukuApkInstallerUserService extends ICodeHubApkInstaller.S
                     Thread.sleep(900L);
                     Process launch = new ProcessBuilder("/system/bin/am", "start", "-n", relaunchComponent)
                             .redirectErrorStream(true).start();
-                    launch.waitFor(10L, TimeUnit.SECONDS);
+                    waitForProcess(launch, 10L, TimeUnit.SECONDS);
                     launch.destroy();
                 } catch (Exception ignored) { }
             }

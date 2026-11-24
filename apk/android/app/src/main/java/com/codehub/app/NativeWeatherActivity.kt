@@ -958,7 +958,7 @@ class NativeWeatherActivity : Activity() {
 
         private fun drawRain(canvas: Canvas, w: Float, horizon: Float, t: Float, count: Int, color: Int, speed: Float) {
             stroke.color = color
-            stroke.strokeWidth = dp(1.4f).toFloat()
+            stroke.strokeWidth = dp(1) * 1.4f
             for (i in 0 until count) {
                 val p = (t * speed + i / count.toFloat()) % 1f
                 val x = w * (.18f + (i * 13 % 70) / 100f)
@@ -974,7 +974,7 @@ class NativeWeatherActivity : Activity() {
                 val x = w * (.2f + (i * 11 % 65) / 100f) + sin((t + i) * Math.PI * 2).toFloat() * dp(2)
                 val y = horizon * (.2f + p * .78f)
                 fill.alpha = (120 + (1f - p) * 90).toInt()
-                canvas.drawCircle(x, y, dp(1.8f).toFloat(), fill)
+                canvas.drawCircle(x, y, dp(2) * 0.9f, fill)
             }
         }
 
