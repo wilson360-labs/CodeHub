@@ -21,7 +21,7 @@
             android:layout_marginLeft="16dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="12dp"
-            android:src="@drawable/ic_snow"
+            android:src="@drawable/ic_codesu_bolt"
             app:tint="@color/codesu_accent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"

@@ -216,7 +216,7 @@ public class AutoKillService extends Service {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Auto Kill Service")
                 .setContentText("CodeSu will close apps automatically based on your settings")
-                .setSmallIcon(R.drawable.ic_snow)
+                .setSmallIcon(R.drawable.ic_codesu_bolt)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)

@@ -12,7 +12,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="center"
-        android:src="@drawable/ic_snow"
+        android:src="@drawable/ic_codesu_bolt"
         android:visibility="visible" />
 
     <ProgressBar

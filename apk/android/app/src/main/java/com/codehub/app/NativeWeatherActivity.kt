@@ -61,7 +61,7 @@ class NativeWeatherActivity : Activity() {
     private lateinit var scroll: ScrollView
     private lateinit var topBar: LinearLayout
     private lateinit var topTitle: TextView
-    private lateinit var locationPill: TextView
+    private var locationPill: TextView? = null
     private lateinit var searchDock: LinearLayout
     private var palette: WeatherDesign.Palette = WeatherDesign.palette(WeatherCondition.CLEAR_DAY, true)
     private var request: Call? = null
@@ -241,7 +241,7 @@ class NativeWeatherActivity : Activity() {
             topBar.invalidate()
             topBar.childrenRecursively { v ->
                 if (v is ImageView) v.imageTintList = android.content.res.ColorStateList.valueOf(palette.text)
-                if (v is TextView && v !== locationPill) v.setTextColor(if (v.typeface?.isBold == true) palette.text else v.currentTextColor)
+                if (v is TextView && (locationPill == null || v !== locationPill)) v.setTextColor(if (v.typeface?.isBold == true) palette.text else v.currentTextColor)
             }
         }
         if (::searchDock.isInitialized) {

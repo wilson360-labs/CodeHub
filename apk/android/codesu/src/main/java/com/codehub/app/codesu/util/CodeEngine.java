@@ -550,7 +550,7 @@ public final class CodeEngine {
                     .setContentTitle("CodeEngine · " + label(profile))
                     .setContentText(result.isEmpty() ? "Perfil aplicado" : result)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(result))
-                    .setSmallIcon(R.drawable.ic_snow)
+                    .setSmallIcon(R.drawable.ic_codesu_bolt)
                     .setContentIntent(pending)
                     .setAutoCancel(true)
                     .setOngoing(false)
