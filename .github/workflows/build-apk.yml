@@ -88,6 +88,7 @@ jobs:
           echo "APPCODE=$APPCODE" >> "$GITHUB_ENV"
           echo "BUILD_SEQ=$BUILD_SEQ" >> "$GITHUB_ENV"
           echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+          echo "PREV_TAG=$PREV_TAG" >> "$GITHUB_ENV"
           sed -i -E "s/versionName \"[^\"]*\"/versionName \"$APPVER\"/" apk/android/app/build.gradle
           sed -i -E "s/versionCode [0-9]+/versionCode $APPCODE/"       apk/android/app/build.gradle
           echo "build.gradle -> versionName $APPVER (build $BUILD_SEQ/5, versionCode $APPCODE, commit $SHORT_SHA)"
@@ -618,6 +619,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generar entrada de changelog del build
+        if: env.HAS_RELEASE_SECRETS == 'true'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_VERSION: ${{ env.VERSION }}
+          BUILD_NUMBER: ${{ env.BUILD_SEQ }}
+          BUILD_SHA: ${{ env.SHORT_SHA }}
+          PREV_RELEASE_TAG: ${{ env.PREV_TAG }}
+          CH_MSG: ${{ github.event.head_commit.message || '' }}
+        run: |
+          set -euo pipefail
+          # Los commits entre la última release y este build alimentan
+          # /api/changelog. Si GitHub no responde, el generador usa el subject
+          # del commit como fallback y el release sigue adelante.
+          MSG="${CH_MSG%%$'\n'*}"
+          MSG="${MSG:-Nueva versión de CodeHub con mejoras y correcciones}"
+          node scripts/build-changelog-entry.js \
+            --version "$APP_VERSION" \
+            --build "$BUILD_NUMBER" \
+            --sha "$BUILD_SHA" \
+            --prev-tag "$PREV_RELEASE_TAG" \
+            --fallback "$MSG" \
+            --output "$RUNNER_TEMP/changelog-entry.json"
+          echo "✔ Changelog del build $BUILD_NUMBER generado desde commits." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publicar config de actualización del APK
         if: env.HAS_RELEASE_SECRETS == 'true'
         continue-on-error: true
@@ -634,7 +662,11 @@ jobs:
           # ese texto lo leen usuarios finales en el diálogo de la app.
           MSG="${CH_MSG%%$'\n'*}"
           MSG="${MSG:-Nueva versión de CodeHub con mejoras y correcciones}"
-          node scripts/update-apk-config.js --version-code "$APK_VERSION_CODE" --fallback "$MSG"
+          EXTRA_ARGS=()
+          if [ -f "$RUNNER_TEMP/changelog-entry.json" ]; then
+            EXTRA_ARGS+=(--changelog-entry-file "$RUNNER_TEMP/changelog-entry.json")
+          fi
+          node scripts/update-apk-config.js --version-code "$APK_VERSION_CODE" --fallback "$MSG" "${EXTRA_ARGS[@]}"
 
       - name: Limpiar keystore local del runner
         if: always()

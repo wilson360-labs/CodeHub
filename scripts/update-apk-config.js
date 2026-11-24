@@ -12,6 +12,7 @@
  *   node scripts/update-apk-config.js --version 1.4.1 --bump-code
  *   node scripts/update-apk-config.js --fallback "Mejoras y correcciones"
  *   node scripts/update-apk-config.js --version-code 756 --minimum-version-code 756 --fallback "Actualización obligatoria"
+ *   node scripts/update-apk-config.js --changelog-entry-file entry.json
  *
  * Auth: requiere ADMIN_KEY (env o --key). Endpoint default: Render.
  */
@@ -176,6 +177,42 @@ async function main() {
 
   const config = { apkLatestVersion: version, apkLatestVersionCode: versionCode, apkUpdateNotes: notes };
   if (minimumVersionCode != null) config.apkMinSupportedVersionCode = minimumVersionCode;
+
+  // Entrada generada por el build (scripts/build-changelog-entry.js). Se fusiona
+  // con el historial remoto para no perder builds anteriores; si la lectura
+  // falla, el PATCH no toca apkChangelog y conserva lo ya publicado.
+  const changelogEntryFile = readArg('--changelog-entry-file');
+  if (changelogEntryFile) {
+    if (!fs.existsSync(changelogEntryFile)) {
+      console.error(`✖ No existe --changelog-entry-file: ${changelogEntryFile}`);
+      process.exit(1);
+    }
+    let entry;
+    try { entry = JSON.parse(fs.readFileSync(changelogEntryFile, 'utf8')); }
+    catch (e) { console.error('✖ changelog-entry-file no es JSON válido:', e.message); process.exit(1); }
+    if (!entry || !entry.version || !Array.isArray(entry.changes) || !entry.changes.length) {
+      console.error('✖ changelog-entry-file incompleto (version + changes[] requeridos)');
+      process.exit(1);
+    }
+
+    let history = [];
+    try {
+      const currentRes = await fetch(backend + '/api/admin/config', { headers });
+      if (currentRes.ok) {
+        const current = await currentRes.json();
+        if (Array.isArray(current.config && current.config.apkChangelog)) history = current.config.apkChangelog;
+      } else {
+        console.warn(`Aviso: no se pudo leer apkChangelog actual (HTTP ${currentRes.status}); se publica solo el build nuevo.`);
+      }
+    } catch (e) {
+      console.warn('Aviso: no se pudo leer apkChangelog actual:', e.message);
+    }
+
+    const key = (e) => String(e && e.version || '');
+    config.apkChangelog = [entry, ...history.filter((e) => key(e) !== key(entry))].slice(0, 12);
+    console.log(`  apkChangelog: ${key(entry)} (${entry.changes.length} cambios, ${config.apkChangelog.length} builds en historial)`);
+  }
+
   const res = await fetch(backend + '/api/admin/config', {
     method: 'PATCH',
     headers,

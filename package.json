@@ -16,6 +16,7 @@
     "audit:versions": "node scripts/audit-versions.js",
     "audit:inline": "node scripts/check-inline.js",
     "update:apk": "node scripts/update-apk-config.js",
+    "changelog:build": "node scripts/build-changelog-entry.js",
     "lighthouse": "node scripts/lighthouse-audit.js",
     "check:install": "node scripts/audit-project.js --install",
     "check:health": "node scripts/audit-project.js --health"

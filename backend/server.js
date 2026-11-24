@@ -6978,7 +6978,10 @@ app.delete('/api/admin/releases/:id', requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// ── CHANGELOG — última versión para el diálogo de actualización ──
+// ── CHANGELOG — historial curado + una entrada por build APK ────
+// changelog.json sigue siendo la fuente editorial. Cada build publica además
+// una entrada generada en apkChangelog (remote config), así el diálogo ve el
+// build instalable sin esperar un redeploy de Render.
 let _changelog = null;
 function loadChangelog() {
   if (_changelog) return _changelog;
@@ -6989,11 +6992,39 @@ function loadChangelog() {
   return _changelog;
 }
 
-app.get('/api/changelog', (req, res) => {
-  const cl = loadChangelog();
+// v7.72-build5 > v7.72 > v7.61. El sufijo de build evita que dos APK de la
+// misma versión se ordenen como iguales.
+function changelogRank(entry) {
+  const m = String(entry?.version || '').match(/v?(\d+)\.(\d+)(?:-build(\d+))?/i);
+  if (!m) return 0;
+  return Number(m[1]) * 1e6 + Number(m[2]) * 1e3 + Number(m[3] || 0);
+}
+
+async function getChangelogEntries() {
+  const curated = Array.isArray(loadChangelog()) ? loadChangelog() : [];
+  let generated = [];
+  try {
+    const cfg = await getAppConfig();
+    if (Array.isArray(cfg.apkChangelog)) generated = cfg.apkChangelog;
+  } catch (e) { /* Mongo caído: se sirve solo el historial curado */ }
+
+  const byVersion = new Map();
+  for (const entry of [...generated, ...curated]) {
+    if (!entry || typeof entry !== 'object') continue;
+    const key = String(entry.version || '');
+    if (!key || !byVersion.has(key)) byVersion.set(key, entry);
+  }
+  return [...byVersion.values()].sort((a, b) => changelogRank(b) - changelogRank(a));
+}
+
+app.get('/api/changelog', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const cl = await getChangelogEntries();
   if (!cl.length) return res.json({ ok: true, entries: [] });
-  const since = req.query.since || '';
-  const entries = since ? cl.filter(e => e.version > since) : cl.slice(0, 3);
+  const since = String(req.query.since || '').trim();
+  const entries = since
+    ? cl.filter(e => changelogRank(e) > changelogRank({ version: since }))
+    : cl.slice(0, 3);
   res.json({ ok: true, entries });
 });
 

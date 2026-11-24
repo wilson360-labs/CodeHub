@@ -13,7 +13,8 @@
       "Corregido el crash de Android 16 al iniciar el servicio de auto-kill; la detección de batería y juego ahora es opcional.",
       "Actualizaciones solo en un diálogo con versión, descripción, «Qué hay de nuevo:» y descarga verificada; se quitó la franja del inicio.",
       "Inicio más limpio: sin encabezado «Acceso rápido» ni pie «CodeHub · Guatemala».",
-      "Clima y widgets con composición One UI sobre AMOLED: accesos directos 3x3 y tarjetas de pronóstico más claras."
+      "Clima y widgets con composición One UI sobre AMOLED: accesos directos 3x3 y tarjetas de pronóstico más claras.",
+      "El changelog de la app se genera automáticamente en cada build con los commits publicados desde la última release."
     ],
     "changes_en": [
       "Native updater brings release notes, version, date and download progress together in one dialog.",
@@ -23,7 +24,8 @@
       "Fixed the Android 16 crash when starting the auto-kill service; battery and game detection are now opt-in.",
       "Updates now live in one dialog with version, description, \"What's new:\" and verified download; the home banner is gone.",
       "Cleaner home: no \"Quick access\" header and no \"CodeHub · Guatemala\" footer.",
-      "One UI-style weather and widgets on AMOLED: a 3x3 direct-access grid and clearer forecast cards."
+      "One UI-style weather and widgets on AMOLED: a 3x3 direct-access grid and clearer forecast cards.",
+      "App changelog is generated on every build from the commits published since the last release."
     ]
   },
   {

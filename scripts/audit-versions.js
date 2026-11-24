@@ -6,8 +6,8 @@
  *   1. sw.js VERSION ......... version vigente del sitio/PWA (auto-bump +0.01
  *                              por wire-build.js cuando cambia el precache).
  *                              build-apk.yml publica el APK como apk-<VERSION>.
- *   2. changelog.json ........ changelog curado (/api/changelog, y notas que
- *                              lee scripts/update-apk-config.js).
+ *   2. changelog.json ........ changelog curado (/api/changelog lo complementa
+ *                              con una entrada por build en remote config).
  *   3. apk-download.json ..... config legacy del enlace de descarga del APK.
  *   4. apk/android/app/build.gradle  versionName/versionCode de la app Android.
  *      (AppUpdateChecker.java compara el tag de GitHub contra versionName con
