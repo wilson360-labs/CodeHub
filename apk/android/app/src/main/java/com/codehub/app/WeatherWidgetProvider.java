@@ -539,6 +539,10 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         boolean hasSun = sunrise != null && !sunrise.isEmpty() && sunset != null && !sunset.isEmpty();
         boolean night = !isDaylightNow(hasSun ? sunrise : null, hasSun ? sunset : null);
 
+        WeatherVisual.Snapshot snap = new WeatherVisual.Snapshot(
+            WeatherVisual.classify(wcode, Float.isNaN(temp) ? Float.NaN : temp, humidity, Float.isNaN(wind) ? Float.NaN : wind, Float.NaN),
+            wcode, night, Float.isNaN(temp) ? Float.NaN : temp, humidity, Float.isNaN(wind) ? Float.NaN : wind, Float.NaN);
+
         views.setTextViewText(R.id.widget_city, (city == null || city.isEmpty()) ? "CodeHub" : city);
         views.setTextViewText(R.id.widget_temp, Float.isNaN(temp) ? "--°" : Math.round(temp) + "°");
         views.setTextViewText(R.id.widget_condition, labelFor(wcode) + " · " + WeatherVisual.label(snap.state));
@@ -580,9 +584,6 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setViewVisibility(R.id.widget_daily, showDaily ? View.VISIBLE : View.GONE);
         views.setViewVisibility(R.id.widget_details, showDetails ? View.VISIBLE : View.GONE);
 
-        WeatherVisual.Snapshot snap = new WeatherVisual.Snapshot(
-            WeatherVisual.classify(wcode, Float.isNaN(temp) ? Float.NaN : temp, humidity, Float.isNaN(wind) ? Float.NaN : wind, Float.NaN),
-            wcode, night, Float.isNaN(temp) ? Float.NaN : temp, humidity, Float.isNaN(wind) ? Float.NaN : wind, Float.NaN);
         // Escena de fondo adaptada al tamaño real del widget.
         views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(context, widgetId, snap));
 
