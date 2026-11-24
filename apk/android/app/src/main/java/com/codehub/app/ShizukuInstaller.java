@@ -258,7 +258,10 @@ public class ShizukuInstaller {
             throw error;
         } finally {
             if (bound) {
-                try { Shizuku.unbindUserService(args, connection, true); } catch (Throwable ignored) { }
+                if (installer != null) {
+                    try { installer.shutdown(); } catch (Throwable ignored) { }
+                }
+                try { Shizuku.unbindUserService(args, connection, installer == null); } catch (Throwable ignored) { }
             }
         }
     }

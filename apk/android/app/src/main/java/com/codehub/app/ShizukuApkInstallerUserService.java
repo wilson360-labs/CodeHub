@@ -138,9 +138,14 @@ public final class ShizukuApkInstallerUserService extends ICodeHubApkInstaller.S
     }
 
     @Override
-    public void destroy() {
+    public void shutdown() {
         abortInstall();
-        System.exit(0);
+        Thread exitThread = new Thread(() -> {
+            try { Thread.sleep(250L); } catch (InterruptedException ignored) { }
+            System.exit(0);
+        }, "codehub-installer-shutdown");
+        exitThread.setDaemon(true);
+        exitThread.start();
     }
 
     private static String safe(Throwable error) {
