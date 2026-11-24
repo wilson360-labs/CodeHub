@@ -274,6 +274,68 @@
                 android:resource="@xml/device_status_widget_info" />
         </receiver>
 
+        <!-- Quick Settings tiles (Android 7.0+): accesos directos y acciones rápidas. -->
+        <service
+            android:name=".tiles.CodeBeatTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_codebeat"
+            android:label="CodeBeat"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.CodeStreamTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_codestream"
+            android:label="CodeStream"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.WeatherTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_weather"
+            android:label="Clima"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.MyAppsTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_apps"
+            android:label="Mis apps"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.CodeSuTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_codesu"
+            android:label="CodeSu"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.KillAppsTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_killapps"
+            android:label="CodeHub Kill"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Detector de sismos por acelerómetro (capa C de alerta temprana).
              Foreground specialUse (NO dataSync): Android 15+ impone timeout
              de 6 h a dataSync y lanza ForegroundServiceDidNotStopInTimeException
