@@ -1,7 +1,10 @@
 package com.codehub.app;
 
 import android.content.Context;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.content.pm.Signature;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -13,9 +16,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.security.MessageDigest;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import rikka.shizuku.Shizuku;
 
@@ -33,12 +38,8 @@ import rikka.shizuku.Shizuku;
  *    root). Si no lo está, isBinderAlive() = false y se debe caer al
  *    flujo normal de instalación con diálogo.
  *
- * Nota técnica: usa Shizuku.newProcess, marcado deprecated desde
- * shizuku-api 13.1.1 en favor de un UserService por AIDL (más robusto,
- * soporta streams binarios). Se mantiene por simplicidad — sigue
- * funcionando en las versiones actuales del servicio Shizuku. Si en el
- * futuro deja de andar tras una actualización de Shizuku, migrar a
- * UserService + IPackageInstaller es el camino que recomienda Rikka.
+ * APK installation uses Shizuku UserService/AIDL. Reflection remains limited
+ * to package removal until that operation is migrated separately.
  */
 public class ShizukuInstaller {
 
@@ -159,13 +160,12 @@ public class ShizukuInstaller {
         if (callback != null) callback.onResult(granted);
     }
 
-    /**
-     * Ejecuta `pm install -r <apkPath>` con los privilegios de Shizuku.
-     * Bloqueante — llamar siempre desde un background thread.
-     * @return true si `pm install` reportó éxito.
-     */
-    public static boolean installSilently(String apkPath) throws Exception {
-        return installApkFromStream(apkPath, null);
+    /** Preferred installer: UserService avoids reflection into Shizuku.newProcess. */
+    public static boolean installSilently(Context context, String apkPath) throws Exception {
+        if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
+        File apk = new File(apkPath);
+        if (!apk.isFile() || apk.length() <= 0L) throw new IllegalArgumentException("El APK no existe o está vacío");
+        return installThroughUserService(context, apk, null);
     }
 
     /** Removes one explicitly confirmed third-party package before a signature-changing reinstall. */
@@ -191,57 +191,100 @@ public class ShizukuInstaller {
         return true;
     }
 
-    /** Self-update path: after Package Manager accepts CodeHub, reopen its launcher activity. */
-    public static boolean installSilentlyAndRelaunch(String apkPath, String activityComponent) throws Exception {
+    /** Self-update path with package, version and signing-certificate checks. */
+    public static boolean installSilentlyAndRelaunch(Context context, String apkPath,
+                                                       String activityComponent) throws Exception {
         if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
         if (activityComponent == null || !activityComponent.matches("[A-Za-z0-9._]+/[A-Za-z0-9._]+")) {
             throw new IllegalArgumentException("Componente de inicio no válido");
         }
-        return installApkFromStream(apkPath, activityComponent);
+        File apk = new File(apkPath);
+        verifyCodeHubUpdate(context, apk);
+        return installThroughUserService(context, apk, activityComponent);
     }
 
-    /**
-     * Streams APK bytes to Package Manager instead of asking the shell to read
-     * an app-specific external-storage path. This also avoids quoting/path
-     * permission differences between Android releases and OEM builds.
-     */
-    private static boolean installApkFromStream(String apkPath, String activityComponent) throws Exception {
-        if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
-        File apk = new File(apkPath);
-        if (!apk.isFile() || apk.length() <= 0L) throw new IllegalArgumentException("El APK no existe o está vacío");
-        // Record CodeHub as the installer for future updates. Android 16 applies
-        // stricter no-user-action rules to PackageInstaller updates; the package
-        // manager still decides whether this session qualifies and may require UI.
-        String command = "pm install --user current -i com.codehub.app -r -S " + apk.length() + " - 2>&1; result=$?; "
-                + (activityComponent == null ? "" : "if [ $result -eq 0 ]; then sleep 1; am start -n \"" + activityComponent
-                + "\" || true; fi; ") + "exit $result";
-        Process p = newProcessReflective(new String[]{"sh", "-c", command}, null, null);
-        try (InputStream source = new FileInputStream(apk); OutputStream destination = p.getOutputStream()) {
-            byte[] buffer = new byte[64 * 1024];
-            int count;
-            while ((count = source.read(buffer)) != -1) destination.write(buffer, 0, count);
-            destination.flush();
-        } catch (Exception error) {
-            try { p.destroy(); } catch (Throwable ignored) {}
-            throw new Exception("No se pudieron enviar los bytes del APK a Package Manager: "
-                    + safeMessage(error), error);
-        }
-
-        String output;
-        try (InputStream stream = p.getInputStream(); ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[4096];
-            int count;
-            while ((count = stream.read(buffer)) != -1) {
-                if (bytes.size() < 64 * 1024) bytes.write(buffer, 0, Math.min(count, 64 * 1024 - bytes.size()));
+    private static boolean installThroughUserService(Context context, File apk,
+                                                       String relaunchComponent) throws Exception {
+        final Context appContext = context.getApplicationContext();
+        final Shizuku.UserServiceArgs args = new Shizuku.UserServiceArgs(
+                new ComponentName(appContext.getPackageName(), ShizukuApkInstallerUserService.class.getName()))
+                .daemon(false)
+                .processNameSuffix("apk-installer")
+                .debuggable(false)
+                .version(1)
+                .tag("codehub-apk-installer");
+        final CountDownLatch connected = new CountDownLatch(1);
+        final AtomicReference<ICodeHubApkInstaller> remote = new AtomicReference<>();
+        ServiceConnection connection = new ServiceConnection() {
+            @Override public void onServiceConnected(ComponentName name, IBinder binder) {
+                remote.set(ICodeHubApkInstaller.Stub.asInterface(binder));
+                connected.countDown();
             }
-            output = bytes.toString("UTF-8").trim();
+            @Override public void onServiceDisconnected(ComponentName name) {
+                remote.set(null);
+                connected.countDown();
+            }
+        };
+
+        boolean bound = false;
+        ICodeHubApkInstaller installer = null;
+        try {
+            Shizuku.bindUserService(args, connection);
+            bound = true;
+            if (!connected.await(20L, TimeUnit.SECONDS) || remote.get() == null) {
+                throw new IllegalStateException("Shizuku no inició el servicio de instalación en 20 segundos.");
+            }
+            installer = remote.get();
+            long expectedSize = apk.length();
+            installer.beginInstall(expectedSize);
+            try (InputStream input = new FileInputStream(apk)) {
+                byte[] buffer = new byte[256 * 1024];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    if (!isBinderAlive()) throw new IllegalStateException("Se perdió la conexión con Shizuku durante la transferencia.");
+                    byte[] chunk = count == buffer.length ? buffer.clone() : java.util.Arrays.copyOf(buffer, count);
+                    installer.appendInstallChunk(chunk);
+                }
+            }
+            String result = installer.commitInstall(relaunchComponent);
+            if (result == null || !result.startsWith("OK:")) {
+                throw new Exception(result == null ? "Shizuku no devolvió el resultado de Package Manager." : result.replaceFirst("^ERROR:", ""));
+            }
+            return true;
+        } catch (Exception error) {
+            if (installer != null) {
+                try { installer.abortInstall(); } catch (Throwable ignored) { }
+            }
+            throw error;
+        } finally {
+            if (bound) {
+                try { Shizuku.unbindUserService(args, connection, true); } catch (Throwable ignored) { }
+            }
         }
-        int code = p.waitFor();
-        String normalized = output.toLowerCase(java.util.Locale.ROOT);
-        if (code != 0 || normalized.contains("failure") || !normalized.contains("success")) {
-            throw new Exception(output.isEmpty() ? ("Package Manager terminó con código " + code) : output);
+    }
+
+    private static void verifyCodeHubUpdate(Context context, File apk) throws Exception {
+        if (!apk.isFile() || apk.length() <= 0L) throw new IllegalArgumentException("El APK no existe o está vacío");
+        int flags = Build.VERSION.SDK_INT >= 28
+                ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+        PackageInfo candidate = context.getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), flags);
+        if (candidate == null || !context.getPackageName().equals(candidate.packageName)) {
+            throw new SecurityException("El APK no pertenece a CodeHub.");
         }
-        return true;
+        PackageInfo installed = context.getPackageManager().getPackageInfo(context.getPackageName(), flags);
+        long candidateCode = Build.VERSION.SDK_INT >= 28 ? candidate.getLongVersionCode() : candidate.versionCode;
+        long installedCode = Build.VERSION.SDK_INT >= 28 ? installed.getLongVersionCode() : installed.versionCode;
+        if (candidateCode <= installedCode) throw new SecurityException("El APK no tiene un versionCode más reciente.");
+        Signature[] candidateSigners = Build.VERSION.SDK_INT >= 28
+                ? (candidate.signingInfo == null ? null : candidate.signingInfo.getApkContentsSigners())
+                : candidate.signatures;
+        Signature[] installedSigners = Build.VERSION.SDK_INT >= 28
+                ? (installed.signingInfo == null ? null : installed.signingInfo.getApkContentsSigners())
+                : installed.signatures;
+        if (candidateSigners == null || installedSigners == null || candidateSigners.length == 0
+                || !java.util.Arrays.equals(candidateSigners, installedSigners)) {
+            throw new SecurityException("La firma del APK no coincide con la versión instalada de CodeHub.");
+        }
     }
 
     private static String safeMessage(Throwable error) {
@@ -250,13 +293,7 @@ public class ShizukuInstaller {
         return message.length() > 240 ? message.substring(0, 240) : message;
     }
 
-    /**
-     * Shizuku.newProcess(String[], String[], String) pasó de público a privado
-     * en shizuku-api 13.1.x (sigue existiendo, solo cambió la visibilidad), así
-     * que ya no se puede llamar directo o falla la compilación en release según
-     * la versión que resuelva Gradle. Se invoca por reflexión como puente hasta
-     * migrar a UserService + IPackageInstaller.
-     */
+    /** Shizuku.newProcess is retained only for the existing uninstall operation. */
     private static Process newProcessReflective(String[] cmd, String[] env, String dir) throws Exception {
         Method m = Shizuku.class.getDeclaredMethod("newProcess", String[].class, String[].class, String.class);
         m.setAccessible(true);

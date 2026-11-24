@@ -65,6 +65,7 @@ public class AppUpdateChecker {
     private static final String PREF_AVAILABLE_VERSION = "app_update_available_version";
     private static final String PREF_AVAILABLE_BUILD = "app_update_available_build";
     private static final String PREF_AVAILABLE_URL = "app_update_available_url";
+    private static final String PREF_AVAILABLE_SHA256 = "app_update_available_sha256";
     private static final String PREF_AVAILABLE_CODE = "app_update_available_code";
     private static final String PREF_LAST_CHECK = "update_last_check_ts";
     private static final String PREF_LAST_POLICY_CHECK = "update_policy_last_check_ts";
@@ -141,6 +142,7 @@ public class AppUpdateChecker {
             out.put("localVersionCode", localCode);
             out.put("build", releaseBuildLabel(release));
             out.put("abi", preferredAssetName());
+            out.put("sha256", findApkAssetSha256(release));
             out.put("hasUpdate", hasUpdate);
             out.put("message", hasUpdate
                     ? ("Actualizacion disponible: v" + remote + " " + releaseBuildLabel(release))
@@ -204,9 +206,10 @@ public class AppUpdateChecker {
                 if (apkUrl == null) return;
 
                 String buildLabel = releaseBuildLabel(release);
+                String apkSha256 = findApkAssetSha256(release);
                 UpdateInfo info = new UpdateInfo(remoteVersion, buildLabel, apkUrl, remoteCode,
                         minimumSupportedCode > 0 && localCode < minimumSupportedCode,
-                        formatPublishedDate(release.optString("published_at", "")));
+                        formatPublishedDate(release.optString("published_at", "")), apkSha256);
                 cacheUpdate(activity, info);
                 activity.runOnUiThread(() -> activity.onAppUpdateAvailable(info));
             } catch (Throwable t) {
@@ -248,7 +251,8 @@ public class AppUpdateChecker {
                 return;
             }
             UpdateInfo info = new UpdateInfo(version, build, url, code, required,
-                    current.getString("app_update_available_date", ""));
+                    current.getString("app_update_available_date", ""),
+                    current.getString(PREF_AVAILABLE_SHA256, ""));
             cacheUpdate(activity, info);
             activity.runOnUiThread(() -> activity.onAppUpdateAvailable(info));
         }).start();
@@ -356,6 +360,25 @@ public class AppUpdateChecker {
             if (APK_ASSET_NAME.equalsIgnoreCase(name)) universalUrl = asset.optString("browser_download_url", null);
         }
         return universalUrl;
+    }
+
+    /** GitHub's release asset digest is SHA-256 of the exact APK bytes. */
+    private static String findApkAssetSha256(JSONObject release) {
+        JSONArray assets = release.optJSONArray("assets");
+        if (assets == null) return "";
+        String preferred = preferredAssetName();
+        String universalDigest = "";
+        for (int i = 0; i < assets.length(); i++) {
+            JSONObject asset = assets.optJSONObject(i);
+            if (asset == null) continue;
+            String name = asset.optString("name", "");
+            String digest = asset.optString("digest", "").trim();
+            if (digest.startsWith("sha256:")) digest = digest.substring("sha256:".length());
+            if (!digest.matches("(?i)[0-9a-f]{64}")) digest = "";
+            if (preferred.equalsIgnoreCase(name)) return digest.toLowerCase(java.util.Locale.ROOT);
+            if (APK_ASSET_NAME.equalsIgnoreCase(name)) universalDigest = digest.toLowerCase(java.util.Locale.ROOT);
+        }
+        return universalDigest;
     }
 
     private static String preferredAssetName() {
@@ -487,6 +510,7 @@ public class AppUpdateChecker {
         public final long versionCode;
         public final boolean required;
         public final String publishedDate;
+        public final String apkSha256;
 
         UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode) {
             this(version, buildLabel, apkUrl, versionCode, false);
@@ -497,12 +521,18 @@ public class AppUpdateChecker {
         }
 
         UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode, boolean required, String publishedDate) {
+            this(version, buildLabel, apkUrl, versionCode, required, publishedDate, "");
+        }
+
+        UpdateInfo(String version, String buildLabel, String apkUrl, long versionCode,
+                   boolean required, String publishedDate, String apkSha256) {
             this.version = version;
             this.buildLabel = buildLabel;
             this.apkUrl = apkUrl;
             this.versionCode = versionCode;
             this.required = required;
             this.publishedDate = publishedDate == null ? "" : publishedDate;
+            this.apkSha256 = apkSha256 == null ? "" : apkSha256;
         }
     }
 
@@ -511,6 +541,7 @@ public class AppUpdateChecker {
                 .putString(PREF_AVAILABLE_VERSION, info.version)
                 .putString(PREF_AVAILABLE_BUILD, info.buildLabel)
                 .putString(PREF_AVAILABLE_URL, info.apkUrl)
+                .putString(PREF_AVAILABLE_SHA256, info.apkSha256)
                 .putString("app_update_available_date", info.publishedDate)
                 .putLong(PREF_AVAILABLE_CODE, info.versionCode)
                 .putBoolean("app_update_required", info.required)
@@ -522,6 +553,7 @@ public class AppUpdateChecker {
                 .remove(PREF_AVAILABLE_VERSION)
                 .remove(PREF_AVAILABLE_BUILD)
                 .remove(PREF_AVAILABLE_URL)
+                .remove(PREF_AVAILABLE_SHA256)
                 .remove("app_update_available_date")
                 .remove(PREF_AVAILABLE_CODE)
                 .remove("app_update_required")
@@ -548,7 +580,8 @@ public class AppUpdateChecker {
             return;
         }
         UpdateInfo info = new UpdateInfo(version, build, url, code, required,
-                prefs.getString("app_update_available_date", ""));
+                prefs.getString("app_update_available_date", ""),
+                prefs.getString(PREF_AVAILABLE_SHA256, ""));
         activity.runOnUiThread(() -> activity.onAppUpdateAvailable(info));
     }
 

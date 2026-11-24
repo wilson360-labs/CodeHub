@@ -786,7 +786,7 @@ public class CodeHubBridge {
 
                 boolean useSilent = preferSilent && ShizukuInstaller.isReady();
                 if (useSilent) {
-                    ShizukuInstaller.installSilently(dest.getAbsolutePath());
+                    ShizukuInstaller.installSilently(activity, dest.getAbsolutePath());
                     notifyInstallResult(callbackName, "installed", "");
                 } else {
                     final File apkFile = dest;
@@ -848,7 +848,7 @@ public class CodeHubBridge {
                 boolean installedSilently = false;
                 if (preferSilent && ShizukuInstaller.isReady()) {
                     try {
-                        ShizukuInstaller.installSilently(dest.getAbsolutePath());
+                        ShizukuInstaller.installSilently(activity, dest.getAbsolutePath());
                         installedSilently = true;
                     } catch (Exception ignored) { /* Fall back to Android's installer UI. */ }
                 }

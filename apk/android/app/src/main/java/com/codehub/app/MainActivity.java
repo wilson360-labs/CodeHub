@@ -628,7 +628,8 @@ public class MainActivity extends Activity {
                 },
                 java.util.Collections.emptyList(),
                 null,
-                true
+                true,
+                update.apkSha256
             );
         } catch (Throwable error) {
             appUpdateRunning = false;

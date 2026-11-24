@@ -40,7 +40,7 @@ const CFG = {
   INGEST_MIN_MAG: 2.5,                      // se ignora todo bajo esto
   DEFAULT_MIN_MAG: 3.5,                     // umbral por defecto del usuario
   LEGACY_DEFAULT_MAG: 4.5,                  // valor que antes se guardaba por defecto
-  MAX_EVENT_AGE_MS: 30 * 60 * 1000,         // jamás alertar de sismos más viejos
+  MAX_EVENT_AGE_MS: 5 * 60 * 1000,          // evita alertas claramente atrasadas; no es una garantía EEW
   RE_ALERT_MAG_DELTA: 0.5,                  // re-avisar si la magnitud sube ≥ esto
   ALERT_TTL_SEC: 180,                       // si FCM no entrega en 3 min, se descarta
   MIN_FELT_MMI: 3.0,                        // intensidad mínima "perceptible"
@@ -367,7 +367,6 @@ module.exports = function createSeismicEngine(deps) {
         eta: a.sArrival, depth: Math.round(event.depth), mmi: a.mmi.toFixed(1),
         evId: event.key, alertType: 'earthquake',
         ttl: CFG.ALERT_TTL_SEC, dataOnly: true, priority: 'high',
-        collapseKey: event.key,
       });
     }
     return sendPush(d.rec, {

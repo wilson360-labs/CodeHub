@@ -6693,6 +6693,10 @@ async function sendFCM(token, payload) {
               dir: payload.dir || 'N',
               place: payload.place || '',
               time: String(payload.time || Date.now()),
+              eta: String(payload.eta || 0),
+              depth: String(payload.depth || 0),
+              mmi: String(payload.mmi || ''),
+              evId: String(payload.evId || ''),
               alertType: payload.alertType || 'earthquake',
             }
           : {
@@ -6710,7 +6714,7 @@ async function sendFCM(token, payload) {
         // la próxima ventana de mantenimiento si la app no se usa hace
         // tiempo, dando la falsa impresión de que "no está despierta".
         priority: (isQuake || dataOnly) ? 'high' : 'normal',
-        ...(dataOnly ? { ttl: Math.max(1, Number(payload.ttl) || 1200) * 1000, collapseKey: payload.type || 'codehub-alert' } : {}),
+        ...(dataOnly ? { ttl: Math.max(1, Number(payload.ttl) || 180) * 1000 } : {}),
       },
     };
     if (!isQuake && !dataOnly) {
@@ -7138,6 +7142,13 @@ function seismicThreshold() {
 function seismicRadiusKm() {
   return 300; // distancia máx. para considerar "cercano" (fallback web push)
 }
+
+// Único motor sísmico activo: EMSC WebSocket + respaldo USGS/EMSC.
+// El antiguo bucle de dos minutos queda reemplazado para evitar doble envío.
+const seismicEngine = require('./sismos')({
+  sendPush, sendFCM, fcmEnabled, fcmListTokens, pushList,
+});
+seismicEngine.start();
 // Radio escalado por magnitud/profundidad (idea del estándar CAP de
 // Google Public Alerts: "radios predeterminados según magnitud o
 // profundidad"). Un M7 se siente a 500 km; un M4 apenas a 50 — un radio
@@ -7235,141 +7246,10 @@ function sameCountry(a, b) {
 
 // Una sola pasada de verificación sísmica. Devuelve { earthquakes: N }
 async function seismicPushPass() {
-  let subs;
-  try { subs = await pushList(); } catch (e) { return { earthquakes: 0 }; }
-  const enabled = subs.filter(s => s.alerts && s.seismic_alerts !== false && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
-
-  // También tokens FCM
-  const fcmTokens = [];
-  if (fcmEnabled) {
-    try { fcmTokens.push(...await fcmListTokens()); } catch (e) {}
-  }
-  const targets = [
-    ...enabled.map(s => ({ ...s, _isFCM: false })),
-    ...fcmTokens.filter(t => Number.isFinite(+t.lat) && Number.isFinite(+t.lon)).map(t => ({ ...t, _isFCM: true })),
-  ];
-  if (!targets.length) return { earthquakes: 0 };
-
-  let quakes;
-  try { quakes = await fetchRecentEarthquakes(USGS_FEED_HOUR); } catch (e) { return { earthquakes: 0 }; }
-  const threshold = seismicThreshold();
-  // No convertir eventos antiguos en alertas urgentes cuando USGS/FCM se retrasa.
-  const cutoff = Date.now() - 15 * 60 * 1000; // solo eventos de los últimos 15 min
-
-  let sent = 0;
-  const lastKey = {};
-  const today = new Date().toISOString().slice(0, 10);
-
-  for (const t of targets) {
-    const subKey = t.endpoint || t.token || ('fcm:' + (t.token || ''));
-    const tThr = Number.isFinite(+t.seismic_mag) ? +t.seismic_mag : threshold;
-    const relevant = quakes.filter(q => {
-      const geo = q.geometry && q.geometry.coordinates;
-      if (!geo) return false;
-      const mag = q.properties && q.properties.mag;
-      const time = q.properties && q.properties.time;
-      if (typeof mag !== 'number' || !time || time < cutoff) return false;
-      if (mag < tThr) return false;
-      const depth = Math.abs(geo[2] || 0);
-      const dist = haversineKm(+t.lat, +t.lon, geo[1], geo[0]);
-      // Radio escalado por magnitud/profundidad, no un radio fijo (CAP).
-      if (dist <= quakeRadiusForMag(mag, depth)) return true; // cerca del usuario
-      // Alertas inteligentes: también cuenta cualquier sismo dentro de
-      // tu país, basado en la ubicación precisa guardada del dispositivo.
-      if (t.country) {
-        const qc = countryFromUSGSPlace(q.properties.place);
-        if (qc && sameCountry(t.country, qc)) return true;
-      }
-      return false;
-    });
-    // Ordenar por tiempo: el más reciente primero
-    relevant.sort((a, b) => (b.properties.time || 0) - (a.properties.time || 0));
-    const latest = relevant[0];
-    if (!latest) continue;
-
-    const mag = latest.properties.mag;
-    const placeRaw = latest.properties.place || '';
-    const place = placeRaw.replace(/,.*$/, '').trim();
-    const dist = haversineKm(+t.lat, +t.lon, latest.geometry.coordinates[1], latest.geometry.coordinates[0]);
-    const qc = countryFromUSGSPlace(placeRaw);
-    const inCountry = qc ? sameCountry(t.country, qc) : false;
-    // Mensaje adaptado al motivo: cerca (radio) o dentro de tu país.
-    const locDesc = dist <= quakeRadiusForMag(mag, Math.abs(latest.geometry.coordinates[2] || 0))
-      ? describeMagnitude(mag, dist)
-      : '🌋 Sismo M' + mag.toFixed(1) + ' en tu país' + (inCountry && qc ? ' (' + qc + ')' : '');
-    const key = latest.properties.id;
-    const prev = lastKey[subKey] || (
-      t._isFCM
-        ? fcmLastQuakeKey.get(t.token) || null
-        : (t.last_alert_condition && t.last_alert_condition.startsWith('EQ:') ? t.last_alert_condition : null)
-    );
-    const cacheKey = 'EQ:' + key;
-
-    // No repetir si ya se avisó de este mismo sismo
-    if (prev === cacheKey) continue;
-
-    const depth = Math.abs(latest.geometry.coordinates[2] || 0);
-    const strongNear = dist <= quakeRadiusForMag(mag, depth) && mag >= 5;
-    // En Android, los eventos moderados o lejanos quedan en el panel sísmico;
-    // reservar push/alarma para sismos fuertes dentro del radio de impacto.
-    if (t._isFCM && !strongNear) {
-      fcmLastQuakeKey.set(t.token, cacheKey);
-      continue;
-    }
-
-    const body =
-      locDesc +
-      (place ? ' · ' + place : '') +
-      '\n' + earthquakeSafetyTips(mag);
-
-    let r;
-    if (t._isFCM) {
-      // Enrutado por severidad (APK): dentro del radio escalado y M>=5 →
-      // quake_alert (data-only de alta prioridad → pantalla completa +
-      // alarma). Otro sismo perceptible → quake_info (heads-up). El tipo
-      // 'seismic' queda SOLO para la vía web-push: el servicio nativo no
-      // lo procesa como sismo (CodeHubFirebaseService solo matches quake_*).
-      r = await sendFCM(t.token, {
-        title: strongNear ? '🚨 ALERTA SÍSMICA' : '🌋 Actividad sísmica',
-        body: body + '\n📍 ' + (t.city || 'Tu zona'),
-        type: strongNear ? 'quake_alert' : 'quake_info',
-        url: '/#sismos-section',
-        mag: mag,
-        dist: Math.round(dist),
-        dir: compassDirKm(+t.lat, +t.lon, latest.geometry.coordinates[1], latest.geometry.coordinates[0]),
-        place: placeRaw,
-        time: latest.properties.time,
-        alertType: 'earthquake',
-      });
-    } else {
-      r = await sendPush(t, {
-        title: '🌋 Actividad sísmica',
-        body: body,
-        type: 'seismic',
-        icon: '/splash/codehub.png',
-        url: '/#sismos-section',
-      });
-    }
-    if (r.ok) {
-      lastKey[subKey] = cacheKey;
-      if (t._isFCM) fcmLastQuakeKey.set(t.token, cacheKey);
-      else { t.last_alert_condition = cacheKey; t.last_alert_at = new Date().toISOString(); await pushSave(t); }
-      sent++;
-    }
-    void today;
-  }
-  return { earthquakes: sent };
+  return seismicEngine.passOnce();
 }
 
-// Scheduler sísmico — cada 2 MINUTOS en la vía de emergencia. Con el feed
-// de hora + FCM high-priority el objetivo real es ~1-3 min desde el evento
-// (el latido de USGS + nuestro pass dominate la latencia; el push entra al
-// servicio siempre). 2 min es barato para Render e irrelevante para USGS.
-setInterval(() => {
-  seismicPushPass()
-    .then(o => { if (o.earthquakes) console.log('🌋 Push sísmico enviado:', o.earthquakes); })
-    .catch(e => console.warn('⚠️  Push sísmico error:', e.message));
-}, 2 * 60 * 1000);
+// El worker EMSC/USGS gestiona su propio ciclo de reconexión y sondeo.
 
 app.get('/api/push/seismic/check', async (req, res) => {
   try {
@@ -7383,6 +7263,12 @@ app.get('/api/push/seismic/check', async (req, res) => {
 // backend hace fanout FCM high-priority a los dispositivos cercanos.
 // Rate-limited (fcmLimiter) + dedupe regional 60s para evitar flood.
 app.post('/api/quake/report', fcmLimiter, async (req, res) => {
+  // Este endpoint no está conectado a una fuente sísmica confiable. Aceptar
+  // magnitud y ubicación libremente reportadas permitiría alertas falsas a
+  // terceros. Mantenerlo desactivado hasta implementar corroboración y App Check.
+  if (process.env.ENABLE_QUAKE_DEVICE_REPORTS !== 'true') {
+    return res.status(404).json({ ok: false, error: 'quake_device_reports_disabled' });
+  }
   try {
     const { lat, lon, mag, deviceId } = req.body || {};
     const L = +lat, Lo = +lon;

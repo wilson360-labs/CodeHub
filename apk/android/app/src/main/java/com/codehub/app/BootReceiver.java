@@ -114,9 +114,9 @@ public class BootReceiver extends BroadcastReceiver {
             }
         }
 
-        // El camino Shizuku también lanza MainActivity desde el proceso shell;
-        // esta apertura es el mejor esfuerzo para la confirmación del instalador.
-        try { context.startActivity(launch); } catch (Throwable ignored) { }
+        // Shizuku UserService relaunches the launcher after a successful silent
+        // install. Standard PackageInstaller flow remains user-driven; the
+        // notification above is its safe entry point after package replacement.
     }
 
     private void clearPendingUpdate(SharedPreferences prefs) {

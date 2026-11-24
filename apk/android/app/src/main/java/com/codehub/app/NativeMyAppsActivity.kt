@@ -717,7 +717,7 @@ class NativeMyAppsActivity : Activity() {
                                     if (connection.responseCode !in 200..299) error("HTTP ${connection.responseCode}")
                                     connection.inputStream.use { input -> file.outputStream().use { output -> input.copyTo(output) } }
                                 } finally { connection.disconnect() }
-                                ShizukuInstaller.installSilently(file.absolutePath)
+                                ShizukuInstaller.installSilently(applicationContext, file.absolutePath)
                                 completed++
                                 NativeAppUpdateTracker.recordInstalled(applicationContext, app.id, app.latestVersion)
                             } catch (error: Exception) {

@@ -28,6 +28,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
+import java.security.MessageDigest
 import java.net.UnknownHostException
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -112,6 +113,7 @@ object NativeStoreApkInstaller {
         fallbackUrls: List<String> = emptyList(),
         fallbackRepo: String? = null,
         relaunchAfterInstall: Boolean = false,
+        expectedSha256: String? = null,
     ) {
         if (jobs[appId]?.isActive == true) {
             listener?.onFinished(Status.FAILED, "La descarga de esta app ya está en curso.")
@@ -135,6 +137,17 @@ object NativeStoreApkInstaller {
                 setState(appId, ApkTransferState.Verifying)
                 if (destination.exists() && !destination.delete()) throw IOException("No se pudo reemplazar el APK anterior")
                 if (!partial.renameTo(destination)) throw IOException("No se pudo preparar el APK descargado")
+
+                if (appId == SELF_UPDATE_ID) {
+                    val expected = expectedSha256.orEmpty().trim().removePrefix("sha256:").lowercase(Locale.ROOT)
+                    if (!expected.matches(Regex("[0-9a-f]{64}"))) {
+                        error("GitHub no publicó un SHA-256 válido para esta versión. CodeHub no instalará un APK sin verificar.")
+                    }
+                    val actual = sha256File(destination)
+                    if (!actual.equals(expected, ignoreCase = true)) {
+                        error("El SHA-256 del APK descargado no coincide con la release. Se canceló la instalación.")
+                    }
+                }
 
                 val archive = withContext(Dispatchers.IO) {
                     @Suppress("DEPRECATION")
@@ -187,9 +200,9 @@ object NativeStoreApkInstaller {
                                 val component = context.packageManager.getLaunchIntentForPackage(context.packageName)
                                     ?.component?.flattenToShortString()
                                     ?: error("No se encontró la pantalla de inicio de CodeHub")
-                                ShizukuInstaller.installSilentlyAndRelaunch(destination.absolutePath, component)
+                                ShizukuInstaller.installSilentlyAndRelaunch(context, destination.absolutePath, component)
                             } else {
-                                ShizukuInstaller.installSilently(destination.absolutePath)
+                                ShizukuInstaller.installSilently(context, destination.absolutePath)
                             }
                         }
                         destination.delete()
@@ -312,7 +325,7 @@ object NativeStoreApkInstaller {
                 withContext(Dispatchers.IO) {
                     ShizukuInstaller.uninstallSilently(packageName)
                     previousVersionRemoved = true
-                    ShizukuInstaller.installSilently(file.absolutePath)
+                    ShizukuInstaller.installSilently(context, file.absolutePath)
                 }
                 file.delete()
                 pendingApks.remove(appId)
@@ -346,6 +359,19 @@ object NativeStoreApkInstaller {
         val value = message.lowercase(Locale.ROOT)
         return value.contains("install_failed_update_incompatible") ||
             value.contains("signatures do not match") || value.contains("signatures are inconsistent")
+    }
+
+    private fun sha256File(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     @Suppress("DEPRECATION")
