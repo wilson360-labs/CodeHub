@@ -1,0 +1,29 @@
+name: CodeHub
+options:
+  bundleIdPrefix: com.codehub
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  CodeHub:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/CodeHub
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codehub.app
+        PRODUCT_NAME: CodeHub
+        INFOPLIST_KEY_CFBundleDisplayName: CodeHub
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        CODE_SIGN_STYLE: Automatic

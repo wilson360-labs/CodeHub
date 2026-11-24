@@ -1,0 +1,71 @@
+name: Build CodeHub iOS IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/build-ios-ipa.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: codehub-ios-ipa
+  cancel-in-progress: false
+
+jobs:
+  build-ios-ipa:
+    name: Build unsigned iOS IPA
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml --project ios/CodeHub.xcodeproj
+
+      - name: Archive iOS app
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project ios/CodeHub.xcodeproj \
+            -scheme CodeHub \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/CodeHub.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$RUNNER_TEMP/CodeHub.xcarchive/Products/Applications/CodeHub.app"
+          test -d "$APP_PATH"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          ditto "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/CodeHub.app"
+          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/ipa/Payload" "$RUNNER_TEMP/CodeHub-unsigned.ipa"
+          shasum -a 256 "$RUNNER_TEMP/CodeHub-unsigned.ipa" > "$RUNNER_TEMP/CodeHub-unsigned.ipa.sha256"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: CodeHub-iOS-unsigned-IPA
+          path: |
+            ${{ runner.temp }}/CodeHub-unsigned.ipa
+            ${{ runner.temp }}/CodeHub-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 14
