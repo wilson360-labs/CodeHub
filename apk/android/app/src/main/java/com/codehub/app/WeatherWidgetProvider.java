@@ -631,8 +631,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             }
             int codeInt = parseCode(code);
             views.setTextViewText(H_TIME[k], t);
-            views.setImageViewResource(H_ICON[k], iconFor(codeInt, night));
-            views.setInt(H_ICON[k], "setColorFilter", tintFor(codeInt));
+            views.setImageViewBitmap(H_ICON[k], WeatherIconPainter.bitmap(codeInt, night, 72,
+                WeatherVisual.phase(System.currentTimeMillis() + k * 700L, 6000L)));
             views.setTextViewText(H_TEMP[k], "--".equals(temp) ? "--" : temp + "°");
         }
     }
@@ -656,8 +656,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             }
             int codeInt = parseCode(code);
             views.setTextViewText(D_DAY[k], day);
-            views.setImageViewResource(D_ICON[k], iconFor(codeInt, night));
-            views.setInt(D_ICON[k], "setColorFilter", tintFor(codeInt));
+            views.setImageViewBitmap(D_ICON[k], WeatherIconPainter.bitmap(codeInt, night, 72,
+                WeatherVisual.phase(System.currentTimeMillis() + k * 900L, 6000L)));
             views.setTextViewText(D_TEMP[k], temp);
         }
     }
@@ -833,30 +833,6 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         c.drawCircle(x + dx, y - r * 0.2f, r, fill);
         c.drawCircle(x + r * 0.75f + dx, y, r * 0.72f, fill);
         c.drawRoundRect(x - r * 1.4f + dx, y, x + r * 1.45f + dx, y + r * 0.65f, r * 0.3f, r * 0.3f, fill);
-    }
-
-    // Códigos WMO de Open-Meteo → drawable vectorial. El color se aplica
-    // con setColorFilter desde RemoteViews, sin depender de tintes del launcher.
-    private static int iconFor(int wcode, boolean night) {
-        if (wcode < 0) return R.drawable.ic_wx_partly;
-        if (wcode == 0) return night ? R.drawable.ic_wx_night : R.drawable.ic_wx_clear;
-        if (wcode <= 2) return night ? R.drawable.ic_wx_night : R.drawable.ic_wx_partly;
-        if (wcode == 3) return R.drawable.ic_wx_cloud;
-        if (wcode == 45 || wcode == 48) return R.drawable.ic_wx_fog;
-        if (wcode >= 95) return R.drawable.ic_wx_storm;
-        if ((wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86)) return R.drawable.ic_wx_snow;
-        if ((wcode >= 51 && wcode <= 57) || (wcode >= 61 && wcode <= 67)
-            || (wcode >= 80 && wcode <= 82)) return R.drawable.ic_wx_rain;
-        return R.drawable.ic_wx_partly;
-    }
-
-    private static int tintFor(int wcode) {
-        if (wcode < 0) return 0xFFC2B6A8;
-        if (wcode == 0 || wcode == 1 || wcode == 2) return 0xFFD98A67;
-        if ((wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82) || wcode >= 95) {
-            return 0xFF9DB99E;
-        }
-        return 0xFFF4ECE1;
     }
 
     private static String labelFor(int wcode) {

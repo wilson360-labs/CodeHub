@@ -390,7 +390,7 @@ class NativeWeatherActivity : Activity() {
             val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
             hourlyPoints.take(6).forEachIndexed { i, p ->
                 val cell = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(0, dp(4), 0, dp(4)) }
-                cell.addView(NativeWeatherGlyph(context, p.code, 22, animated = animationsEnabled()))
+                cell.addView(NativeWeatherGlyph(context, p.code, 32, animated = animationsEnabled()))
                 cell.addView(WeatherComponents.text(context, palette, "${p.precip}%", 9f, WeatherDesign.metricTone(palette, if (p.precip >= 50) WeatherMetric.Tone.ACCENT else WeatherMetric.Tone.OK)))
                 row.addView(cell, LinearLayout.LayoutParams(0, -2, 1f))
             }
@@ -407,7 +407,7 @@ class NativeWeatherActivity : Activity() {
             days.forEachIndexed { i, d ->
                 val r = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
                 r.addView(WeatherComponents.text(context, palette, if (i == 0) "Hoy" else d.label, 12f, palette.text, true), LinearLayout.LayoutParams(dp(44), -2))
-                r.addView(NativeWeatherGlyph(context, d.code, 22, false), LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(8) })
+                r.addView(NativeWeatherGlyph(context, d.code, 30, false), LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(8) })
                 r.addView(WeatherComponents.text(context, palette, "${d.min}°", 11f, palette.muted), LinearLayout.LayoutParams(dp(30), -2))
                 r.addView(DayRangeBarView(context, d.min, d.max, gMin, gMax, palette), LinearLayout.LayoutParams(0, dp(8), 1f).apply { marginStart = dp(6); marginEnd = dp(6) })
                 r.addView(WeatherComponents.text(context, palette, "${d.max}°", 11f, palette.text, true), LinearLayout.LayoutParams(dp(30), -2))

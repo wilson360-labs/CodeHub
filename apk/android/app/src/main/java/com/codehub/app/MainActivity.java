@@ -1316,8 +1316,10 @@ public class MainActivity extends Activity {
         if (nativeTarget != null) {
             intent.removeExtra("open_native");
             switch (nativeTarget) {
+                case "jarvis": openNativeCopilot(); break;
                 case "weather": openNativeWeather(); break;
                 case "myapps": openNativeMyApps(); break;
+                case "store": openNativeStore(); break;
                 case "codebeat": openNativeCodeBeat(); break;
                 case "codestream": openNativeCodeStream(); break;
                 case "codesu": openNativeCodeSu(); break;

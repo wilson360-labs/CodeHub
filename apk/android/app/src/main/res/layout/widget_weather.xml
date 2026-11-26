@@ -161,10 +161,10 @@
 
                 <ImageView
                     android:id="@+id/widget_h1_icon"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_wx_partly" />
+                    android:src="@drawable/widget_weather_icon_preview" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -197,10 +197,10 @@
 
                 <ImageView
                     android:id="@+id/widget_h2_icon"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_wx_partly" />
+                    android:src="@drawable/widget_weather_icon_preview" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -233,10 +233,10 @@
 
                 <ImageView
                     android:id="@+id/widget_h3_icon"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_wx_partly" />
+                    android:src="@drawable/widget_weather_icon_preview" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -269,10 +269,10 @@
 
                 <ImageView
                     android:id="@+id/widget_h4_icon"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_wx_partly" />
+                    android:src="@drawable/widget_weather_icon_preview" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -320,10 +320,10 @@
 
                 <ImageView
                     android:id="@+id/widget_d1_icon"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_wx_partly" />
+                    android:src="@drawable/widget_weather_icon_preview" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -356,10 +356,10 @@
 
                 <ImageView
                     android:id="@+id/widget_d2_icon"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_wx_partly" />
+                    android:src="@drawable/widget_weather_icon_preview" />
 
                 <TextView
                     android:includeFontPadding="false"
@@ -392,10 +392,10 @@
 
                 <ImageView
                     android:id="@+id/widget_d3_icon"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_wx_partly" />
+                    android:src="@drawable/widget_weather_icon_preview" />
 
                 <TextView
                     android:includeFontPadding="false"
