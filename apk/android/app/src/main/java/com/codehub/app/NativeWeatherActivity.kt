@@ -149,7 +149,7 @@ class NativeWeatherActivity : Activity() {
         titleCol.addView(WeatherComponents.text(this, palette, "Pronóstico de CodeHub", 11f, palette.muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(1) })
         topBar.addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(4) })
         topBar.addView(iconButton(R.drawable.ic_store_refresh, "Actualizar") { loadWeather() }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) })
-        topBar.addView(iconButton(android.R.drawable.ic_menu_manage, "Ajustes de fondo") { toggleBottomDock() }, LinearLayout.LayoutParams(dp(42), dp(42)))
+        topBar.addView(iconButton(android.R.drawable.ic_menu_search, "Buscar ubicación") { toggleBottomDock() }, LinearLayout.LayoutParams(dp(42), dp(42)))
         main.addView(topBar, LinearLayout.LayoutParams(-1, -2))
 
         scroll = ScrollView(this).apply {
@@ -180,16 +180,26 @@ class NativeWeatherActivity : Activity() {
     private fun toggleBottomDock() {
         val show = searchDock.visibility != View.VISIBLE
         searchDock.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) searchDock.bringToFront()
+        else (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+            ?.hideSoftInputFromWindow(searchDock.windowToken, 0)
     }
 
     private fun buildBottomDock(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         visibility = View.GONE
-        setPadding(dp(16), dp(8), dp(16), dp(16))
-        val panel = WeatherComponents.glassCard(context, palette, 28, true) {
-            setPadding(dp(14), dp(14), dp(14), dp(14))
+        setPadding(dp(16), dp(8), dp(16), dp(12))
+        val panel = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(24).toFloat()
+                setColor(if (dark) 0xFF17212B.toInt() else 0xFFFFFAF4.toInt())
+                setStroke(dp(1), if (dark) 0xFF34434F.toInt() else 0xFFE1D6C9.toInt())
+            }
+            elevation = dp(12).toFloat()
         }
-        panel.addView(WeatherComponents.text(context, palette, "Buscar ubicación", 12f, palette.muted, true))
+        panel.addView(WeatherComponents.text(context, palette, "Ubicación y widget", 14f, palette.text, true))
         val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val input = EditText(context).apply {
             hint = "Ciudad, municipio o lugar"; setSingleLine(true); textSize = 14f
@@ -215,7 +225,7 @@ class NativeWeatherActivity : Activity() {
         actions.addView(smallAction("Mi ubicación") { requestLocation() }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(8) })
         actions.addView(smallAction("Widget") { requestWeatherWidgetPin() }, LinearLayout.LayoutParams(0, dp(40), 1f))
         panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-        addView(panel)
+        addView(panel, LinearLayout.LayoutParams(-1, -2))
     }
 
     private fun smallAction(label: String, onClick: () -> Unit): Button = Button(this).apply {
@@ -245,7 +255,21 @@ class NativeWeatherActivity : Activity() {
             }
         }
         if (::searchDock.isInitialized) {
-            searchDock.visibility = searchDock.visibility // keep
+            val nightSurface = ColorUtils.calculateLuminance(palette.bgBottom) < .35
+            val panel = searchDock.getChildAt(0)
+            panel?.background = GradientDrawable().apply {
+                cornerRadius = dp(24).toFloat()
+                setColor(if (nightSurface) 0xFF17212B.toInt() else 0xFFFFFAF4.toInt())
+                setStroke(dp(1), if (nightSurface) 0xFF34434F.toInt() else 0xFFE1D6C9.toInt())
+            }
+            searchDock.childrenRecursively { view ->
+                if (view is TextView) view.setTextColor(palette.text)
+                if (view is EditText) view.setHintTextColor(palette.muted)
+            }
+            locationSearchButton?.apply {
+                setTextColor(if (ColorUtils.calculateLuminance(palette.accent) < .42) Color.WHITE else Color.BLACK)
+                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(palette.accent) }
+            }
         }
     }
 
@@ -300,7 +324,7 @@ class NativeWeatherActivity : Activity() {
         renderLoading()
         val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
             "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,pressure_msl,cloud_cover,visibility,is_day" +
-            "&hourly=temperature_2m,precipitation,precipitation_probability,weather_code,uv_index,visibility" +
+            "&hourly=temperature_2m,precipitation,precipitation_probability,weather_code,uv_index,visibility,is_day" +
             "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max&forecast_days=3&timezone=auto"
         request = http.newCall(Request.Builder().url(url).header("User-Agent", "CodeHub-Android").build())
         request?.enqueue(object : okhttp3.Callback {
@@ -390,7 +414,7 @@ class NativeWeatherActivity : Activity() {
             val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
             hourlyPoints.take(6).forEachIndexed { i, p ->
                 val cell = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(0, dp(4), 0, dp(4)) }
-                cell.addView(NativeWeatherGlyph(context, p.code, 32, animated = animationsEnabled()))
+                cell.addView(NativeWeatherGlyph(context, p.code, 34, animated = animationsEnabled(), night = !p.isDay))
                 cell.addView(WeatherComponents.text(context, palette, "${p.precip}%", 9f, WeatherDesign.metricTone(palette, if (p.precip >= 50) WeatherMetric.Tone.ACCENT else WeatherMetric.Tone.OK)))
                 row.addView(cell, LinearLayout.LayoutParams(0, -2, 1f))
             }
@@ -407,7 +431,7 @@ class NativeWeatherActivity : Activity() {
             days.forEachIndexed { i, d ->
                 val r = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
                 r.addView(WeatherComponents.text(context, palette, if (i == 0) "Hoy" else d.label, 12f, palette.text, true), LinearLayout.LayoutParams(dp(44), -2))
-                r.addView(NativeWeatherGlyph(context, d.code, 30, false), LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(8) })
+                r.addView(NativeWeatherGlyph(context, d.code, 30, false, night = false), LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(8) })
                 r.addView(WeatherComponents.text(context, palette, "${d.min}°", 11f, palette.muted), LinearLayout.LayoutParams(dp(30), -2))
                 r.addView(DayRangeBarView(context, d.min, d.max, gMin, gMax, palette), LinearLayout.LayoutParams(0, dp(8), 1f).apply { marginStart = dp(6); marginEnd = dp(6) })
                 r.addView(WeatherComponents.text(context, palette, "${d.max}°", 11f, palette.text, true), LinearLayout.LayoutParams(dp(30), -2))
@@ -446,11 +470,12 @@ class NativeWeatherActivity : Activity() {
         val temps = hours.optJSONArray("temperature_2m") ?: return emptyList()
         val rains = hours.optJSONArray("precipitation_probability")
         val codes = hours.optJSONArray("weather_code")
+        val dayFlags = hours.optJSONArray("is_day")
         val out = mutableListOf<HourPoint>()
         for (i in 0 until 8) {
             val idx = start + i
             if (idx >= times.length() || idx >= temps.length()) break
-            out += HourPoint(if (i == 0) "Ahora" else times.optString(idx).substringAfter('T', "--:--"), temps.optDouble(idx).toInt(), rains?.optInt(idx) ?: 0, codes?.optInt(idx) ?: 0, true)
+            out += HourPoint(if (i == 0) "Ahora" else times.optString(idx).substringAfter('T', "--:--"), temps.optDouble(idx).toInt(), rains?.optInt(idx) ?: 0, codes?.optInt(idx) ?: 0, (dayFlags?.optInt(idx, 1) ?: 1) != 0)
         }
         return out
     }
@@ -473,6 +498,15 @@ class NativeWeatherActivity : Activity() {
         uv >= 6 -> "Alto, usa protección 11:00-15:00"
         uv >= 3 -> "Moderado, protección recomendada"
         else -> "Bajo, sin riesgo alto"
+    }
+
+    @Deprecated("Use the close action for the location panel")
+    override fun onBackPressed() {
+        if (::searchDock.isInitialized && searchDock.visibility == View.VISIBLE) {
+            searchDock.visibility = View.GONE
+            return
+        }
+        super.onBackPressed()
     }
 
     private fun citySearch(): View { // legacy no-op; search lives in bottom dock
@@ -876,26 +910,29 @@ class NativeWeatherActivity : Activity() {
         private fun drawSky(canvas: Canvas, w: Float, horizon: Float, t: Float) {
             val top: Int
             val bottom: Int
-            when (snapshot.state) {
-                WeatherVisual.State.TROPICAL -> { top = 0xFF040806.toInt(); bottom = 0xFF0A1410.toInt() }
-                WeatherVisual.State.SECO -> { top = 0xFF080502.toInt(); bottom = 0xFF15100B.toInt() }
-                WeatherVisual.State.TEMPLADO -> { top = 0xFF050608.toInt(); bottom = 0xFF0D1114.toInt() }
-                WeatherVisual.State.CONTINENTAL -> { top = 0xFF040506.toInt(); bottom = 0xFF0D1012.toInt() }
-                WeatherVisual.State.POLAR -> { top = 0xFF050708.toInt(); bottom = 0xFF101418.toInt() }
-                else -> { top = 0xFF050608.toInt(); bottom = 0xFF0D1114.toInt() }
+            if (snapshot.night) {
+                top = 0xFF101B31.toInt(); bottom = 0xFF1B2A40.toInt()
+            } else {
+                when (snapshot.state) {
+                    WeatherVisual.State.TROPICAL -> { top = 0xFF557D76.toInt(); bottom = 0xFF9BAE91.toInt() }
+                    WeatherVisual.State.SECO -> { top = 0xFFD99763.toInt(); bottom = 0xFFF0C58D.toInt() }
+                    WeatherVisual.State.TEMPLADO -> { top = 0xFF6A9FB6.toInt(); bottom = 0xFFC5D5C6.toInt() }
+                    WeatherVisual.State.CONTINENTAL -> { top = 0xFF526D82.toInt(); bottom = 0xFF9CB1BB.toInt() }
+                    WeatherVisual.State.POLAR -> { top = 0xFF7898AA.toInt(); bottom = 0xFFD8E3E6.toInt() }
+                    else -> { top = 0xFF6A9FB6.toInt(); bottom = 0xFFC5D5C6.toInt() }
+                }
             }
             fill.shader = LinearGradient(0f, 0f, 0f, horizon, top, bottom, Shader.TileMode.CLAMP)
             canvas.drawRect(0f, 0f, w, horizon, fill)
             fill.shader = null
-            // subtle stars at night
             if (snapshot.night && snapshot.wcode <= 2) {
-                fill.color = 0x55F4ECE1.toInt()
+                fill.color = 0xBBF4ECE1.toInt()
                 for (i in 0..10) {
                     val x = w * ((i * 17 % 100) / 100f)
                     val y = horizon * (.08f + (i * 13 % 45) / 100f)
-                    val a = ((sin((t + i * .09f) * Math.PI * 2).toFloat() + 1f) * .5f)
-                    fill.alpha = (40 + 90 * a).toInt()
-                    canvas.drawCircle(x, y, dp(1).toFloat() * (.7f + a * .6f), fill)
+                    val twinkle = (sin((t + i * .09f) * Math.PI * 2).toFloat() + 1f) * .5f
+                    fill.alpha = (90 + 120 * twinkle).toInt()
+                    canvas.drawCircle(x, y, (1.1f * resources.displayMetrics.density) * (.7f + twinkle * .6f), fill)
                 }
             }
         }
@@ -926,8 +963,16 @@ class NativeWeatherActivity : Activity() {
         private fun drawState(canvas: Canvas, w: Float, horizon: Float, h: Float, t: Float) {
             val cx = w * .74f
             val cy = horizon - h * .14f
-            val r = dp(11).toFloat()
+            val r = minOf(w, h) * .095f
             val stateColor = WeatherVisual.accent(snapshot.state)
+            if (snapshot.wcode <= 3) {
+                if (snapshot.wcode < 3) {
+                    if (snapshot.night) drawCrescent(canvas, cx, cy, r)
+                    else { drawSunRays(canvas, cx, cy, r, 0xFFFFC857.toInt(), t); drawOrb(canvas, cx, cy, r, 0xFFFFC857.toInt(), t) }
+                }
+                if (snapshot.wcode in 1..3) drawCloud(canvas, w * .65f, horizon * .48f, r * .78f, if (snapshot.night) 0xFFE0E7EF.toInt() else 0xFFF4F1E8.toInt(), t, .35f)
+                return
+            }
             when (snapshot.state) {
                 WeatherVisual.State.TROPICAL -> {
                     drawOrb(canvas, cx, cy, r, if (snapshot.night) 0xFFF4ECE1.toInt() else 0xFFD98A67.toInt(), t)
@@ -959,6 +1004,20 @@ class NativeWeatherActivity : Activity() {
                     drawMist(canvas, w, horizon, 0x1ADCE7F2.toInt(), 3)
                 }
             }
+        }
+
+        private fun drawCrescent(canvas: Canvas, cx: Float, cy: Float, r: Float) {
+            val path = Path().apply {
+                moveTo(cx + r * .42f, cy - r)
+                cubicTo(cx - r * 1.25f, cy - r * .88f, cx - r * 1.32f, cy + r * .84f, cx + r * .35f, cy + r)
+                cubicTo(cx - r * .55f, cy + r * .42f, cx - r * .58f, cy - r * .35f, cx + r * .42f, cy - r)
+                close()
+            }
+            fill.color = 0xFFFFE6A3.toInt()
+            canvas.drawPath(path, fill)
+            fill.color = 0xFFFFF2CA.toInt()
+            canvas.drawCircle(cx + r * 1.2f, cy - r * .9f, (1.5f * resources.displayMetrics.density), fill)
+            canvas.drawCircle(cx + r * 1.5f, cy + r * .2f, resources.displayMetrics.density, fill)
         }
 
         private fun drawOrb(canvas: Canvas, cx: Float, cy: Float, r: Float, color: Int, t: Float) {

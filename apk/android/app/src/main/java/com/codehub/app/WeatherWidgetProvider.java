@@ -310,8 +310,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
                     URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + lat +
                         "&longitude=" + lon +
-                        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure" +
-                        "&hourly=temperature_2m,weather_code,precipitation_probability,uv_index" +
+                        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure,is_day" +
+                        "&hourly=temperature_2m,weather_code,precipitation_probability,uv_index,is_day" +
                         "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset" +
                         "&forecast_days=3&timezone=auto");
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -337,6 +337,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     float gust  = (float) current.optDouble("wind_gusts_10m", Double.NaN);
                     float pressure = (float) current.optDouble("surface_pressure", Double.NaN);
                     int wcode = current.optInt("weather_code", -1);
+                    boolean isDayNow = current.optInt("is_day", 1) == 1;
                     String city = prefs.getString("widget_city", "");
 
                     // Lluvia (%) y UV — Open-Meteo solo los da por hora, no en
@@ -353,6 +354,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                         JSONArray hCodes = hourly.optJSONArray("weather_code");
                         JSONArray hRain = hourly.optJSONArray("precipitation_probability");
                         JSONArray hUv = hourly.optJSONArray("uv_index");
+                        JSONArray hDay = hourly.optJSONArray("is_day");
                         if (hTimes != null) {
                             long now = System.currentTimeMillis();
                             int idx = -1;
@@ -383,7 +385,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                                 if (hRain != null) rainProb = hRain.optInt(idx, -1);
                                 if (hUv != null) uv = (float) hUv.optDouble(idx, Double.NaN);
                                 if (hTemps != null && hCodes != null) {
-                                    hourlyStr = buildHourly(hTimes, hTemps, hCodes, idx);
+                                    hourlyStr = buildHourly(hTimes, hTemps, hCodes, hDay, idx);
                                 }
                             }
                         }
@@ -418,6 +420,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     prefs.edit()
                         .putFloat("widget_temp", temp)
                         .putInt("widget_wcode", wcode)
+                        .putBoolean("widget_is_day", isDayNow)
                         .putFloat("widget_feels", feels)
                         .putInt("widget_humidity", humidity)
                         .putFloat("widget_wind", wind)
@@ -490,7 +493,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     // ── Franja horaria: "Ahora|24|1;17:00|23|2;…" (hora|temp|wcode). ──
-    private static String buildHourly(JSONArray times, JSONArray temps, JSONArray codes, int idx) {
+    private static String buildHourly(JSONArray times, JSONArray temps, JSONArray codes, JSONArray dayFlags, int idx) {
         StringBuilder sb = new StringBuilder();
         for (int k = 0; k < 4; k++) {
             int i = idx + k;
@@ -502,7 +505,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             String temp = Double.isNaN(tv) ? "--" : String.valueOf(Math.round(tv));
             int code = codes.optInt(i, -1);
             if (sb.length() > 0) sb.append(';');
-            sb.append(t).append('|').append(temp).append('|').append(code);
+            sb.append(t).append('|').append(temp).append('|').append(code).append('|').append(dayFlags == null || dayFlags.optInt(i, 1) == 1 ? '1' : '0');
         }
         return sb.toString();
     }
@@ -537,7 +540,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
         boolean hasData = !Float.isNaN(temp) && wcode >= 0;
         boolean hasSun = sunrise != null && !sunrise.isEmpty() && sunset != null && !sunset.isEmpty();
-        boolean night = !isDaylightNow(hasSun ? sunrise : null, hasSun ? sunset : null);
+        boolean night = !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("widget_is_day", isDaylightNow(hasSun ? sunrise : null, hasSun ? sunset : null));
 
         WeatherVisual.Snapshot snap = new WeatherVisual.Snapshot(
             WeatherVisual.classify(wcode, Float.isNaN(temp) ? Float.NaN : temp, humidity, Float.isNaN(wind) ? Float.NaN : wind, Float.NaN),
@@ -549,6 +552,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_feels,
             Float.isNaN(feels) ? " " : "Sensación " + Math.round(feels) + "°");
 
+        views.setViewVisibility(R.id.widget_hero_icon, hasData ? View.VISIBLE : View.GONE);
+        if (hasData) views.setImageViewBitmap(R.id.widget_hero_icon, WeatherIconPainter.bitmap(wcode, night, 240, 0f));
         fillHourly(views, hourly, night);
         fillDaily(views, fc1, fc2, fc3, night);
 
@@ -625,13 +630,14 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         String[] slots = (hourly == null || hourly.isEmpty()) ? new String[0] : hourly.split(";");
         for (int k = 0; k < 4; k++) {
             String t = "--:--", temp = "--", code = "-1";
+            boolean slotNight = night;
             if (k < slots.length) {
                 String[] p = slots[k].split("\\|");
-                if (p.length >= 3) { t = p[0]; temp = p[1]; code = p[2]; }
+                if (p.length >= 3) { t = p[0]; temp = p[1]; code = p[2]; if (p.length >= 4) slotNight = "0".equals(p[3]); }
             }
             int codeInt = parseCode(code);
             views.setTextViewText(H_TIME[k], t);
-            views.setImageViewBitmap(H_ICON[k], WeatherIconPainter.bitmap(codeInt, night, 72,
+            views.setImageViewBitmap(H_ICON[k], WeatherIconPainter.bitmap(codeInt, slotNight, 96,
                 WeatherVisual.phase(System.currentTimeMillis() + k * 700L, 6000L)));
             views.setTextViewText(H_TEMP[k], "--".equals(temp) ? "--" : temp + "°");
         }
@@ -656,7 +662,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             }
             int codeInt = parseCode(code);
             views.setTextViewText(D_DAY[k], day);
-            views.setImageViewBitmap(D_ICON[k], WeatherIconPainter.bitmap(codeInt, night, 72,
+            views.setImageViewBitmap(D_ICON[k], WeatherIconPainter.bitmap(codeInt, false, 96,
                 WeatherVisual.phase(System.currentTimeMillis() + k * 900L, 6000L)));
             views.setTextViewText(D_TEMP[k], temp);
         }
@@ -710,129 +716,17 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private static void drawScene(Canvas c, int w, int h, WeatherVisual.Snapshot snap) {
-        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
-        Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
-        stroke.setStyle(Paint.Style.STROKE);
-        stroke.setStrokeCap(Paint.Cap.ROUND);
-        float horizon = h * 0.58f;
-        float t = WeatherVisual.phase(System.currentTimeMillis(), 6000L);
-
-        int water;
-        switch (snap.state) {
-            case TROPICAL: water = 0xFF07110D; break;
-            case SECO: water = 0xFF120D08; break;
-            case CONTINENTAL: water = 0xFF090B0E; break;
-            case POLAR: water = 0xFF0A1014; break;
-            default: water = 0xFF080B0D; break;
-        }
-        fill.setColor(0xFF000000); c.drawRect(0, 0, w, horizon, fill);
-        fill.setColor(water); c.drawRect(0, horizon, w, h, fill);
-
-        // horizon glow by state
-        stroke.setStrokeWidth(Math.max(1f, h * 0.01f));
-        stroke.setColor((WeatherVisual.accent(snap.state) & 0x00FFFFFF) | 0x22000000);
-        c.drawLine(0, horizon, w, horizon, stroke);
-
-        float cx = w * 0.74f;
-        float cy = horizon - h * 0.13f;
-        float r = Math.max(3f, Math.min(w, h) * 0.075f);
-        float pulse = 1f + (float) Math.sin(t * Math.PI * 2) * 0.03f;
-        // orb
-        fill.setColor(snap.night ? 0xFFF4ECE1 : WeatherVisual.accent(snap.state));
-        fill.setAlpha(40); c.drawCircle(cx, cy, r * 1.9f * pulse, fill);
-        fill.setAlpha(255); c.drawCircle(cx, cy, r * pulse, fill);
-
-        if (snap.state == WeatherVisual.State.SECO) {
-            stroke.setColor(0x55D98A67); stroke.setStrokeWidth(Math.max(1f, w * 0.006f));
-            for (int i = 0; i < 8; i++) {
-                double a = (i / 8.0) * Math.PI * 2 + t * 0.4;
-                float inr = r * 1.5f, outr = r * (2.1f + (i % 2) * 0.2f);
-                c.drawLine((float)(cx + Math.cos(a) * inr), (float)(cy + Math.sin(a) * inr),
-                        (float)(cx + Math.cos(a) * outr), (float)(cy + Math.sin(a) * outr), stroke);
-            }
-        }
-
-        // clouds for non-dry/partly states
-        if (snap.state != WeatherVisual.State.SECO || snap.wcode > 2) {
-            int cloudA = snap.state == WeatherVisual.State.CONTINENTAL ? 0x55323133 : 0x332A2420;
-            drawCloud(c, fill, w * 0.62f, horizon * 0.42f, r * 1.1f, cloudA, t, snap.state == WeatherVisual.State.CONTINENTAL ? 1.6f : 0.8f);
-            if (snap.state == WeatherVisual.State.TROPICAL || snap.state == WeatherVisual.State.TEMPLADO) {
-                drawCloud(c, fill, w * 0.77f, horizon * 0.34f, r * 0.7f, 0x222A2420, t, 0.5f);
-            }
-        }
-
-        // precipitation / wind / mist
-        boolean rain = (snap.wcode >= 51 && snap.wcode <= 67) || (snap.wcode >= 80 && snap.wcode <= 82) || snap.wcode >= 95;
-        boolean snow = (snap.wcode >= 71 && snap.wcode <= 77) || (snap.wcode >= 85 && snap.wcode <= 86);
-        boolean fog = snap.wcode == 45 || snap.wcode == 48;
-        if (rain) {
-            int rc = snap.state == WeatherVisual.State.TROPICAL ? 0x889DB99E : 0x66C2B6A8;
-            stroke.setColor(rc); stroke.setStrokeWidth(Math.max(1f, w * 0.004f));
-            int count = snap.state == WeatherVisual.State.TROPICAL ? 12 : 8;
-            float speed = snap.state == WeatherVisual.State.CONTINENTAL ? 1.6f : 1.0f;
-            for (int i = 0; i < count; i++) {
-                float p = (t * speed + i / (float) count) % 1f;
-                float x = w * (0.2f + (i * 13 % 70) / 100f);
-                float y = horizon * (0.2f + p * 0.78f);
-                c.drawLine(x, y, x - w * 0.012f, y + h * 0.03f, stroke);
-            }
-        }
-        if (snow) {
-            fill.setColor(0xCCF4ECE1);
-            for (int i = 0; i < 10; i++) {
-                float p = (t * 0.45f + i / 10f) % 1f;
-                float x = w * (0.2f + (i * 11 % 65) / 100f) + (float)Math.sin((t + i) * Math.PI * 2) * w * 0.008f;
-                float y = horizon * (0.2f + p * 0.78f);
-                fill.setAlpha((int)(120 + (1f - p) * 90));
-                c.drawCircle(x, y, Math.max(1f, w * 0.006f), fill);
-            }
-        }
-        if (fog || snap.state == WeatherVisual.State.POLAR || snap.state == WeatherVisual.State.TROPICAL) {
-            stroke.setColor(snap.state == WeatherVisual.State.POLAR ? 0x22DCE7F2 : 0x18C2B6A8);
-            stroke.setStrokeWidth(Math.max(1f, h * 0.008f));
-            int bands = snap.state == WeatherVisual.State.POLAR ? 3 : 2;
-            for (int i = 0; i < bands; i++) {
-                float y = horizon * (0.35f + i * 0.16f);
-                c.drawLine(w * 0.08f, y, w * 0.92f, y, stroke);
-            }
-        }
-        if (snap.state == WeatherVisual.State.CONTINENTAL) {
-            stroke.setColor(0x55C2B6A8); stroke.setStrokeWidth(Math.max(1f, h * 0.006f));
-            for (int i = 0; i < 4; i++) {
-                float p = (t * 1.3f + i / 4f) % 1f;
-                float x = w * (-0.1f + p * 1.2f);
-                float y = horizon * (0.3f + i * 0.12f);
-                c.drawLine(x, y, x + w * 0.16f, y, stroke);
-            }
-        }
-
-        // ripples
-        stroke.setColor(0x229DB99E); stroke.setStrokeWidth(Math.max(1f, h * 0.003f));
-        for (int i = 0; i < 5; i++) {
-            float p = (i / 5f + t) % 1f;
-            float y = horizon + (h - horizon) * (0.12f + p * 0.75f);
-            float half = w * (0.08f + p * 0.12f);
-            stroke.setAlpha((int)(20 + (1f - p) * 35));
-            c.drawLine(cx - half, y, cx + half, y, stroke);
-        }
-
-        // reeds
-        stroke.setColor(0x559DB99E); stroke.setStrokeWidth(Math.max(1f, w * 0.003f));
-        for (int i = 0; i < 4; i++) {
-            float x = w * (0.05f + i * 0.02f);
-            c.drawLine(x, h, x + w * 0.01f, h - h * (0.08f + (i % 2) * 0.04f), stroke);
-            float xr = w * (0.95f - i * 0.02f);
-            c.drawLine(xr, h, xr - w * 0.01f, h - h * (0.07f + (i % 2) * 0.04f), stroke);
-        }
-    }
-
-    private static void drawCloud(Canvas c, Paint fill, float x, float y, float r, int color, float t, float speed) {
-        float dx = (float) Math.sin(t * Math.PI * 2 * speed) * r * 0.25f;
-        fill.setColor(color);
-        c.drawCircle(x - r * 0.7f + dx, y, r * 0.7f, fill);
-        c.drawCircle(x + dx, y - r * 0.2f, r, fill);
-        c.drawCircle(x + r * 0.75f + dx, y, r * 0.72f, fill);
-        c.drawRoundRect(x - r * 1.4f + dx, y, x + r * 1.45f + dx, y + r * 0.65f, r * 0.3f, r * 0.3f, fill);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        int top;
+        int bottom;
+        if (snap.night) { top = 0xFF111A2A; bottom = 0xFF1A2736; }
+        else if (snap.wcode >= 51) { top = 0xFF344A5B; bottom = 0xFF536A73; }
+        else { top = 0xFF426F83; bottom = 0xFF7B9B91; }
+        paint.setShader(new android.graphics.LinearGradient(0, 0, 0, h, top, bottom, android.graphics.Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, paint);
+        paint.setShader(null);
+        paint.setColor(0x14FFFFFF);
+        c.drawCircle(w * .88f, h * .15f, Math.min(w, h) * .48f, paint);
     }
 
     private static String labelFor(int wcode) {

@@ -12,6 +12,7 @@ internal class NativeWeatherGlyph(
     private val code: Int,
     sizeDp: Int,
     private val animated: Boolean = false,
+    private val night: Boolean = false,
 ) : View(context) {
     private val density = resources.displayMetrics.density
     private var floatOffset = 0f
@@ -33,7 +34,7 @@ internal class NativeWeatherGlyph(
         canvas.save()
         canvas.translate(ox, oy)
         canvas.scale(unit / 100f, unit / 100f)
-        WeatherIconPainter.draw(canvas, code, false, effectPhase)
+        WeatherIconPainter.draw(canvas, code, night, effectPhase)
         canvas.restore()
     }
 

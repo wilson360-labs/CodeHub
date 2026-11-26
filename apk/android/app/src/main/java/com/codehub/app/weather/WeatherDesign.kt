@@ -37,7 +37,7 @@ object WeatherDesign {
 
     fun palette(condition: WeatherCondition, dark: Boolean): Palette = when {
         condition == WeatherCondition.RAIN || condition == WeatherCondition.STORM -> if (dark) Palette(
-            bgTop = 0xFF09131D.toInt(), bgBottom = 0xFF000000.toInt(),
+            bgTop = 0xFF162333.toInt(), bgBottom = 0xFF0D141D.toInt(),
             edgeA = 0x335C9EC7.toInt(), edgeB = 0x223D6D8A.toInt(), edgeC = 0x14000000.toInt(),
             glass = 0x1FFFFFFF, glassStrong = 0x29FFFFFF, glassBorder = 0x33FFFFFF, glassHighlight = 0x40FFFFFF,
             text = 0xFFF4ECE1.toInt(), text2 = 0xCCF4ECE1.toInt(), muted = 0x99C8BFB3.toInt(),
@@ -52,7 +52,7 @@ object WeatherDesign {
             chip = 0x55FFFFFF
         )
         condition == WeatherCondition.CLEAR_NIGHT || dark -> Palette(
-            bgTop = 0xFF111726.toInt(), bgBottom = 0xFF000000.toInt(),
+            bgTop = 0xFF182438.toInt(), bgBottom = 0xFF0D1420.toInt(),
             edgeA = 0x334A74B8.toInt(), edgeB = 0x22D98A67.toInt(), edgeC = 0x14000000.toInt(),
             glass = 0x1AFFFFFF, glassStrong = 0x26FFFFFF, glassBorder = 0x2EFFFFFF, glassHighlight = 0x38FFFFFF,
             text = 0xFFF4ECE1.toInt(), text2 = 0xCCF4ECE1.toInt(), muted = 0x99C2B6A8.toInt(),
@@ -68,7 +68,7 @@ object WeatherDesign {
             chip = 0x66FFFDFC.toInt()
         )
         else -> if (dark) Palette(
-            bgTop = 0xFF16120E.toInt(), bgBottom = 0xFF000000.toInt(),
+            bgTop = 0xFF20201D.toInt(), bgBottom = 0xFF111311.toInt(),
             edgeA = 0x33D98A67.toInt(), edgeB = 0x229DB99E.toInt(), edgeC = 0x14000000.toInt(),
             glass = 0x1CFFFFFF, glassStrong = 0x26FFFFFF, glassBorder = 0x30FFFFFF, glassHighlight = 0x3DFFFFFF,
             text = 0xFFF4ECE1.toInt(), text2 = 0xCCF4ECE1.toInt(), muted = 0x99B8AEA2.toInt(),
