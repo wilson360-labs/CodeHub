@@ -10,7 +10,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/widget_background"
+    android:background="@drawable/quick_widget_background"
     android:paddingStart="8dp"
     android:paddingTop="8dp"
     android:paddingEnd="8dp"
@@ -33,7 +33,7 @@
             android:layout_weight="1"
             android:text="CodeHub"
             android:textColor="#F4ECE1"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -45,7 +45,7 @@
             android:layout_height="wrap_content"
             android:text="Accesos"
             android:textColor="#9DB99E"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:maxLines="1" />
     </LinearLayout>
 
@@ -64,15 +64,15 @@
             android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_wile"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_chat"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -83,10 +83,10 @@
                 android:id="@+id/quick_label_wile"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="JARVIS"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -101,15 +101,15 @@
             android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_weather"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_weather"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -120,10 +120,10 @@
                 android:id="@+id/quick_label_weather"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="Clima"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -137,15 +137,15 @@
             android:layout_marginStart="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_apps"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_apps"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -156,10 +156,10 @@
                 android:id="@+id/quick_label_apps"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="Mis apps"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -171,7 +171,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal">
 
         <LinearLayout
@@ -182,15 +182,15 @@
             android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_catalog"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_catalog"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -201,10 +201,10 @@
                 android:id="@+id/quick_label_catalog"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="Apps"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -219,15 +219,15 @@
             android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_tools"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_tools"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -238,10 +238,10 @@
                 android:id="@+id/quick_label_tools"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="Herramientas"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -255,15 +255,15 @@
             android:layout_marginStart="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_codebeat"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_codebeat"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -274,10 +274,10 @@
                 android:id="@+id/quick_label_codebeat"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="CodeBeat"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -289,7 +289,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal">
 
         <LinearLayout
@@ -300,15 +300,15 @@
             android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_codestream"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_codestream"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -319,10 +319,10 @@
                 android:id="@+id/quick_label_codestream"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="CodeStream"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -337,15 +337,15 @@
             android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_codesu"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_codesu"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -356,10 +356,10 @@
                 android:id="@+id/quick_label_codesu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="CodeSu"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -373,15 +373,15 @@
             android:layout_marginStart="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:padding="2dp"
-            android:background="@drawable/widget_cell_bg"
+            android:padding="4dp"
+            android:background="@drawable/quick_widget_cell_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/quick_icon_profile"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_shortcut_profile"
                 android:scaleType="fitCenter"
                 android:importantForAccessibility="no"
@@ -392,10 +392,10 @@
                 android:id="@+id/quick_label_profile"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="6dp"
                 android:text="Perfil"
                 android:textColor="#F4ECE1"
-                android:textSize="9sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:maxLines="1"
                 android:ellipsize="end" />

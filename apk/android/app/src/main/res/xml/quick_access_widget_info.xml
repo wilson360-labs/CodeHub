@@ -14,7 +14,7 @@
     android:minResizeHeight="150dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_quick"
-    android:previewImage="@drawable/widget_background"
+    android:previewImage="@drawable/quick_widget_background"
     android:previewLayout="@layout/widget_quick"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
