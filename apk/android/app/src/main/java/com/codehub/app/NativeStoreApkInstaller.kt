@@ -42,6 +42,7 @@ sealed interface ApkTransferState {
     data object Idle : ApkTransferState
     data class Downloading(val downloadedBytes: Long, val totalBytes: Long) : ApkTransferState
     data object Verifying : ApkTransferState
+    data object Installing : ApkTransferState
     data object ReadyToInstall : ApkTransferState
     data class AwaitingUserConfirmation(val detail: String = "") : ApkTransferState
     data object Installed : ApkTransferState
@@ -62,6 +63,7 @@ object NativeStoreApkInstaller {
 
     interface Listener {
         fun onProgress(downloadedBytes: Long, totalBytes: Long)
+        fun onInstalling()
         fun onFinished(status: Status, message: String = "")
     }
 
@@ -194,6 +196,8 @@ object NativeStoreApkInstaller {
                 setState(appId, ApkTransferState.ReadyToInstall)
                 var silentInstallFailure = ""
                 if (preferSilent && ShizukuInstaller.isReady()) {
+                    setState(appId, ApkTransferState.Installing)
+                    main.post { listener?.onInstalling() }
                     try {
                         withContext(Dispatchers.IO) {
                             if (relaunchAfterInstall) {
@@ -321,6 +325,8 @@ object NativeStoreApkInstaller {
         }
         scope.launch {
             var previousVersionRemoved = false
+            setState(appId, ApkTransferState.Installing)
+            main.post { listener.onInstalling() }
             try {
                 withContext(Dispatchers.IO) {
                     ShizukuInstaller.uninstallSilently(packageName)

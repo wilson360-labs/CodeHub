@@ -597,6 +597,21 @@ public class MainActivity extends Activity {
                                 isEnglishDevice() ? "Downloading CodeHub…" : "Descargando CodeHub…"));
                     }
 
+                    @Override public void onInstalling() {
+                        runOnUiThread(() -> {
+                            if (updateDialogProgress != null) {
+                                updateDialogProgress.setIndeterminate(true);
+                                updateDialogProgress.setVisibility(View.VISIBLE);
+                            }
+                            if (updateDialogPercent != null) updateDialogPercent.setVisibility(View.GONE);
+                            setUpdateDialogStatus(isEnglishDevice() ? "Installing with Shizuku…" : "Instalando por Shizuku…");
+                            if (updateDialogAction != null) {
+                                updateDialogAction.setEnabled(false);
+                                updateDialogAction.setText(isEnglishDevice() ? "Installing…" : "Instalando…");
+                            }
+                        });
+                    }
+
                     @Override public void onFinished(NativeStoreApkInstaller.Status status, String message) {
                         runOnUiThread(() -> {
                             appUpdateRunning = false;
@@ -1241,6 +1256,7 @@ public class MainActivity extends Activity {
 
         String nativeTarget = intent.getStringExtra("open_native");
         if (nativeTarget != null) {
+            intent.removeExtra("open_native");
             switch (nativeTarget) {
                 case "weather": openNativeWeather(); break;
                 case "myapps": openNativeMyApps(); break;
@@ -1248,7 +1264,7 @@ public class MainActivity extends Activity {
                 case "codestream": openNativeCodeStream(); break;
                 case "codesu": openNativeCodeSu(); break;
                 case "profile": openNativeProfile(); break;
-                default: return;
+                default: break;
             }
             return;
         }

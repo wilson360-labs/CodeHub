@@ -188,6 +188,19 @@ class NativeStoreDownloadService : Service() {
                         }
                         .build())
                 }
+                ApkTransferState.Installing -> {
+                    hasActive = true
+                    manager.notify(appId.hashCode(), builder()
+                        .apply {
+                            setOngoing(true)
+                            setOnlyAlertOnce(true)
+                            setSmallIcon(android.R.drawable.stat_sys_download)
+                            setContentTitle("Instalando ${NativeStoreApkInstaller.displayName(appId)}")
+                            setContentText("Instalando por Shizuku… CodeHub puede reiniciarse al finalizar.")
+                            setGroup(GROUP_KEY)
+                        }
+                        .build())
+                }
                 ApkTransferState.ReadyToInstall -> hasActive = true
                 is ApkTransferState.AwaitingUserConfirmation -> {
                     hasActive = true

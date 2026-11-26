@@ -527,7 +527,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             }.getOrDefault(0)
             val downloadCount = NativeApkInsights.downloads(context).size
             val activeDownloadCount = NativeStoreApkInstaller.transfers.value.count { (_, state) ->
-                state is ApkTransferState.Downloading || state is ApkTransferState.Verifying
+                state is ApkTransferState.Downloading || state is ApkTransferState.Verifying || state == ApkTransferState.Installing
             }
             post {
                 if (!isAttachedToWindow) return@post

@@ -552,6 +552,14 @@ class NativeMyAppsActivity : Activity() {
                                 }
                             }
 
+                            override fun onInstalling() {
+                                if (isFinishing || isDestroyed) return
+                                transferViews[app.id]?.let { (bar, text) ->
+                                    bar.isIndeterminate = true
+                                    text.text = "INSTALANDO POR SHIZUKU…"
+                                }
+                            }
+
                             override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
                                 activeTransfers.remove(app.id)
                                 if (isFinishing || isDestroyed) return
@@ -630,6 +638,7 @@ class NativeMyAppsActivity : Activity() {
         val storeTransfer = NativeStoreApkInstaller.transfers.value[app.id]
         val storeInstallInProgress = storeTransfer is ApkTransferState.Downloading ||
             storeTransfer is ApkTransferState.Verifying ||
+            storeTransfer == ApkTransferState.Installing ||
             storeTransfer == ApkTransferState.ReadyToInstall ||
             storeTransfer is ApkTransferState.AwaitingUserConfirmation
         if (app.id in activeTransfers || storeInstallInProgress) {

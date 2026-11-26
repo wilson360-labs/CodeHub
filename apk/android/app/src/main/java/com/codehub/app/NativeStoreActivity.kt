@@ -1381,6 +1381,18 @@ class NativeStoreActivity : Activity() {
                         }
                     }
 
+                    override fun onInstalling() {
+                        if (isFinishing || isDestroyed) return
+                        transferViews[app.id]?.let { (bar, text) ->
+                            bar.isIndeterminate = true
+                            text.text = "INSTALANDO POR SHIZUKU…"
+                        }
+                        if (detailAppId == app.id) {
+                            detailRing?.setProgress(-1f)
+                            detailCta?.text = "Instalando por Shizuku…"
+                        }
+                    }
+
                     override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
                         activeTransfers.remove(app.id)
                         if (isFinishing || isDestroyed) return
