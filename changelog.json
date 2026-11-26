@@ -1,5 +1,26 @@
 [
   {
+    "version": "v7.73",
+    "date": "2026-11-25",
+    "type": "fix",
+    "title": "QS tiles corregidos, icono CodeBeat y Shizuku más claro",
+    "title_en": "Fixed QS tiles, CodeBeat icon and clearer Shizuku install",
+    "changes": [
+      "QS tiles reparados: CodeBeat, CodeStream, Clima, Mis apps y CodeSu abren su destino correcto en Android 14+ usando PendingIntent.",
+      "Nuevo icono monocromo de CodeBeat para Quick Settings (ondas de sonido, blanco 24dp).",
+      "Feedback QS: subtítulo/estado al tocar y toast si falla la apertura.",
+      "Instalación con Shizuku: estado unificado Descargando → Verificando → Instalando → Reiniciando en diálogo, notificación y Store.",
+      "Self-update con Shizuku: aviso si tarda más de lo normal y confirmación al reiniciar CodeHub tras completar la actualización."
+    ],
+    "changes_en": [
+      "Fixed QS tiles: CodeBeat, CodeStream, Weather, My Apps and CodeSu open the correct target on Android 14+ using PendingIntent.",
+      "New monochrome CodeBeat Quick Settings icon (sound waves, white 24dp).",
+      "QS feedback: subtitle/state on tap and toast on launch failure.",
+      "Shizuku install: unified Downloading → Verifying → Installing → Restarting state in dialog, notification and Store.",
+      "Shizuku self-update: slow-install hint and restart confirmation after CodeHub finishes updating."
+    ]
+  },
+  {
     "version": "v7.72",
     "date": "2026-11-22",
     "type": "feat",
