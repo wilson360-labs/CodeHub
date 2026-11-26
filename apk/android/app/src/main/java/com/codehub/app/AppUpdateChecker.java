@@ -62,6 +62,8 @@ public class AppUpdateChecker {
     public static final String PREF_UPDATE_PENDING_CODE = "self_update_pending_code";
     public static final String PREF_UPDATE_PENDING_VERSION = "self_update_pending_version";
     public static final String PREF_UPDATE_PENDING_BUILD = "self_update_pending_build";
+    public static final String PREF_SELF_UPDATE_SHIZUKU = "self_update_shizuku";
+    public static final String PREF_SELF_UPDATE_RESTARTED = "self_update_restarted";
     private static final String PREF_AVAILABLE_VERSION = "app_update_available_version";
     private static final String PREF_AVAILABLE_BUILD = "app_update_available_build";
     private static final String PREF_AVAILABLE_URL = "app_update_available_url";

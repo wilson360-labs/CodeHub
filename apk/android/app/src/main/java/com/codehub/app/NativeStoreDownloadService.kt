@@ -188,7 +188,7 @@ class NativeStoreDownloadService : Service() {
                         }
                         .build())
                 }
-                ApkTransferState.Installing -> {
+                is ApkTransferState.Installing -> {
                     hasActive = true
                     manager.notify(appId.hashCode(), builder()
                         .apply {
@@ -196,7 +196,20 @@ class NativeStoreDownloadService : Service() {
                             setOnlyAlertOnce(true)
                             setSmallIcon(android.R.drawable.stat_sys_download)
                             setContentTitle("Instalando ${NativeStoreApkInstaller.displayName(appId)}")
-                            setContentText("Instalando por Shizuku… CodeHub puede reiniciarse al finalizar.")
+                            setContentText(state.detail.ifBlank { "Instalando por Shizuku…" })
+                            setGroup(GROUP_KEY)
+                        }
+                        .build())
+                }
+                ApkTransferState.Restarting -> {
+                    hasActive = true
+                    manager.notify(appId.hashCode(), builder()
+                        .apply {
+                            setOngoing(true)
+                            setOnlyAlertOnce(true)
+                            setSmallIcon(android.R.drawable.stat_sys_download_done)
+                            setContentTitle("Reiniciando CodeHub")
+                            setContentText("La actualización se instaló. CodeHub se abrirá de nuevo.")
                             setGroup(GROUP_KEY)
                         }
                         .build())

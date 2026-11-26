@@ -97,6 +97,8 @@ public class MainActivity extends Activity {
     private AppUpdateChecker.UpdateInfo pendingAppUpdate;
     private boolean appUpdateRunning;
     private boolean appUpdateAwaitingConfirmation;
+    private Handler appUpdateUiHandler;
+    private Runnable appUpdateSlowInstallRunnable;
     private AlertDialog updateDialog;
     private TextView updateDialogNotes;
     private TextView updateDialogStatus;
@@ -571,6 +573,7 @@ public class MainActivity extends Activity {
 
         appUpdateRunning = true;
         appUpdateAwaitingConfirmation = false;
+        cancelAppUpdateSlowInstallHint();
         String preparing = isEnglishDevice() ? "Preparing update…" : "Preparando actualización…";
         setUpdateDialogProgress(null, preparing);
         getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE).edit()
@@ -579,6 +582,8 @@ public class MainActivity extends Activity {
             .putLong(AppUpdateChecker.PREF_UPDATE_PENDING_CODE, update.versionCode)
             .putString(AppUpdateChecker.PREF_UPDATE_PENDING_VERSION, update.version)
             .putString(AppUpdateChecker.PREF_UPDATE_PENDING_BUILD, update.buildLabel)
+            .putBoolean(AppUpdateChecker.PREF_SELF_UPDATE_SHIZUKU, shizukuReady)
+            .remove(AppUpdateChecker.PREF_SELF_UPDATE_RESTARTED)
             .apply();
         try {
             NativeStoreApkInstaller.start(
@@ -597,23 +602,28 @@ public class MainActivity extends Activity {
                                 isEnglishDevice() ? "Downloading CodeHub…" : "Descargando CodeHub…"));
                     }
 
-                    @Override public void onInstalling() {
+                    @Override public void onInstalling(String detail) {
                         runOnUiThread(() -> {
                             if (updateDialogProgress != null) {
                                 updateDialogProgress.setIndeterminate(true);
                                 updateDialogProgress.setVisibility(View.VISIBLE);
                             }
                             if (updateDialogPercent != null) updateDialogPercent.setVisibility(View.GONE);
-                            setUpdateDialogStatus(isEnglishDevice() ? "Installing with Shizuku…" : "Instalando por Shizuku…");
+                            String msg = (detail == null || detail.isEmpty())
+                                    ? (isEnglishDevice() ? "Installing with Shizuku…" : "Instalando por Shizuku…")
+                                    : detail;
+                            setUpdateDialogStatus(msg);
                             if (updateDialogAction != null) {
                                 updateDialogAction.setEnabled(false);
                                 updateDialogAction.setText(isEnglishDevice() ? "Installing…" : "Instalando…");
                             }
+                            scheduleAppUpdateSlowInstallHint();
                         });
                     }
 
                     @Override public void onFinished(NativeStoreApkInstaller.Status status, String message) {
                         runOnUiThread(() -> {
+                            cancelAppUpdateSlowInstallHint();
                             appUpdateRunning = false;
                             if (status == NativeStoreApkInstaller.Status.INSTALLED) {
                                 setUpdateDialogProgress(100, isEnglishDevice() ? "Update installed. CodeHub is restarting." : "Actualización instalada. CodeHub se está iniciando de nuevo.");
@@ -647,6 +657,7 @@ public class MainActivity extends Activity {
                 update.apkSha256
             );
         } catch (Throwable error) {
+            cancelAppUpdateSlowInstallHint();
             appUpdateRunning = false;
             clearPendingSelfUpdate();
             android.util.Log.e("CodeHubUpdater", "No se pudo iniciar la actualización", error);
@@ -659,13 +670,60 @@ public class MainActivity extends Activity {
     }
 
     private void clearPendingSelfUpdate() {
+        cancelAppUpdateSlowInstallHint();
         getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE).edit()
             .remove(AppUpdateChecker.PREF_UPDATE_PENDING)
             .remove(AppUpdateChecker.PREF_UPDATE_PENDING_AT)
             .remove(AppUpdateChecker.PREF_UPDATE_PENDING_CODE)
             .remove(AppUpdateChecker.PREF_UPDATE_PENDING_VERSION)
             .remove(AppUpdateChecker.PREF_UPDATE_PENDING_BUILD)
+            .remove(AppUpdateChecker.PREF_SELF_UPDATE_SHIZUKU)
             .apply();
+    }
+
+    private void scheduleAppUpdateSlowInstallHint() {
+        cancelAppUpdateSlowInstallHint();
+        if (appUpdateUiHandler == null) appUpdateUiHandler = new Handler(Looper.getMainLooper());
+        appUpdateSlowInstallRunnable = () -> {
+            if (!appUpdateRunning || isFinishing() || isDestroyed()) return;
+            setUpdateDialogStatus(isEnglishDevice()
+                    ? "Shizuku is taking longer than usual… keep CodeHub open."
+                    : "Shizuku está tardando más de lo normal… mantén CodeHub abierta.");
+        };
+        appUpdateUiHandler.postDelayed(appUpdateSlowInstallRunnable, 45_000L);
+    }
+
+    private void cancelAppUpdateSlowInstallHint() {
+        if (appUpdateUiHandler != null && appUpdateSlowInstallRunnable != null) {
+            appUpdateUiHandler.removeCallbacks(appUpdateSlowInstallRunnable);
+        }
+        appUpdateSlowInstallRunnable = null;
+    }
+
+    private void maybeShowCompletedSelfUpdate() {
+        try {
+            SharedPreferences prefs = getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE);
+            if (!prefs.getBoolean(AppUpdateChecker.PREF_SELF_UPDATE_SHIZUKU, false)) return;
+            long expectedCode = prefs.getLong(AppUpdateChecker.PREF_UPDATE_PENDING_CODE, 0L);
+            String expectedVersion = prefs.getString(AppUpdateChecker.PREF_UPDATE_PENDING_VERSION, "");
+            long installedCode = AppUpdateChecker.localVersionCode(this);
+            String installedVersion = "";
+            try { installedVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
+            boolean expectedInstalled = expectedCode > 0L ? installedCode >= expectedCode
+                    : (expectedVersion != null && !expectedVersion.isEmpty() && expectedVersion.equals(installedVersion));
+            if (!expectedInstalled) return;
+            String stamp = installedCode + ":" + installedVersion;
+            if (stamp.equals(prefs.getString(AppUpdateChecker.PREF_SELF_UPDATE_RESTARTED, ""))) {
+                clearPendingSelfUpdate();
+                return;
+            }
+            prefs.edit().putString(AppUpdateChecker.PREF_SELF_UPDATE_RESTARTED, stamp).apply();
+            clearPendingSelfUpdate();
+            dismissUpdateDialog();
+            Toast.makeText(this, isEnglishDevice()
+                    ? "Update completed with Shizuku. CodeHub restarted."
+                    : "Actualización completada por Shizuku. CodeHub se reinició.", Toast.LENGTH_LONG).show();
+        } catch (Throwable ignored) {}
     }
 
     private void setUpdateDialogProgress(Integer percent, String status) {
@@ -1639,9 +1697,12 @@ public class MainActivity extends Activity {
             long installedCode = AppUpdateChecker.localVersionCode(this);
             if (pendingAppUpdate.versionCode > 0 && installedCode >= pendingAppUpdate.versionCode) {
                 dismissUpdateDialog();
+                boolean byShizuku = getSharedPreferences(AppUpdateChecker.PREFS, MODE_PRIVATE)
+                        .getBoolean(AppUpdateChecker.PREF_SELF_UPDATE_SHIZUKU, false);
+                clearPendingSelfUpdate();
                 Toast.makeText(this, isEnglishDevice()
-                    ? "CodeHub " + pendingAppUpdate.version + " installed."
-                    : "CodeHub " + pendingAppUpdate.version + " instalado.", Toast.LENGTH_LONG).show();
+                    ? "CodeHub " + pendingAppUpdate.version + " installed" + (byShizuku ? " with Shizuku." : ".")
+                    : "CodeHub " + pendingAppUpdate.version + " instalado" + (byShizuku ? " por Shizuku." : "."), Toast.LENGTH_LONG).show();
             } else {
                 clearPendingSelfUpdate();
                 if (pendingAppUpdate.required) {
@@ -1652,6 +1713,7 @@ public class MainActivity extends Activity {
                 }
             }
         }
+        maybeShowCompletedSelfUpdate();
         try { if (nativeHome != null) nativeHome.refreshActivitySummary(); } catch (Throwable ignored) {}
         try { if (nativeHome != null) nativeHome.refreshPrivacyStatus(); } catch (Throwable ignored) {}
         if (webView != null) webView.onResume();

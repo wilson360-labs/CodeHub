@@ -42,12 +42,31 @@ sealed interface ApkTransferState {
     data object Idle : ApkTransferState
     data class Downloading(val downloadedBytes: Long, val totalBytes: Long) : ApkTransferState
     data object Verifying : ApkTransferState
-    data object Installing : ApkTransferState
+    data class Installing(val detail: String = "") : ApkTransferState
     data object ReadyToInstall : ApkTransferState
     data class AwaitingUserConfirmation(val detail: String = "") : ApkTransferState
+    data object Restarting : ApkTransferState
     data object Installed : ApkTransferState
     data class Failed(val message: String) : ApkTransferState
     data object Cancelled : ApkTransferState
+
+    fun isActive(): Boolean = when (this) {
+        is Downloading, Verifying, is Installing, ReadyToInstall, is AwaitingUserConfirmation, Restarting -> true
+        else -> false
+    }
+
+    fun phaseLabel(): String = when (this) {
+        Idle -> "INACTIVO"
+        is Downloading -> "DESCARGANDO"
+        Verifying -> "VERIFICANDO"
+        is Installing -> "INSTALANDO"
+        ReadyToInstall -> "LISTO"
+        is AwaitingUserConfirmation -> "CONFIRMAR"
+        Restarting -> "REINICIANDO"
+        Installed -> "INSTALADO"
+        is Failed -> "ERROR"
+        Cancelled -> "CANCELADO"
+    }
 }
 
 /**
@@ -63,7 +82,7 @@ object NativeStoreApkInstaller {
 
     interface Listener {
         fun onProgress(downloadedBytes: Long, totalBytes: Long)
-        fun onInstalling()
+        fun onInstalling(detail: String = "")
         fun onFinished(status: Status, message: String = "")
     }
 
@@ -196,8 +215,11 @@ object NativeStoreApkInstaller {
                 setState(appId, ApkTransferState.ReadyToInstall)
                 var silentInstallFailure = ""
                 if (preferSilent && ShizukuInstaller.isReady()) {
-                    setState(appId, ApkTransferState.Installing)
-                    main.post { listener?.onInstalling() }
+                    val installingDetail = if (relaunchAfterInstall || appId == SELF_UPDATE_ID)
+                        "Instalando por Shizuku… CodeHub se reiniciará al finalizar."
+                    else "Instalando por Shizuku…"
+                    setState(appId, ApkTransferState.Installing(installingDetail))
+                    main.post { listener?.onInstalling(installingDetail) }
                     try {
                         withContext(Dispatchers.IO) {
                             if (relaunchAfterInstall) {
@@ -210,7 +232,11 @@ object NativeStoreApkInstaller {
                             }
                         }
                         destination.delete()
-                        setState(appId, ApkTransferState.Installed)
+                        if (relaunchAfterInstall || appId == SELF_UPDATE_ID) {
+                            setState(appId, ApkTransferState.Restarting)
+                        } else {
+                            setState(appId, ApkTransferState.Installed)
+                        }
                         main.post { listener?.onFinished(Status.INSTALLED) }
                         return@launch
                     } catch (error: Exception) {
@@ -325,8 +351,8 @@ object NativeStoreApkInstaller {
         }
         scope.launch {
             var previousVersionRemoved = false
-            setState(appId, ApkTransferState.Installing)
-            main.post { listener.onInstalling() }
+            setState(appId, ApkTransferState.Installing("Instalando por Shizuku…"))
+            main.post { listener.onInstalling("Instalando por Shizuku…") }
             try {
                 withContext(Dispatchers.IO) {
                     ShizukuInstaller.uninstallSilently(packageName)

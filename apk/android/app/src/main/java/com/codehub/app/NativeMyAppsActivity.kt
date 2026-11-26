@@ -552,11 +552,12 @@ class NativeMyAppsActivity : Activity() {
                                 }
                             }
 
-                            override fun onInstalling() {
+                            override fun onInstalling(detail: String) {
                                 if (isFinishing || isDestroyed) return
+                                val msg = detail.ifBlank { "Instalando por Shizuku…" }
                                 transferViews[app.id]?.let { (bar, text) ->
                                     bar.isIndeterminate = true
-                                    text.text = "INSTALANDO POR SHIZUKU…"
+                                    text.text = msg.uppercase(Locale.getDefault())
                                 }
                             }
 
@@ -636,11 +637,7 @@ class NativeMyAppsActivity : Activity() {
     private fun requestUninstall(app: AppEntry) {
         val pkg = app.packageName ?: return
         val storeTransfer = NativeStoreApkInstaller.transfers.value[app.id]
-        val storeInstallInProgress = storeTransfer is ApkTransferState.Downloading ||
-            storeTransfer is ApkTransferState.Verifying ||
-            storeTransfer == ApkTransferState.Installing ||
-            storeTransfer == ApkTransferState.ReadyToInstall ||
-            storeTransfer is ApkTransferState.AwaitingUserConfirmation
+        val storeInstallInProgress = storeTransfer?.isActive() == true
         if (app.id in activeTransfers || storeInstallInProgress) {
             Toast.makeText(this, "Espera a que termine la descarga o instalación de ${app.name}.", Toast.LENGTH_LONG).show()
             return

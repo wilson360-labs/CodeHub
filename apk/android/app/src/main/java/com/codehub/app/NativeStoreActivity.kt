@@ -1381,15 +1381,16 @@ class NativeStoreActivity : Activity() {
                         }
                     }
 
-                    override fun onInstalling() {
+                    override fun onInstalling(detail: String) {
                         if (isFinishing || isDestroyed) return
+                        val msg = detail.ifBlank { "Instalando por Shizuku…" }
                         transferViews[app.id]?.let { (bar, text) ->
                             bar.isIndeterminate = true
-                            text.text = "INSTALANDO POR SHIZUKU…"
+                            text.text = msg.uppercase(Locale.getDefault())
                         }
                         if (detailAppId == app.id) {
                             detailRing?.setProgress(-1f)
-                            detailCta?.text = "Instalando por Shizuku…"
+                            detailCta?.text = msg
                         }
                     }
 
